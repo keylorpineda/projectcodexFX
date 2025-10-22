@@ -74,6 +74,7 @@
 
 .hero-body {
     -fx-fill: rgba(226,232,240,0.92);
+    -fx-text-fill: rgba(226,232,240,0.92);
     -fx-font-size: 15px;
     -fx-line-spacing: 6px;
 }
@@ -89,6 +90,7 @@
 
 .hero-point {
     -fx-fill: rgba(219,234,254,0.95);
+    -fx-text-fill: rgba(219,234,254,0.95);
     -fx-font-size: 14px;
 }
 
@@ -119,6 +121,7 @@
 
 .login-subtitle {
     -fx-fill: #4b5563;
+    -fx-text-fill: #4b5563;
     -fx-font-size: 14px;
 }
 
@@ -204,6 +207,7 @@
 
 .azure-guidelines .hero-point {
     -fx-fill: #1f2933;
+    -fx-text-fill: #1f2933;
     -fx-font-weight: 600;
 }
 
