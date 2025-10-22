@@ -9,7 +9,6 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
 
 <StackPane fx:id="root" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
            fx:controller="com.municipal.reservationsfx.ui.controllers.LoginController"
@@ -29,20 +28,20 @@
                             <children>
                                 <Label text="Sistema de Reservas" styleClass="hero-overline"/>
                                 <Label text="Municipalidad de Pérez Zeledón" styleClass="hero-title" wrapText="true"/>
-                                <Text text="Administra espacios, reservas y alertas en un solo lugar, con seguridad garantizada por Azure Active Directory." wrapText="true" styleClass="hero-body"/>
+                                <Label text="Administra espacios, reservas y alertas en un solo lugar, con seguridad garantizada por Azure Active Directory." wrapText="true" styleClass="hero-body"/>
                                 <VBox spacing="12" styleClass="hero-points">
                                     <children>
                                         <HBox spacing="10" alignment="CENTER_LEFT">
                                             <Label text="●" styleClass="hero-bullet"/>
-                                            <Text text="Monitoreo en tiempo real de reservas y clima" styleClass="hero-point" wrapText="true"/>
+                                            <Label text="Monitoreo en tiempo real de reservas y clima" styleClass="hero-point" wrapText="true"/>
                                         </HBox>
                                         <HBox spacing="10" alignment="CENTER_LEFT">
                                             <Label text="●" styleClass="hero-bullet"/>
-                                            <Text text="Indicadores clave y alertas automáticas" styleClass="hero-point" wrapText="true"/>
+                                            <Label text="Indicadores clave y alertas automáticas" styleClass="hero-point" wrapText="true"/>
                                         </HBox>
                                         <HBox spacing="10" alignment="CENTER_LEFT">
                                             <Label text="●" styleClass="hero-bullet"/>
-                                            <Text text="Integración segura con Azure Active Directory" styleClass="hero-point" wrapText="true"/>
+                                            <Label text="Integración segura con Azure Active Directory" styleClass="hero-point" wrapText="true"/>
                                         </HBox>
                                     </children>
                                 </VBox>
@@ -60,7 +59,7 @@
                                     <children>
                                         <Label text="Bienvenido" styleClass="login-eyebrow"/>
                                         <Label text="Panel Administrativo" styleClass="login-title"/>
-                                        <Text text="Ingresa con tu cuenta institucional para acceder al panel del administrador." styleClass="login-subtitle" wrapText="true"/>
+                                        <Label text="Ingresa con tu cuenta institucional para acceder al panel del administrador." styleClass="login-subtitle" wrapText="true"/>
                                     </children>
                                 </VBox>
                                 <VBox spacing="14" alignment="CENTER_LEFT">
@@ -87,16 +86,16 @@
                                             <Label text="Azure garantiza tu seguridad" styleClass="divider-label"/>
                                             <StackPane styleClass="divider-line"/>
                                         </HBox>
-                                        <Text text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Usa tu cuenta institucional para acceder al panel administrativo de forma segura." wrapText="true" styleClass="muted-label"/>
+                                        <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Usa tu cuenta institucional para acceder al panel administrativo de forma segura." wrapText="true" styleClass="muted-label"/>
                                         <VBox spacing="10" styleClass="azure-guidelines">
                                             <children>
                                                 <HBox spacing="10" alignment="CENTER_LEFT">
                                                     <Label text="●" styleClass="hero-bullet"/>
-                                                    <Text text="Serás redirigido a la página oficial de Azure para iniciar sesión." styleClass="hero-point" wrapText="true"/>
+                                                    <Label text="Serás redirigido a la página oficial de Azure para iniciar sesión." styleClass="hero-point" wrapText="true"/>
                                                 </HBox>
                                                 <HBox spacing="10" alignment="CENTER_LEFT">
                                                     <Label text="●" styleClass="hero-bullet"/>
-                                                    <Text text="Nunca compartas tus credenciales. Azure protege tu identidad institucional." styleClass="hero-point" wrapText="true"/>
+                                                    <Label text="Nunca compartas tus credenciales. Azure protege tu identidad institucional." styleClass="hero-point" wrapText="true"/>
                                                 </HBox>
                                             </children>
                                         </VBox>
