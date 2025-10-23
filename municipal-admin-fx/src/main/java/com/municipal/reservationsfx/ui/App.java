@@ -18,7 +18,10 @@ public class App extends Application {
         Parent root = loader.load();
         Scene scene = new Scene(root);
         MaterialFXStylesheets.DEFAULT.applyOn(scene);
-        scene.getStylesheets().add(App.class.getResource("/com/municipal/reservationsfx/styles/styles.css").toExternalForm());
+        scene.getStylesheets().addAll(
+                App.class.getResource("/com/municipal/reservationsfx/styles/styles.css").toExternalForm(),
+                App.class.getResource("/com/municipal/reservationsfx/styles/login-view.css").toExternalForm()
+        );
         stage.setTitle("Sistema de Reservas Municipales");
         stage.setScene(scene);
         stage.setMinWidth(860);

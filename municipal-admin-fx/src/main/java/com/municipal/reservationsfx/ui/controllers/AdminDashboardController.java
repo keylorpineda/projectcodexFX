@@ -1,18 +1,19 @@
 package com.municipal.reservationsfx.ui.controllers;
 
+import com.municipal.reservationsfx.ui.utils.NodeVisibilityUtils;
 import javafx.animation.FadeTransition;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class AdminDashboardController {
 
@@ -34,9 +35,24 @@ public class AdminDashboardController {
     private Button navClimateButton;
     @FXML
     private Button navSettingsButton;
+    @FXML
+    private VBox dashboardSection;
+    @FXML
+    private VBox spacesSection;
+    @FXML
+    private VBox usersSection;
+    @FXML
+    private VBox reservationsSection;
+    @FXML
+    private VBox reportsSection;
+    @FXML
+    private VBox climateSection;
+    @FXML
+    private VBox settingsSection;
 
     private final Map<ViewSection, Button> navigationButtons = new EnumMap<>(ViewSection.class);
-    private final Map<ViewSection, ViewHolder> viewCache = new EnumMap<>(ViewSection.class);
+    private final Map<ViewSection, Node> sectionRegistry = new EnumMap<>(ViewSection.class);
+    private final List<Node> contentSections = new ArrayList<>();
     private ViewSection activeView = null;
 
     @FXML
@@ -54,6 +70,25 @@ public class AdminDashboardController {
         navigationButtons.put(ViewSection.CLIMATE, navClimateButton);
         navigationButtons.put(ViewSection.SETTINGS, navSettingsButton);
 
+        sectionRegistry.put(ViewSection.DASHBOARD, dashboardSection);
+        sectionRegistry.put(ViewSection.SPACES, spacesSection);
+        sectionRegistry.put(ViewSection.USERS, usersSection);
+        sectionRegistry.put(ViewSection.RESERVATIONS, reservationsSection);
+        sectionRegistry.put(ViewSection.REPORTS, reportsSection);
+        sectionRegistry.put(ViewSection.CLIMATE, climateSection);
+        sectionRegistry.put(ViewSection.SETTINGS, settingsSection);
+
+        contentSections.addAll(List.of(
+                dashboardSection,
+                spacesSection,
+                usersSection,
+                reservationsSection,
+                reportsSection,
+                climateSection,
+                settingsSection
+        ));
+
+        contentSections.stream().filter(Objects::nonNull).forEach(NodeVisibilityUtils::hide);
         showView(ViewSection.DASHBOARD);
     }
 
@@ -97,42 +132,21 @@ public class AdminDashboardController {
     }
 
     private void showView(ViewSection section) {
-        ViewHolder holder = viewCache.computeIfAbsent(section, this::loadView);
-        if (holder == null) {
+        Node node = sectionRegistry.get(section);
+        if (node == null) {
             return;
         }
 
+        contentSections.stream().filter(Objects::nonNull).forEach(NodeVisibilityUtils::hide);
+        NodeVisibilityUtils.show(node);
+
         if (contentScroll != null) {
-            contentScroll.setContent(holder.node);
             contentScroll.setVvalue(0);
         }
 
-        applyContentTransition(holder.node);
         updateActiveNavigation(section);
         activeView = section;
 
-        if (holder.controller != null) {
-            holder.controller.onDisplay(this);
-        }
-    }
-
-    private ViewHolder loadView(ViewSection section) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(section.fxmlPath));
-            Node node = loader.load();
-            DashboardSubview controller = null;
-            Object candidate = loader.getController();
-            if (candidate instanceof DashboardSubview subview) {
-                controller = subview;
-            }
-            return new ViewHolder(node, controller);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private void applyContentTransition(Node node) {
         FadeTransition fade = new FadeTransition(Duration.millis(320), node);
         fade.setFromValue(0);
         fade.setToValue(1);
@@ -144,13 +158,12 @@ public class AdminDashboardController {
             if (button == null) {
                 return;
             }
-            ObservableList<String> styleClass = button.getStyleClass();
             if (viewSection == section) {
-                if (!styleClass.contains("nav-item-active")) {
-                    styleClass.add("nav-item-active");
+                if (!button.getStyleClass().contains("nav-item-active")) {
+                    button.getStyleClass().add("nav-item-active");
                 }
             } else {
-                styleClass.remove("nav-item-active");
+                button.getStyleClass().remove("nav-item-active");
             }
         });
     }
@@ -166,21 +179,12 @@ public class AdminDashboardController {
     }
 
     public enum ViewSection {
-        DASHBOARD("/com/municipal/reservationsfx/ui/dashboard-overview-view.fxml"),
-        SPACES("/com/municipal/reservationsfx/ui/spaces-management-view.fxml"),
-        USERS("/com/municipal/reservationsfx/ui/users-management-view.fxml"),
-        RESERVATIONS("/com/municipal/reservationsfx/ui/reservations-control-view.fxml"),
-        REPORTS("/com/municipal/reservationsfx/ui/reports-analytics-view.fxml"),
-        CLIMATE("/com/municipal/reservationsfx/ui/climate-monitoring-view.fxml"),
-        SETTINGS("/com/municipal/reservationsfx/ui/system-settings-view.fxml");
-
-        private final String fxmlPath;
-
-        ViewSection(String fxmlPath) {
-            this.fxmlPath = fxmlPath;
-        }
-    }
-
-    private record ViewHolder(Node node, DashboardSubview controller) {
+        DASHBOARD,
+        SPACES,
+        USERS,
+        RESERVATIONS,
+        REPORTS,
+        CLIMATE,
+        SETTINGS
     }
 }
