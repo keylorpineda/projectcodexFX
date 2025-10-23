@@ -129,7 +129,7 @@
                 </HBox>
                 
                 <!-- Security Info -->
-                <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Usa tu cuenta institucional para acceder al panel administrativo de forma segura." 
+                <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Inicia sesión con tu cuenta Microsoft personal o institucional para acceder al panel administrativo de forma segura."
                        styleClass="security-info" wrapText="true"/>
                 
                 <!-- Guidelines Box -->
