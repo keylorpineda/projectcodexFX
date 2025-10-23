@@ -1,7 +1,8 @@
-package com.municipal.services;
+package com.municipal.reservationsfx.backend.services;
 
-import com.municipal.requests.AzureLoginRequest;
-import com.municipal.responses.AuthResponse;
+import com.municipal.reservationsfx.backend.ApiClient;
+import com.municipal.reservationsfx.backend.requests.AzureLoginRequest;
+import com.municipal.reservationsfx.backend.responses.AuthResponse;
 
 /**
  * Service responsible for delegating authentication calls to the backend API.

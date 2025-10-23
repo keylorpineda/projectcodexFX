@@ -1,7 +1,7 @@
-package com.municipal.controllers;
+package com.municipal.reservationsfx.backend.controllers;
 
-import com.municipal.responses.AuthResponse;
-import com.municipal.services.AuthService;
+import com.municipal.reservationsfx.backend.responses.AuthResponse;
+import com.municipal.reservationsfx.backend.services.AuthService;
 
 /**
  * Bridges UI login flows with the backend authentication endpoints.

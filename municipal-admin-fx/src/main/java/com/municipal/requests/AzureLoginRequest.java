@@ -1,4 +1,4 @@
-package com.municipal.requests;
+package com.municipal.reservationsfx.backend.requests;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

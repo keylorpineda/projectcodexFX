@@ -1,4 +1,4 @@
-package com.municipal.utils;
+package com.municipal.reservationsfx.backend.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.municipal.exceptions.ApiClientException;
+import com.municipal.reservationsfx.backend.exceptions.ApiClientException;
 
 /**
  * Utility class that centralizes JSON serialization and deserialization

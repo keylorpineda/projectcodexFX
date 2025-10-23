@@ -1,4 +1,4 @@
-package com.municipal.exceptions;
+package com.municipal.reservationsfx.backend.exceptions;
 
 /**
  * Represents an error returned by the backend API when calling it from the

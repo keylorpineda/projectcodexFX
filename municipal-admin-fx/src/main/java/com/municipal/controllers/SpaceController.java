@@ -1,7 +1,7 @@
-package com.municipal.controllers;
+package com.municipal.reservationsfx.backend.controllers;
 
-import com.municipal.dtos.SpaceDTO;
-import com.municipal.services.SpaceService;
+import com.municipal.reservationsfx.backend.dtos.SpaceDTO;
+import com.municipal.reservationsfx.backend.services.SpaceService;
 
 import java.util.List;
 
