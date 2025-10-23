@@ -1,4 +1,4 @@
-package com.municipal.reservationsfx.ui.utils;
+package com.municipal.ui.utils;
 
 import javafx.scene.Node;
 

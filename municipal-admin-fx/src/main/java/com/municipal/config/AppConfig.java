@@ -1,4 +1,4 @@
-package com.municipal.reservationsfx.config;
+package com.municipal.config;
 
 import java.io.IOException;
 import java.io.InputStream;

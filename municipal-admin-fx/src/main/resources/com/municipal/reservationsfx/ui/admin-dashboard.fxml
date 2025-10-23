@@ -10,7 +10,7 @@
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:id="mainContainer"
-      fx:controller="com.municipal.reservationsfx.ui.controllers.AdminDashboardController"
+      fx:controller="com.municipal.ui.controllers.AdminDashboardController"
       styleClass="admin-root"
       spacing="0"
       fillWidth="true">

@@ -1,8 +1,8 @@
-package com.municipal.reservationsfx.backend.services;
+package com.municipal.services;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.municipal.reservationsfx.backend.ApiClient;
-import com.municipal.reservationsfx.backend.dtos.SpaceDTO;
+import com.municipal.ApiClient;
+import com.municipal.dtos.SpaceDTO;
 
 import java.util.List;
 
