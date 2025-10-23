@@ -349,18 +349,18 @@
                             <ChoiceBox>
                                 <items>
                                     <FXCollections fx:factory="observableArrayList">
-                                        <String fx:value="Todos los tipos"/>
-                                        <String fx:value="Interior"/>
-                                        <String fx:value="Exterior"/>
+                                        <String>Todos los tipos</String>
+                                        <String>Interior</String>
+                                        <String>Exterior</String>
                                     </FXCollections>
                                 </items>
                             </ChoiceBox>
                             <ChoiceBox>
                                 <items>
                                     <FXCollections fx:factory="observableArrayList">
-                                        <String fx:value="Todos los estados"/>
-                                        <String fx:value="Disponible"/>
-                                        <String fx:value="Mantenimiento"/>
+                                        <String>Todos los estados</String>
+                                        <String>Disponible</String>
+                                        <String>Mantenimiento</String>
                                     </FXCollections>
                                 </items>
                             </ChoiceBox>
