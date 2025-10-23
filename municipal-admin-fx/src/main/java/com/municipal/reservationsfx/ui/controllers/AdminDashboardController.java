@@ -155,6 +155,16 @@ public class AdminDashboardController {
         });
     }
 
+    /**
+     * Ensures the dashboard is ready after being loaded dynamically.
+     * This is typically invoked by the login flow once the scene switches
+     * to the administrator dashboard.
+     */
+    public void bootstrap() {
+        ViewSection target = activeView != null ? activeView : ViewSection.DASHBOARD;
+        showView(target);
+    }
+
     public enum ViewSection {
         DASHBOARD("/com/municipal/reservationsfx/ui/dashboard-overview-view.fxml"),
         SPACES("/com/municipal/reservationsfx/ui/spaces-management-view.fxml"),
