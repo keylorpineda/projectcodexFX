@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      styleClass="admin-root"
+      spacing="0"
+      fillWidth="true">
+    
+    <!-- Top Header -->
+    <HBox styleClass="admin-header" alignment="CENTER_LEFT" spacing="0" VBox.vgrow="NEVER">
+        <padding>
+            <Insets top="16" right="24" bottom="16" left="24"/>
+        </padding>
+        
+        <!-- Logo Section -->
+        <HBox alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
+            <StackPane styleClass="logo-container" minWidth="40" minHeight="40">
+                <Circle radius="20" styleClass="logo-bg"/>
+                <Label text="🏛" styleClass="logo-icon"/>
+            </StackPane>
+            <VBox spacing="2">
+                <Label text="Panel de Administración" styleClass="header-title"/>
+                <Label text="Municipalidad de Pérez Zeledón" styleClass="header-subtitle"/>
+            </VBox>
+        </HBox>
+        
+        <!-- Spacer -->
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <!-- Actions Section -->
+        <HBox alignment="CENTER_RIGHT" spacing="12" HBox.hgrow="NEVER">
+            <!-- Notifications Button -->
+            <StackPane styleClass="notification-button">
+                <Button styleClass="icon-button">
+                    <graphic>
+                        <Label text="🔔" styleClass="icon"/>
+                    </graphic>
+                </Button>
+                <Label text="3" styleClass="notification-badge"/>
+            </StackPane>
+            
+            <!-- User Menu -->
+            <HBox styleClass="user-menu" spacing="8" alignment="CENTER">
+                <Circle radius="16" styleClass="user-avatar"/>
+                <VBox spacing="0">
+                    <Label text="Carlos Rodríguez" styleClass="user-name"/>
+                    <Label text="Administrador" styleClass="user-role"/>
+                </VBox>
+            </HBox>
+        </HBox>
+    </HBox>
+    
+    <!-- Main Content Area -->
+    <HBox spacing="0" VBox.vgrow="ALWAYS" fillHeight="true">
+        
+        <!-- Left Sidebar -->
+        <VBox styleClass="sidebar" spacing="8" prefWidth="280" minWidth="280" HBox.hgrow="NEVER">
+            <padding>
+                <Insets top="24" right="20" bottom="24" left="20"/>
+            </padding>
+            
+            <Label text="NAVEGACIÓN" styleClass="sidebar-section-title"/>
+            
+            <Button text="Inicio" styleClass="nav-item, nav-item-active" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="🏠" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+            
+            <Button text="Gestión de espacios" styleClass="nav-item" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="🏢" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+            
+            <Button text="Gestión de usuarios" styleClass="nav-item" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="👥" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+            
+            <Button text="Control de reservas" styleClass="nav-item" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="📅" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+            
+            <Button text="Reportes globales" styleClass="nav-item" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="📊" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+            
+            <Button text="Monitoreo climático" styleClass="nav-item" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="☁️" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+            
+            <Button text="Configuración" styleClass="nav-item" maxWidth="Infinity" alignment="BASELINE_LEFT">
+                <graphic>
+                    <Label text="⚙️" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
+        </VBox>
+        
+        <!-- Main Content Scroll -->
+        <ScrollPane fitToWidth="true" fitToHeight="true" styleClass="content-scroll" HBox.hgrow="ALWAYS">
+            <VBox fx:id="mainContent" spacing="24" styleClass="main-content" fillWidth="true">
+                <padding>
+                    <Insets top="24" right="32" bottom="32" left="32"/>
+                </padding>
+                
+                <!-- Page Header -->
+                <HBox alignment="CENTER_LEFT" spacing="0">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Panel de Administración" styleClass="page-title"/>
+                        <Label text="Resumen general del sistema de reservas" styleClass="page-subtitle"/>
+                    </VBox>
+                    
+                    <Button text="Actualizar datos" styleClass="refresh-button">
+                        <graphic>
+                            <Label text="🔄" styleClass="button-icon"/>
+                        </graphic>
+                    </Button>
+                </HBox>
+                
+                <!-- Metrics Grid - Responsive -->
+                <VBox spacing="16" styleClass="metrics-container" fillWidth="true">
+                    <!-- First Row -->
+                    <HBox spacing="16" fillHeight="false">
+                        <VBox styleClass="metric-card, metric-success" spacing="8" HBox.hgrow="ALWAYS" minWidth="200">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Espacios Activos" styleClass="metric-label"/>
+                            <Label text="5/6" styleClass="metric-value"/>
+                            <Label text="Espacios disponibles para reserva" styleClass="metric-description" wrapText="true"/>
+                        </VBox>
+                        
+                        <VBox styleClass="metric-card" spacing="8" HBox.hgrow="ALWAYS" minWidth="200">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Reservas Hoy" styleClass="metric-label"/>
+                            <Label text="3" styleClass="metric-value"/>
+                            <Label text="Reservas programadas para hoy" styleClass="metric-description" wrapText="true"/>
+                        </VBox>
+                    </HBox>
+                    
+                    <!-- Second Row -->
+                    <HBox spacing="16" fillHeight="false">
+                        <VBox styleClass="metric-card, metric-destructive" spacing="8" HBox.hgrow="ALWAYS" minWidth="200">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Inasistencias" styleClass="metric-label"/>
+                            <Label text="5" styleClass="metric-value"/>
+                            <Label text="Total de inasistencias registradas" styleClass="metric-description" wrapText="true"/>
+                        </VBox>
+                        
+                        <VBox styleClass="metric-card, metric-success" spacing="8" HBox.hgrow="ALWAYS" minWidth="200">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Ocupación Semanal" styleClass="metric-label"/>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="72.5%" styleClass="metric-value"/>
+                                <Label text="+5.2% ↑" styleClass="metric-trend"/>
+                            </HBox>
+                            <Label text="Promedio de ocupación" styleClass="metric-description" wrapText="true"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                
+                <!-- Weather and Alerts Section -->
+                <HBox spacing="24" fillHeight="false">
+                    <!-- Weather Widget -->
+                    <VBox styleClass="card, weather-card" spacing="16" prefWidth="360" HBox.hgrow="NEVER">
+                        <padding>
+                            <Insets top="24" right="24" bottom="24" left="24"/>
+                        </padding>
+                        
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <Label text="Clima actual" styleClass="card-title"/>
+                            <Label text="Actualizado hace 5 min" styleClass="weather-badge"/>
+                        </HBox>
+                        
+                        <HBox spacing="24" alignment="CENTER_LEFT">
+                            <VBox spacing="8">
+                                <Label text="24°C" styleClass="weather-temp"/>
+                                <Label text="Soleado" styleClass="weather-condition"/>
+                                <Label text="Viento 12 km/h" styleClass="weather-detail"/>
+                                <Label text="Lluvia 10%" styleClass="weather-detail"/>
+                            </VBox>
+                            <StackPane styleClass="weather-icon-container" minWidth="100" minHeight="100">
+                                <Label text="☀️" styleClass="weather-icon-large"/>
+                            </StackPane>
+                        </HBox>
+                        
+                        <VBox styleClass="weather-message-success">
+                            <padding>
+                                <Insets top="12" right="12" bottom="12" left="12"/>
+                            </padding>
+                            <Label text="Excelente día para actividades al aire libre" styleClass="weather-message" wrapText="true"/>
+                        </VBox>
+                    </VBox>
+                    
+                    <!-- Quick Alerts Panel -->
+                    <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
+                        <padding>
+                            <Insets top="24" right="24" bottom="24" left="24"/>
+                        </padding>
+                        
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                <Label text="Alertas Rápidas" styleClass="card-title"/>
+                                <Label text="Notificaciones que requieren atención" styleClass="card-subtitle"/>
+                            </VBox>
+                            <Label text="2" styleClass="alert-count-badge"/>
+                        </HBox>
+                        
+                        <VBox spacing="12" fillWidth="true">
+                            <!-- Alert Item 1 -->
+                            <HBox styleClass="alert-item, alert-item-warning" spacing="12" alignment="TOP_LEFT">
+                                <padding>
+                                    <Insets top="12" right="12" bottom="12" left="12"/>
+                                </padding>
+                                
+                                <StackPane styleClass="alert-icon-container, alert-icon-warning" minWidth="32" minHeight="32">
+                                    <Label text="⚠️" styleClass="alert-icon"/>
+                                </StackPane>
+                                
+                                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                    <HBox spacing="8" alignment="CENTER_LEFT">
+                                        <Label text="Cancha Deportiva Norte" styleClass="alert-title" HBox.hgrow="ALWAYS"/>
+                                        <Label text="Advertencia" styleClass="alert-badge, alert-badge-warning"/>
+                                    </HBox>
+                                    <Label text="Alta probabilidad de lluvia" styleClass="alert-description" wrapText="true"/>
+                                    <Label text="1 reserva(s) afectada(s)" styleClass="alert-meta"/>
+                                </VBox>
+                            </HBox>
+                            
+                            <!-- Alert Item 2 -->
+                            <HBox styleClass="alert-item, alert-item-warning" spacing="12" alignment="TOP_LEFT">
+                                <padding>
+                                    <Insets top="12" right="12" bottom="12" left="12"/>
+                                </padding>
+                                
+                                <StackPane styleClass="alert-icon-container, alert-icon-warning" minWidth="32" minHeight="32">
+                                    <Label text="☁️" styleClass="alert-icon"/>
+                                </StackPane>
+                                
+                                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                    <HBox spacing="8" alignment="CENTER_LEFT">
+                                        <Label text="Parque Recreativo Sur" styleClass="alert-title" HBox.hgrow="ALWAYS"/>
+                                        <Label text="Advertencia" styleClass="alert-badge, alert-badge-warning"/>
+                                    </HBox>
+                                    <Label text="Condiciones variables" styleClass="alert-description" wrapText="true"/>
+                                    <Label text="1 reserva(s) afectada(s)" styleClass="alert-meta"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </HBox>
+                
+                <!-- Quick Actions -->
+                <VBox styleClass="card" spacing="16" fillWidth="true">
+                    <padding>
+                        <Insets top="24" right="24" bottom="24" left="24"/>
+                    </padding>
+                    
+                    <VBox spacing="4">
+                        <Label text="Acciones Rápidas" styleClass="card-title"/>
+                        <Label text="Accesos directos a funciones principales" styleClass="card-subtitle"/>
+                    </VBox>
+                    
+                    <!-- Actions Grid - Responsive -->
+                    <VBox spacing="12" fillWidth="true">
+                        <HBox spacing="12" fillHeight="false">
+                            <Button text="Gestionar Espacios" styleClass="action-button" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                                <graphic>
+                                    <Label text="🏢" styleClass="action-icon"/>
+                                </graphic>
+                            </Button>
+                            
+                            <Button text="Ver Usuarios" styleClass="action-button" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                                <graphic>
+                                    <Label text="👥" styleClass="action-icon"/>
+                                </graphic>
+                            </Button>
+                        </HBox>
+                        
+                        <HBox spacing="12" fillHeight="false">
+                            <Button text="Control de Reservas" styleClass="action-button" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                                <graphic>
+                                    <Label text="📅" styleClass="action-icon"/>
+                                </graphic>
+                            </Button>
+                            
+                            <Button text="Monitoreo Climático" styleClass="action-button" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                                <graphic>
+                                    <Label text="☁️" styleClass="action-icon"/>
+                                </graphic>
+                            </Button>
+                        </HBox>
+                    </VBox>
+                </VBox>
+                
+            </VBox>
+        </ScrollPane>
+    </HBox>
+</VBox>
