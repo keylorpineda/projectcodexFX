@@ -26,4 +26,16 @@ public final class AppConfig {
     public static String get(String key) {
         return PROPERTIES.getProperty(key);
     }
+
+    public static String getOrDefault(String key, String defaultValue) {
+        return PROPERTIES.getProperty(key, defaultValue);
+    }
+
+    public static String require(String key) {
+        String value = PROPERTIES.getProperty(key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("Missing required configuration property: " + key);
+        }
+        return value.trim();
+    }
 }

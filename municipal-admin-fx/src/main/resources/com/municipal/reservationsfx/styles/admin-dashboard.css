@@ -418,6 +418,16 @@
     -fx-padding: 0;
 }
 
+.table-container {
+    -fx-background-color: rgba(226, 232, 240, 0.28);
+    -fx-background-radius: 18px;
+    -fx-padding: 6;
+}
+
+.table-container .table-view {
+    -fx-background-color: transparent;
+}
+
 .table-view .column-header-background {
     -fx-background-color: transparent;
 }
@@ -448,6 +458,17 @@
 .table-view .table-cell {
     -fx-padding: 12 16;
     -fx-border-color: transparent;
+}
+
+.loading-overlay {
+    -fx-background-color: rgba(15, 23, 42, 0.72);
+    -fx-background-radius: 18px;
+    -fx-padding: 24 28;
+}
+
+.loading-overlay .status-label {
+    -fx-text-fill: #f8fafc;
+    -fx-font-weight: 600;
 }
 
 /* Buttons & Controls */
