@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.ColumnConstraints?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.municipal.reservationsfx.ui.controllers.ReservationsControlController"
+      spacing="24"
+      styleClass="main-content"
+      fillWidth="true">
+
+    <padding>
+        <Insets top="24" right="32" bottom="32" left="32"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="12">
+        <VBox spacing="4" HBox.hgrow="ALWAYS">
+            <Label text="Control de reservas" styleClass="page-title"/>
+            <Label text="Visualiza y gestiona todas las reservas" styleClass="page-subtitle"/>
+        </VBox>
+        <Button fx:id="exportButton" text="Exportar" styleClass="primary-button">
+            <graphic>
+                <Label text="⬇" styleClass="button-icon"/>
+            </graphic>
+        </Button>
+    </HBox>
+
+    <VBox styleClass="card" spacing="18">
+        <padding>
+            <Insets top="24" right="24" bottom="24" left="24"/>
+        </padding>
+
+        <Label text="Filtros" styleClass="card-title"/>
+        <GridPane hgap="16" vgap="12">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="35"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="20"/>
+                <ColumnConstraints percentWidth="20"/>
+            </columnConstraints>
+            <children>
+                <TextField fx:id="searchField" promptText="Buscar por espacio, usuario o evento" GridPane.columnIndex="0" GridPane.hgrow="ALWAYS"/>
+                <DatePicker fx:id="dateFilter" GridPane.columnIndex="1"/>
+                <ChoiceBox fx:id="statusFilter" prefWidth="160" GridPane.columnIndex="2"/>
+                <ChoiceBox fx:id="typeFilter" prefWidth="160" GridPane.columnIndex="3"/>
+            </children>
+        </GridPane>
+    </VBox>
+
+    <VBox styleClass="card" spacing="18">
+        <padding>
+            <Insets top="24" right="24" bottom="24" left="24"/>
+        </padding>
+
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Label text="Reservas" styleClass="card-title"/>
+            <Label fx:id="reservationsSummaryLabel" text="" styleClass="card-subtitle"/>
+        </HBox>
+
+        <TableView fx:id="reservationsTable" fixedCellSize="56" columnResizePolicy="CONSTRAINED_RESIZE_POLICY">
+            <columns>
+                <TableColumn fx:id="userColumn" text="Usuario" prefWidth="200"/>
+                <TableColumn fx:id="spaceColumn" text="Espacio" prefWidth="220"/>
+                <TableColumn fx:id="dateColumn" text="Fecha" prefWidth="120"/>
+                <TableColumn fx:id="timeColumn" text="Hora" prefWidth="120"/>
+                <TableColumn fx:id="stateColumn" text="Estado" prefWidth="140"/>
+                <TableColumn fx:id="qrColumn" text="QR" prefWidth="100"/>
+                <TableColumn fx:id="weatherColumn" text="Clima" prefWidth="120"/>
+                <TableColumn fx:id="actionsColumn" text="Acciones" prefWidth="160"/>
+            </columns>
+        </TableView>
+    </VBox>
+</VBox>
