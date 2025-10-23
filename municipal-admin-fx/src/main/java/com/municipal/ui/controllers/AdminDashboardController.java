@@ -1,11 +1,11 @@
-package com.municipal.reservationsfx.ui.controllers;
+package com.municipal.ui.controllers;
 
-import com.municipal.reservationsfx.backend.controllers.SpaceController;
-import com.municipal.reservationsfx.backend.dtos.SpaceDTO;
-import com.municipal.reservationsfx.backend.exceptions.ApiClientException;
-import com.municipal.reservationsfx.backend.responses.AuthResponse;
-import com.municipal.reservationsfx.session.SessionManager;
-import com.municipal.reservationsfx.ui.utils.NodeVisibilityUtils;
+import com.municipal.controllers.SpaceController;
+import com.municipal.dtos.SpaceDTO;
+import com.municipal.exceptions.ApiClientException;
+import com.municipal.responses.AuthResponse;
+import com.municipal.session.SessionManager;
+import com.municipal.ui.utils.NodeVisibilityUtils;
 import javafx.animation.FadeTransition;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;

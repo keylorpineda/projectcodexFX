@@ -1,6 +1,6 @@
-package com.municipal.reservationsfx.session;
+package com.municipal.session;
 
-import com.municipal.reservationsfx.backend.responses.AuthResponse;
+import com.municipal.responses.AuthResponse;
 
 import java.util.Optional;
 

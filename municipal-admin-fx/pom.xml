@@ -83,7 +83,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>${javafx.maven.plugin.version}</version>
                 <configuration>
-                    <mainClass>com.municipal.reservationsfx.ui.App</mainClass>
+                    <mainClass>com.municipal.ui.App</mainClass>
                 </configuration>
             </plugin>
         </plugins>

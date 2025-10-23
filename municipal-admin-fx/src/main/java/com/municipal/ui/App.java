@@ -1,7 +1,7 @@
-package com.municipal.reservationsfx.ui;
+package com.municipal.ui;
 
-import com.municipal.reservationsfx.config.AppConfig;
-import com.municipal.reservationsfx.ui.controllers.LoginController;
+import com.municipal.config.AppConfig;
+import com.municipal.ui.controllers.LoginController;
 import io.github.palexdev.materialfx.theming.MaterialFXStylesheets;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

@@ -1,9 +1,9 @@
-package com.municipal.reservationsfx.backend;
+package com.municipal;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.municipal.reservationsfx.backend.exceptions.ApiClientException;
-import com.municipal.reservationsfx.backend.utils.JsonUtils;
-import com.municipal.reservationsfx.config.AppConfig;
+import com.municipal.config.AppConfig;
+import com.municipal.exceptions.ApiClientException;
+import com.municipal.utils.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;

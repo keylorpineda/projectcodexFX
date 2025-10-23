@@ -1,11 +1,11 @@
-package com.municipal.reservationsfx.auth;
+package com.municipal.auth;
 
 import com.microsoft.aad.msal4j.IAuthenticationResult;
 import com.microsoft.aad.msal4j.InteractiveRequestParameters;
 import com.microsoft.aad.msal4j.PublicClientApplication;
 import com.microsoft.aad.msal4j.Prompt;
 import com.microsoft.aad.msal4j.SilentParameters;
-import com.municipal.reservationsfx.config.AppConfig;
+import com.municipal.config.AppConfig;
 
 import java.net.MalformedURLException;
 import java.net.URI;

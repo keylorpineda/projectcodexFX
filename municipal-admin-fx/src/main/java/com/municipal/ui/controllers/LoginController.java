@@ -1,11 +1,11 @@
-package com.municipal.reservationsfx.ui.controllers;
+package com.municipal.ui.controllers;
 
 import com.microsoft.aad.msal4j.IAuthenticationResult;
-import com.municipal.reservationsfx.auth.AzureAuthService;
-import com.municipal.reservationsfx.backend.controllers.AuthController;
-import com.municipal.reservationsfx.backend.exceptions.ApiClientException;
-import com.municipal.reservationsfx.backend.responses.AuthResponse;
-import com.municipal.reservationsfx.session.SessionManager;
+import com.municipal.auth.AzureAuthService;
+import com.municipal.controllers.AuthController;
+import com.municipal.exceptions.ApiClientException;
+import com.municipal.responses.AuthResponse;
+import com.municipal.session.SessionManager;
 import javafx.animation.FadeTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
