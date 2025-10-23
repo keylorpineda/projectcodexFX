@@ -35,4 +35,11 @@ public final class SessionManager {
     public String getUserEmail() {
         return authResponse != null ? authResponse.email() : null;
     }
+
+    public String getUserRole() {
+        if (authResponse == null || authResponse.role() == null || authResponse.role().isBlank()) {
+            return "USER";
+        }
+        return authResponse.role();
+    }
 }

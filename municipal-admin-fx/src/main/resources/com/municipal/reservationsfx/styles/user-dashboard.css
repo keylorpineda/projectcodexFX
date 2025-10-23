@@ -1,0 +1,21 @@
+.root-container {
+    -fx-background-color: linear-gradient(to bottom, #f8fafc, #eef2f7);
+}
+
+.welcome-card {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-padding: 32;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0, 0, 6);
+}
+
+.welcome-title {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2937;
+}
+
+.welcome-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #4b5563;
+}
