@@ -1,30 +1,46 @@
 package com.municipal.ui.controllers;
 
+import com.municipal.config.AppConfig;
+import com.municipal.controllers.ReservationController;
+import com.municipal.controllers.SpaceController;
+import com.municipal.controllers.UserController;
+import com.municipal.controllers.WeatherController;
+import com.municipal.dtos.ReservationDTO;
+import com.municipal.dtos.SpaceDTO;
+import com.municipal.dtos.UserDTO;
+import com.municipal.dtos.weather.CurrentWeatherDTO;
+import com.municipal.exceptions.ApiClientException;
+import com.municipal.session.SessionManager;
+import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.chart.*;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.scene.Node;
-import javafx.application.Platform;
-import javafx.concurrent.Task;
 
 import java.net.URL;
-import java.util.ResourceBundle;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 /**
@@ -104,7 +120,7 @@ public class PanelAdministracionController implements Initializable {
     @FXML private TextField txtBuscarReserva;
     @FXML private ComboBox<String> cmbEstadoReserva;
     @FXML private TableView<Reserva> tablaReservas;
-    @FXML private TableColumn<Reserva, Integer> colIdReserva;
+    @FXML private TableColumn<Reserva, Long> colIdReserva;
     @FXML private TableColumn<Reserva, String> colUsuarioReserva;
     @FXML private TableColumn<Reserva, String> colEspacioReserva;
     @FXML private TableColumn<Reserva, String> colFechaReserva;
@@ -153,7 +169,14 @@ public class PanelAdministracionController implements Initializable {
     @FXML private CheckBox chkLogActividad;
     
     // ==================== DATOS Y ESTADO ====================
-    
+
+    private final SpaceController spaceController = new SpaceController();
+    private final UserController userController = new UserController();
+    private final ReservationController reservationController = new ReservationController();
+    private final WeatherController weatherController = new WeatherController();
+
+    private SessionManager sessionManager;
+
     private ObservableList<Espacio> listaEspacios;
     private ObservableList<Espacio> listaEspaciosFiltrados;
     private ObservableList<Usuario> listaUsuarios;
@@ -162,9 +185,6 @@ public class PanelAdministracionController implements Initializable {
     private ObservableList<Reserva> listaReservasFiltradas;
     private EstadisticasDashboard estadisticas;
     private DatosClimaticos climaActual;
-    
-    // Usuario actual del sistema
-    private Usuario usuarioActual;
     
     // ==================== INICIALIZACIÓN ====================
     
@@ -181,15 +201,20 @@ public class PanelAdministracionController implements Initializable {
         configurarTablas();
         configurarFiltros();
         configurarBotones();
-        
-        // Cargar datos iniciales
-        cargarUsuarioActual();
-        cargarDatosIniciales();
-        
+
         // Mostrar vista de inicio por defecto
         mostrarInicio();
-        
+
         System.out.println("Panel de Administración inicializado correctamente");
+    }
+
+    public void setSessionManager(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
+    }
+
+    public void bootstrap() {
+        cargarUsuarioActual();
+        cargarDatosIniciales(false);
     }
     
     /**
@@ -209,45 +234,129 @@ public class PanelAdministracionController implements Initializable {
      * Inicializa todos los ComboBox con sus valores
      */
     private void inicializarComboBoxes() {
-        // Tipos de espacio
-        if (cmbTipoEspacio != null) {
-            cmbTipoEspacio.setItems(FXCollections.observableArrayList(
-                "Todos los tipos", "Interior", "Exterior"
-            ));
-            cmbTipoEspacio.setValue("Todos los tipos");
+        inicializarComboBox(cmbTipoEspacio, "Todos los tipos");
+        inicializarComboBox(cmbEstadoEspacio, "Todos los estados");
+        inicializarComboBox(cmbRolUsuario, "Todos los roles");
+        inicializarComboBox(cmbEstadoReserva, "Todos los estados");
+        inicializarComboBox(cmbRangoFechas, "Último mes",
+                FXCollections.observableArrayList(
+                        "Última semana", "Último mes", "Últimos 3 meses", "Último año", "Personalizado"));
+    }
+
+    private void inicializarComboBox(ComboBox<String> comboBox, String defaultOption) {
+        inicializarComboBox(comboBox, defaultOption, FXCollections.observableArrayList(defaultOption));
+    }
+
+    private void inicializarComboBox(ComboBox<String> comboBox, String defaultOption,
+            ObservableList<String> values) {
+        if (comboBox == null) {
+            return;
         }
-        
-        // Estados de espacio
-        if (cmbEstadoEspacio != null) {
-            cmbEstadoEspacio.setItems(FXCollections.observableArrayList(
-                "Todos los estados", "Disponible", "Ocupado", "Mantenimiento"
-            ));
-            cmbEstadoEspacio.setValue("Todos los estados");
+        if (values == null || values.isEmpty()) {
+            values = FXCollections.observableArrayList(defaultOption);
+        } else if (!values.stream().anyMatch(value -> value.equalsIgnoreCase(defaultOption))) {
+            values.add(0, defaultOption);
         }
-        
-        // Roles de usuario
-        if (cmbRolUsuario != null) {
-            cmbRolUsuario.setItems(FXCollections.observableArrayList(
-                "Todos los roles", "Administrador", "Supervisor", "Usuario"
-            ));
-            cmbRolUsuario.setValue("Todos los roles");
+        comboBox.setItems(values);
+        comboBox.setValue(defaultOption);
+    }
+
+    private void actualizarOpcionesFiltros() {
+        actualizarOpcionesTipoEspacio();
+        actualizarOpcionesEstadoEspacio();
+        actualizarOpcionesRolUsuario();
+        actualizarOpcionesEstadoReserva();
+    }
+
+    private void actualizarOpcionesTipoEspacio() {
+        if (cmbTipoEspacio == null) {
+            return;
         }
-        
-        // Estados de reserva
-        if (cmbEstadoReserva != null) {
-            cmbEstadoReserva.setItems(FXCollections.observableArrayList(
-                "Todos los estados", "Confirmada", "Pendiente", "Completada", "Cancelada"
-            ));
-            cmbEstadoReserva.setValue("Todos los estados");
+        List<String> tipos = collectDistinctValues(listaEspacios.stream()
+                .map(Espacio::getTipo)
+                .collect(Collectors.toList()));
+        List<String> opciones = new ArrayList<>();
+        boolean hayInterior = listaEspacios.stream().anyMatch(espacio -> !espacio.isEsExterior());
+        boolean hayExterior = listaEspacios.stream().anyMatch(Espacio::isEsExterior);
+        if (hayInterior) {
+            opciones.add("Interior");
         }
-        
-        // Rango de fechas para reportes
-        if (cmbRangoFechas != null) {
-            cmbRangoFechas.setItems(FXCollections.observableArrayList(
-                "Última semana", "Último mes", "Últimos 3 meses", "Último año", "Personalizado"
-            ));
-            cmbRangoFechas.setValue("Último mes");
+        if (hayExterior) {
+            opciones.add("Exterior");
         }
+        opciones.addAll(tipos);
+        updateComboBoxOptions(cmbTipoEspacio, "Todos los tipos", opciones);
+    }
+
+    private void actualizarOpcionesEstadoEspacio() {
+        if (cmbEstadoEspacio == null) {
+            return;
+        }
+        List<String> estados = collectDistinctValues(listaEspacios.stream()
+                .map(Espacio::getEstado)
+                .collect(Collectors.toList()));
+        updateComboBoxOptions(cmbEstadoEspacio, "Todos los estados", estados);
+    }
+
+    private void actualizarOpcionesRolUsuario() {
+        if (cmbRolUsuario == null) {
+            return;
+        }
+        List<String> roles = collectDistinctValues(listaUsuarios.stream()
+                .map(Usuario::getRol)
+                .collect(Collectors.toList()));
+        updateComboBoxOptions(cmbRolUsuario, "Todos los roles", roles);
+    }
+
+    private void actualizarOpcionesEstadoReserva() {
+        if (cmbEstadoReserva == null) {
+            return;
+        }
+        List<String> estados = collectDistinctValues(listaReservas.stream()
+                .map(Reserva::getEstado)
+                .collect(Collectors.toList()));
+        updateComboBoxOptions(cmbEstadoReserva, "Todos los estados", estados);
+    }
+
+    private void updateComboBoxOptions(ComboBox<String> comboBox, String defaultOption, List<String> values) {
+        if (comboBox == null) {
+            return;
+        }
+        LinkedHashMap<String, String> opciones = new LinkedHashMap<>();
+        opciones.put(defaultOption.toLowerCase(Locale.ROOT), defaultOption);
+        if (values != null) {
+            for (String value : values) {
+                String sanitized = defaultString(value).trim();
+                if (!sanitized.isEmpty()) {
+                    opciones.putIfAbsent(sanitized.toLowerCase(Locale.ROOT), sanitized);
+                }
+            }
+        }
+        ObservableList<String> items = FXCollections.observableArrayList(opciones.values());
+        String seleccionAnterior = comboBox.getValue();
+        comboBox.setItems(items);
+        if (seleccionAnterior != null) {
+            for (String option : items) {
+                if (option.equalsIgnoreCase(seleccionAnterior)) {
+                    comboBox.setValue(option);
+                    return;
+                }
+            }
+        }
+        comboBox.setValue(defaultOption);
+    }
+
+    private List<String> collectDistinctValues(List<String> values) {
+        LinkedHashMap<String, String> uniques = new LinkedHashMap<>();
+        if (values != null) {
+            for (String value : values) {
+                String sanitized = defaultString(value).trim();
+                if (!sanitized.isEmpty()) {
+                    uniques.putIfAbsent(sanitized.toLowerCase(Locale.ROOT), sanitized);
+                }
+            }
+        }
+        return new ArrayList<>(uniques.values());
     }
     
     /**
@@ -380,12 +489,12 @@ public class PanelAdministracionController implements Initializable {
         
         // Formatear columna de último acceso
         colUltimoAcceso.setCellValueFactory(cellData -> {
-            LocalDate fecha = cellData.getValue().getUltimoAcceso();
+            LocalDateTime fecha = cellData.getValue().getUltimoAcceso();
             if (fecha == null) {
                 return new SimpleStringProperty("N/A");
             }
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-            return new SimpleStringProperty(LocalDateTime.of(fecha, LocalTime.MIDNIGHT).format(formatter));
+            return new SimpleStringProperty(fecha.format(formatter));
         });
         
         // Personalizar columna de rol
@@ -731,45 +840,304 @@ public class PanelAdministracionController implements Initializable {
      * Carga el usuario actual del sistema
      */
     private void cargarUsuarioActual() {
-        // TODO: Obtener el usuario actual de la sesión
-        // Por ahora, usar un usuario de ejemplo
-        usuarioActual = new Usuario(
-            1,
-            "Carlos Rodríguez",
-            "carlos.rodriguez@perezzeladon.go.cr",
-            "Administrador",
-            "Activo",
-            LocalDate.now(),
-            "8888-8888"
-        );
-        
-        if (lblNombreUsuario != null) {
-            lblNombreUsuario.setText(usuarioActual.getNombre());
+        if (lblNombreUsuario == null) {
+            return;
         }
+
+        if (sessionManager == null) {
+            lblNombreUsuario.setText("Usuario");
+            return;
+        }
+
+        sessionManager.getAuthResponse().ifPresentOrElse(response -> {
+            String displayName = response.name();
+            if (displayName == null || displayName.isBlank()) {
+                displayName = response.email();
+            }
+            if (displayName == null || displayName.isBlank()) {
+                displayName = "Usuario";
+            }
+            lblNombreUsuario.setText(displayName);
+        }, () -> lblNombreUsuario.setText("Usuario"));
     }
-    
+
     /**
      * Carga todos los datos iniciales del sistema
      */
     private void cargarDatosIniciales() {
-        cargarEspacios();
-        cargarUsuarios();
-        cargarReservas();
-        cargarDatosDashboard();
+        cargarDatosIniciales(false);
+    }
+
+    private void cargarDatosIniciales(boolean notifySuccess) {
+        if (sessionManager == null) {
+            mostrarAdvertencia("No hay sesión activa para cargar los datos.");
+            return;
+        }
+
+        String token = sessionManager.getAccessToken();
+        if (token == null || token.isBlank()) {
+            mostrarAdvertencia("No se encontró un token de acceso válido.");
+            return;
+        }
+
+        Task<DatosIniciales> task = new Task<>() {
+            @Override
+            protected DatosIniciales call() {
+                List<String> warnings = new ArrayList<>();
+
+                List<Espacio> espacios = cargarEspaciosDesdeApi(token, warnings);
+                Map<Long, Espacio> espaciosPorId = espacios.stream()
+                        .filter(espacio -> espacio.getId() != null)
+                        .collect(Collectors.toMap(Espacio::getId, espacio -> espacio, (a, b) -> a, HashMap::new));
+
+                List<Usuario> usuarios = cargarUsuariosDesdeApi(token, warnings);
+                Map<Long, Usuario> usuariosPorId = usuarios.stream()
+                        .filter(usuario -> usuario.getId() != null)
+                        .collect(Collectors.toMap(Usuario::getId, usuario -> usuario, (a, b) -> a, HashMap::new));
+
+                List<Reserva> reservas = cargarReservasDesdeApi(token, warnings, usuariosPorId, espaciosPorId);
+                DatosClimaticos clima = cargarClimaDesdeApi(token, warnings);
+
+                return new DatosIniciales(espacios, usuarios, reservas, clima, warnings);
+            }
+        };
+
+        task.setOnRunning(event -> mostrarIndicadorCarga("Cargando datos del sistema..."));
+
+        task.setOnSucceeded(event -> {
+            DatosIniciales resultado = task.getValue();
+
+            listaEspacios.setAll(resultado.espacios());
+            listaUsuarios.setAll(resultado.usuarios());
+            listaReservas.setAll(resultado.reservas());
+
+            actualizarOpcionesFiltros();
+
+            filtrarEspacios();
+            filtrarUsuarios();
+            filtrarReservas();
+
+            climaActual = resultado.clima();
+            actualizarIndicadoresClimaticos();
+
+            cargarDatosDashboard();
+            cargarClima();
+
+            ocultarIndicadorCarga();
+
+            if (notifySuccess) {
+                mostrarExito("Datos actualizados exitosamente");
+            }
+
+            if (!resultado.warnings().isEmpty()) {
+                mostrarAdvertencia(String.join("\n", resultado.warnings()));
+            }
+        });
+
+        task.setOnFailed(event -> {
+            ocultarIndicadorCarga();
+            Throwable error = task.getException();
+            String message = error != null ? error.getMessage() : "Error desconocido";
+            mostrarError("No se pudieron cargar los datos: " + message);
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private List<Espacio> cargarEspaciosDesdeApi(String token, List<String> warnings) {
+        try {
+            List<SpaceDTO> espacios = spaceController.loadSpaces(token);
+            if (espacios == null) {
+                return Collections.emptyList();
+            }
+            return espacios.stream()
+                    .map(this::mapearEspacio)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception exception) {
+            warnings.add("No se pudieron cargar los espacios: " + construirMensajeError(exception));
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Usuario> cargarUsuariosDesdeApi(String token, List<String> warnings) {
+        try {
+            List<UserDTO> usuarios = userController.loadUsers(token);
+            if (usuarios == null) {
+                return Collections.emptyList();
+            }
+            return usuarios.stream()
+                    .map(this::mapearUsuario)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception exception) {
+            warnings.add("No se pudieron cargar los usuarios: " + construirMensajeError(exception));
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Reserva> cargarReservasDesdeApi(String token, List<String> warnings,
+            Map<Long, Usuario> usuariosPorId, Map<Long, Espacio> espaciosPorId) {
+        try {
+            List<ReservationDTO> reservas = reservationController.loadReservations(token);
+            if (reservas == null) {
+                return Collections.emptyList();
+            }
+            return reservas.stream()
+                    .map(dto -> mapearReserva(dto, usuariosPorId, espaciosPorId))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception exception) {
+            warnings.add("No se pudieron cargar las reservas: " + construirMensajeError(exception));
+            return Collections.emptyList();
+        }
+    }
+
+    private DatosClimaticos cargarClimaDesdeApi(String token, List<String> warnings) {
+        String latitudConfigurada = AppConfig.get("weather.default-lat");
+        String longitudConfigurada = AppConfig.get("weather.default-lon");
+
+        if (latitudConfigurada == null || longitudConfigurada == null) {
+            warnings.add("No hay coordenadas configuradas para consultar el clima.");
+            return null;
+        }
+
+        try {
+            double latitud = Double.parseDouble(latitudConfigurada);
+            double longitud = Double.parseDouble(longitudConfigurada);
+            CurrentWeatherDTO weather = weatherController.loadCurrentWeather(latitud, longitud, token);
+            if (weather == null) {
+                return null;
+            }
+            return mapearDatosClimaticos(weather);
+        } catch (NumberFormatException exception) {
+            warnings.add("Las coordenadas configuradas para el clima no son válidas.");
+            return null;
+        } catch (Exception exception) {
+            warnings.add("No se pudo obtener la información climática: " + construirMensajeError(exception));
+            return null;
+        }
+    }
+
+    private Espacio mapearEspacio(SpaceDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Long id = dto.id();
+        String nombre = defaultString(dto.name());
+        String tipo = defaultString(dto.type());
+        int capacidad = dto.capacity() != null ? dto.capacity() : 0;
+        boolean activo = dto.active() == null || Boolean.TRUE.equals(dto.active());
+        String estado = activo ? "Disponible" : "Inactivo";
+        boolean esExterior = "CANCHA".equalsIgnoreCase(tipo);
+        String descripcion = defaultString(dto.description());
+        return new Espacio(id, nombre, tipo, capacidad, estado, descripcion, esExterior);
+    }
+
+    private Usuario mapearUsuario(UserDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Long id = dto.id();
+        String nombre = defaultString(dto.name());
+        String correo = defaultString(dto.email());
+        String rol = defaultString(dto.role());
+        String estado = Boolean.TRUE.equals(dto.active()) ? "Activo" : "Inactivo";
+        LocalDateTime ultimoAcceso = dto.lastLoginAt();
+        return new Usuario(id, nombre, correo, rol, estado, ultimoAcceso, null);
+    }
+
+    private Reserva mapearReserva(ReservationDTO dto, Map<Long, Usuario> usuariosPorId,
+            Map<Long, Espacio> espaciosPorId) {
+        if (dto == null) {
+            return null;
+        }
+        Usuario usuario = dto.userId() != null ? usuariosPorId.get(dto.userId()) : null;
+        Espacio espacio = dto.spaceId() != null ? espaciosPorId.get(dto.spaceId()) : null;
+        LocalDate fecha = dto.startTime() != null ? dto.startTime().toLocalDate() : null;
+        LocalTime horaInicio = dto.startTime() != null ? dto.startTime().toLocalTime() : null;
+        LocalTime horaFin = dto.endTime() != null ? dto.endTime().toLocalTime() : null;
+        String estado = mapearEstadoReserva(dto.status());
+        String codigoQR = defaultString(dto.qrCode());
+        String notas = dto.notes();
+        return new Reserva(dto.id(), usuario, espacio, fecha, horaInicio, horaFin, estado, codigoQR, null, notas);
+    }
+
+    private DatosClimaticos mapearDatosClimaticos(CurrentWeatherDTO weather) {
+        double temperatura = weather.temperature() != null ? weather.temperature() : 0;
+        int humedad = weather.humidity() != null ? weather.humidity() : 0;
+        double velocidadVientoMs = weather.windSpeed() != null ? weather.windSpeed() : 0;
+        double velocidadVientoKmh = velocidadVientoMs * 3.6;
+        String condicion = defaultString(weather.description());
+        String nivelAlerta;
+        if (humedad >= 80) {
+            nivelAlerta = "Posible lluvia";
+        } else if (humedad >= 60) {
+            nivelAlerta = "Precaución";
+        } else {
+            nivelAlerta = "Sin alerta";
+        }
+        return new DatosClimaticos(temperatura, condicion, humedad, velocidadVientoKmh, nivelAlerta, condicion);
+    }
+
+    private String mapearEstadoReserva(String status) {
+        if (status == null) {
+            return "Desconocido";
+        }
+        return switch (status.toUpperCase()) {
+            case "PENDING" -> "Pendiente";
+            case "CONFIRMED" -> "Confirmada";
+            case "CANCELED" -> "Cancelada";
+            case "CHECKED_IN" -> "En sitio";
+            case "NO_SHOW" -> "Inasistencia";
+            default -> status;
+        };
+    }
+
+    private void actualizarIndicadoresClimaticos() {
+        if (lblTemperatura != null) {
+            lblTemperatura.setText(climaActual != null ? climaActual.getTemperaturaFormateada() : "--");
+        }
+        if (lblClimaCondicion != null) {
+            lblClimaCondicion.setText(climaActual != null ? climaActual.getCondicion() : "--");
+        }
+        if (lblViento != null) {
+            lblViento.setText(climaActual != null ? climaActual.getVientoFormateado() : "--");
+        }
+        if (lblLluvia != null) {
+            lblLluvia.setText(climaActual != null ? climaActual.getProbabilidadLluviaFormateada() : "--");
+        }
+    }
+
+    private String defaultString(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String construirMensajeError(Throwable error) {
+        if (error instanceof ApiClientException apiError) {
+            StringBuilder builder = new StringBuilder("HTTP " + apiError.getStatusCode());
+            if (apiError.getResponseBody() != null && !apiError.getResponseBody().isBlank()) {
+                builder.append(": ").append(apiError.getResponseBody());
+            }
+            return builder.toString();
+        }
+        if (error != null && error.getMessage() != null && !error.getMessage().isBlank()) {
+            return error.getMessage();
+        }
+        return "Error desconocido";
     }
     
     /**
      * Carga los datos del dashboard
      */
     private void cargarDatosDashboard() {
-        // TODO: Cargar desde base de datos
-        // Por ahora, usar datos de ejemplo
-        
         // Calcular estadísticas basadas en los datos actuales
         int espaciosActivos = (int) listaEspacios.stream()
             .filter(e -> "Disponible".equals(e.getEstado()))
             .count();
-        
+
         int reservasHoy = (int) listaReservas.stream()
             .filter(r -> r.getFecha() != null && r.getFecha().equals(LocalDate.now()))
             .count();
@@ -790,18 +1158,21 @@ public class PanelAdministracionController implements Initializable {
         if (lblInasistencias != null) {
             lblInasistencias.setText(String.valueOf(inasistencias));
         }
-        
+
         if (lblOcupacionSemanal != null) {
-            lblOcupacionSemanal.setText("72.5%");
+            double ocupacion = listaEspacios.isEmpty()
+                    ? 0
+                    : (double) listaReservas.size() / listaEspacios.size() * 100;
+            lblOcupacionSemanal.setText(String.format(Locale.US, "%.1f%%", ocupacion));
         }
-        
+
         if (lblVariacionOcupacion != null) {
-            lblVariacionOcupacion.setText("+5.2% desde la semana pasada");
+            lblVariacionOcupacion.setText("--");
         }
-        
+
         // Cargar datos climáticos
         cargarClimaActual();
-        
+
         // Cargar alertas
         cargarAlertas();
     }
@@ -810,68 +1181,75 @@ public class PanelAdministracionController implements Initializable {
      * Carga los espacios desde la base de datos
      */
     private void cargarEspacios() {
-        // TODO: Implementar carga desde base de datos
-        // Por ahora, generar datos de ejemplo
-        listaEspacios.clear();
-        listaEspacios.addAll(generarEspaciosEjemplo());
-        
-        // Aplicar filtros
         filtrarEspacios();
     }
-    
+
     /**
      * Carga los usuarios desde la base de datos
      */
     private void cargarUsuarios() {
-        // TODO: Implementar carga desde base de datos
-        listaUsuarios.clear();
-        listaUsuarios.addAll(generarUsuariosEjemplo());
-        
-        // Aplicar filtros
         filtrarUsuarios();
     }
-    
+
     /**
      * Carga las reservas desde la base de datos
      */
     private void cargarReservas() {
-        // TODO: Implementar carga desde base de datos
-        listaReservas.clear();
-        listaReservas.addAll(generarReservasEjemplo());
-        
-        // Aplicar filtros
         filtrarReservas();
     }
-    
+
     /**
-     * Carga los datos climáticos actuales
+     * Actualiza los indicadores climáticos visibles en el panel principal.
      */
     private void cargarClimaActual() {
-        // TODO: Implementar llamada a API de clima
-        climaActual = new DatosClimaticos(
-            24.0,
-            "Sunny",
-            10,
-            12.0,
-            "Sin riesgo",
-            "Excelente día para actividades al aire libre"
-        );
-        
-        if (lblTemperatura != null) {
-            lblTemperatura.setText(climaActual.getTemperaturaFormateada());
+        actualizarIndicadoresClimaticos();
+    }
+
+    private void recargarClima(boolean notifySuccess) {
+        if (sessionManager == null) {
+            mostrarAdvertencia("No hay sesión activa para actualizar el clima.");
+            return;
         }
-        
-        if (lblClimaCondicion != null) {
-            lblClimaCondicion.setText(climaActual.getCondicion());
+
+        String token = sessionManager.getAccessToken();
+        if (token == null || token.isBlank()) {
+            mostrarAdvertencia("No se encontró un token de acceso válido.");
+            return;
         }
-        
-        if (lblViento != null) {
-            lblViento.setText(climaActual.getVientoFormateado());
-        }
-        
-        if (lblLluvia != null) {
-            lblLluvia.setText(climaActual.getProbabilidadLluviaFormateada());
-        }
+
+        Task<ClimaResultado> task = new Task<>() {
+            @Override
+            protected ClimaResultado call() {
+                List<String> warnings = new ArrayList<>();
+                DatosClimaticos clima = cargarClimaDesdeApi(token, warnings);
+                return new ClimaResultado(clima, warnings);
+            }
+        };
+
+        task.setOnRunning(event -> mostrarIndicadorCarga("Actualizando información climática..."));
+        task.setOnSucceeded(event -> {
+            ClimaResultado resultado = task.getValue();
+            climaActual = resultado.clima();
+            actualizarIndicadoresClimaticos();
+            cargarClima();
+            ocultarIndicadorCarga();
+            if (notifySuccess) {
+                mostrarExito("Información climática actualizada");
+            }
+            if (!resultado.warnings().isEmpty()) {
+                mostrarAdvertencia(String.join("\n", resultado.warnings()));
+            }
+        });
+        task.setOnFailed(event -> {
+            ocultarIndicadorCarga();
+            Throwable error = task.getException();
+            mostrarError("No se pudo actualizar el clima: "
+                    + (error != null ? construirMensajeError(error) : "Error desconocido"));
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
     
     /**
@@ -879,34 +1257,61 @@ public class PanelAdministracionController implements Initializable {
      */
     private void cargarAlertas() {
         if (contenedorAlertas == null) return;
-        
+
         contenedorAlertas.getChildren().clear();
-        
-        // TODO: Cargar alertas reales desde el sistema
-        // Por ahora, crear alertas de ejemplo
-        
-        int numAlertas = 2;
+
+        List<Reserva> reservasConAlertas = listaReservas.stream()
+                .filter(reserva -> {
+                    String estado = reserva.getEstado();
+                    return "Pendiente".equalsIgnoreCase(estado)
+                            || "Cancelada".equalsIgnoreCase(estado)
+                            || "Inasistencia".equalsIgnoreCase(estado);
+                })
+                .collect(Collectors.toList());
+
         if (lblNumAlertas != null) {
-            lblNumAlertas.setText(String.valueOf(numAlertas));
+            lblNumAlertas.setText(String.valueOf(reservasConAlertas.size()));
         }
-        
-        // Alerta 1
-        HBox alerta1 = crearAlertaItem(
-            "Cancha Deportiva Norte",
-            "Alta probabilidad de lluvia",
-            "1 reserva(s) afectada(s)",
-            "critical"
-        );
-        contenedorAlertas.getChildren().add(alerta1);
-        
-        // Alerta 2
-        HBox alerta2 = crearAlertaItem(
-            "Parque Recreativo Sur",
-            "Condiciones variables",
-            "1 reserva(s) afectada(s)",
-            "warning"
-        );
-        contenedorAlertas.getChildren().add(alerta2);
+
+        if (reservasConAlertas.isEmpty()) {
+            Label sinAlertas = new Label("No hay alertas activas en este momento.");
+            sinAlertas.setStyle("-fx-text-fill: #6C757D; -fx-font-style: italic;");
+            contenedorAlertas.getChildren().add(sinAlertas);
+            return;
+        }
+
+        reservasConAlertas.stream()
+                .limit(5)
+                .map(this::crearAlertaDesdeReserva)
+                .forEach(contenedorAlertas.getChildren()::add);
+    }
+
+    private HBox crearAlertaDesdeReserva(Reserva reserva) {
+        Espacio espacio = reserva.getEspacio();
+        String titulo = espacio != null && espacio.getNombre() != null && !espacio.getNombre().isBlank()
+                ? espacio.getNombre()
+                : "Reserva #" + (reserva.getId() != null ? reserva.getId() : "-");
+
+        String descripcion = switch (reserva.getEstado()) {
+            case "Cancelada" -> "Reserva cancelada. Contactar al usuario.";
+            case "Inasistencia" -> "El usuario no se presentó.";
+            case "Pendiente" -> "Reserva pendiente de aprobación.";
+            default -> "Estado: " + reserva.getEstado();
+        };
+
+        String afectados;
+        if (reserva.getFecha() != null) {
+            afectados = "Programada para " + reserva.getFecha().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        } else {
+            afectados = "Fecha por confirmar";
+        }
+
+        String tipo = switch (reserva.getEstado()) {
+            case "Cancelada", "Inasistencia" -> "critical";
+            default -> "warning";
+        };
+
+        return crearAlertaItem(titulo, descripcion, afectados, tipo);
     }
     
     /**
@@ -976,17 +1381,32 @@ public class PanelAdministracionController implements Initializable {
                 .count();
             lblReservasCompletadas.setText(String.valueOf(completadas));
         }
-        
+
         if (lblTasaAsistencia != null) {
-            lblTasaAsistencia.setText("88.9%");
+            long completadas = listaReservas.stream()
+                    .filter(r -> "Completada".equals(r.getEstado()))
+                    .count();
+            long inasistencias = listaReservas.stream()
+                    .filter(r -> "Inasistencia".equals(r.getEstado()))
+                    .count();
+            long total = completadas + inasistencias;
+            if (total == 0) {
+                lblTasaAsistencia.setText("--");
+            } else {
+                double tasa = (double) completadas / total * 100;
+                lblTasaAsistencia.setText(String.format(Locale.US, "%.1f%%", tasa));
+            }
         }
-        
+
         if (lblVariacionAsistencia != null) {
-            lblVariacionAsistencia.setText("+2.5% vs mes anterior");
+            lblVariacionAsistencia.setText("--");
         }
-        
+
         if (lblInasistenciasReporte != null) {
-            lblInasistenciasReporte.setText("1");
+            long inasistencias = listaReservas.stream()
+                    .filter(r -> "Inasistencia".equals(r.getEstado()))
+                    .count();
+            lblInasistenciasReporte.setText(String.valueOf(inasistencias));
         }
         
         // Generar gráficos
@@ -1008,11 +1428,11 @@ public class PanelAdministracionController implements Initializable {
         
         // Contar reservas por tipo de espacio
         long interiores = listaReservas.stream()
-            .filter(r -> r.getEspacio() != null && "Interior".equals(r.getEspacio().getTipo()))
+            .filter(r -> r.getEspacio() != null && !r.getEspacio().isEsExterior())
             .count();
-        
+
         long exteriores = listaReservas.stream()
-            .filter(r -> r.getEspacio() != null && "Exterior".equals(r.getEspacio().getTipo()))
+            .filter(r -> r.getEspacio() != null && r.getEspacio().isEsExterior())
             .count();
         
         pieChart.getData().add(new PieChart.Data("Interior (" + interiores + ")", interiores));
@@ -1046,7 +1466,8 @@ public class PanelAdministracionController implements Initializable {
         // Contar reservas por espacio
         listaEspacios.forEach(espacio -> {
             long count = listaReservas.stream()
-                .filter(r -> r.getEspacio() != null && r.getEspacio().getId() == espacio.getId())
+                .filter(r -> r.getEspacio() != null
+                        && Objects.equals(r.getEspacio().getId(), espacio.getId()))
                 .count();
             
             if (count > 0) {
@@ -1068,24 +1489,30 @@ public class PanelAdministracionController implements Initializable {
         long espaciosExteriores = listaEspacios.stream()
             .filter(e -> e.isEsExterior())
             .count();
-        
+
         if (lblEspaciosMonitoreados != null) {
             lblEspaciosMonitoreados.setText(String.valueOf(espaciosExteriores));
         }
-        
-        // TODO: Calcular alertas activas reales
+
+        long alertasActivas = listaReservas.stream()
+                .filter(reserva -> {
+                    String estado = reserva.getEstado();
+                    return "Pendiente".equalsIgnoreCase(estado)
+                            || "Cancelada".equalsIgnoreCase(estado)
+                            || "Inasistencia".equalsIgnoreCase(estado);
+                })
+                .count();
         if (lblAlertasActivas != null) {
-            lblAlertasActivas.setText("1");
+            lblAlertasActivas.setText(String.valueOf(alertasActivas));
         }
-        
         if (lblReservasAfectadas != null) {
-            lblReservasAfectadas.setText("2");
+            lblReservasAfectadas.setText(String.valueOf(alertasActivas));
         }
-        
+
         // Cargar tarjetas de clima
         cargarTarjetasClima();
     }
-    
+
     /**
      * Carga las tarjetas de clima para cada espacio exterior
      */
@@ -1095,20 +1522,31 @@ public class PanelAdministracionController implements Initializable {
         // Limpiar tarjetas existentes
         contenedorTarjetasClima.getChildren().clear();
         
-        // TODO: Obtener datos climáticos reales de la API
-        // Por ahora, crear datos de ejemplo
-        
         List<Espacio> espaciosExteriores = listaEspacios.stream()
             .filter(Espacio::isEsExterior)
             .collect(Collectors.toList());
-        
+
         int col = 0;
         int row = 0;
-        
+
+        if (espaciosExteriores.isEmpty()) {
+            Label sinEspacios = new Label("No hay espacios exteriores configurados.");
+            sinEspacios.setStyle("-fx-text-fill: #6C757D; -fx-font-style: italic;");
+            contenedorTarjetasClima.add(sinEspacios, 0, 0);
+            return;
+        }
+
+        if (climaActual == null) {
+            Label sinClima = new Label("Configura la API de clima para ver detalles.");
+            sinClima.setStyle("-fx-text-fill: #6C757D; -fx-font-style: italic;");
+            contenedorTarjetasClima.add(sinClima, 0, 0);
+            return;
+        }
+
         for (Espacio espacio : espaciosExteriores) {
             VBox tarjeta = crearTarjetaClima(espacio);
             contenedorTarjetasClima.add(tarjeta, col, row);
-            
+
             col++;
             if (col >= 3) {
                 col = 0;
@@ -1126,37 +1564,51 @@ public class PanelAdministracionController implements Initializable {
         tarjeta.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); " +
                         "-fx-border-color: #28A745; -fx-border-width: 2; -fx-border-radius: 12;");
-        
+
         // Header
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
-        
+
         Label nombre = new Label(espacio.getNombre());
         nombre.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         HBox.setHgrow(nombre, javafx.scene.layout.Priority.ALWAYS);
-        
-        Label etiqueta = new Label("Sin riesgo");
-        etiqueta.setStyle("-fx-background-color: #28A745; -fx-text-fill: white; " +
-                        "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold; -fx-font-size: 11px;");
-        
+
+        String nivelAlerta = climaActual != null ? climaActual.getNivelAlerta() : null;
+        String estiloEtiqueta;
+        String textoEtiqueta = nivelAlerta != null && !nivelAlerta.isBlank() ? nivelAlerta : "Sin datos";
+        if (nivelAlerta != null && nivelAlerta.toLowerCase().contains("lluvia")) {
+            estiloEtiqueta = "-fx-background-color: #DC3545; -fx-text-fill: white;";
+        } else if (nivelAlerta != null && nivelAlerta.toLowerCase().contains("precauc")) {
+            estiloEtiqueta = "-fx-background-color: #FFC107; -fx-text-fill: #212529;";
+        } else {
+            estiloEtiqueta = "-fx-background-color: #28A745; -fx-text-fill: white;";
+        }
+        Label etiqueta = new Label(textoEtiqueta);
+        etiqueta.setStyle(estiloEtiqueta +
+                        " -fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold; -fx-font-size: 11px;");
+
         header.getChildren().addAll(nombre, etiqueta);
-        
+
         // Datos climáticos
         VBox datos = new VBox(10);
         datos.getChildren().addAll(
-            crearFilaClima("🌡️", "Temperatura", "24°C"),
-            crearFilaClima("💧", "Probabilidad de lluvia", "10%"),
-            crearFilaClima("☁️", "Condición", "Sunny")
+            crearFilaClima("🌡️", "Temperatura", climaActual != null ? climaActual.getTemperaturaFormateada() : "--"),
+            crearFilaClima("💧", "Probabilidad de lluvia", climaActual != null ? climaActual.getProbabilidadLluviaFormateada() : "--"),
+            crearFilaClima("☁️", "Condición", climaActual != null ? climaActual.getCondicion() : "--")
         );
-        
+
         // Mensaje
-        Label mensaje = new Label("Excelente día para actividades al aire libre");
+        String descripcion = climaActual != null ? climaActual.getDescripcion() : null;
+        if (descripcion == null || descripcion.isBlank()) {
+            descripcion = "Sin información disponible";
+        }
+        Label mensaje = new Label(descripcion);
         mensaje.setWrapText(true);
         mensaje.setStyle("-fx-font-size: 12px; -fx-text-fill: #28A745; -fx-font-weight: 600; " +
                         "-fx-background-color: rgba(40, 167, 69, 0.1); -fx-padding: 8; -fx-background-radius: 6;");
-        
+
         tarjeta.getChildren().addAll(header, datos, mensaje);
-        
+
         return tarjeta;
     }
     
@@ -1205,12 +1657,39 @@ public class PanelAdministracionController implements Initializable {
         listaEspaciosFiltrados.clear();
         listaEspaciosFiltrados.addAll(
             listaEspacios.stream()
-                .filter(e -> busqueda.isEmpty() || e.getNombre().toLowerCase().contains(busqueda))
-                .filter(e -> "Todos los tipos".equals(tipoSeleccionado) || e.getTipo().equals(tipoSeleccionado))
-                .filter(e -> "Todos los estados".equals(estadoSeleccionado) || e.getEstado().equals(estadoSeleccionado))
+                .filter(e -> {
+                    String nombre = e.getNombre() != null ? e.getNombre().toLowerCase() : "";
+                    return busqueda.isEmpty() || nombre.contains(busqueda);
+                })
+                .filter(e -> {
+                    if ("Todos los tipos".equals(tipoSeleccionado)) {
+                        return true;
+                    }
+                    if ("Interior".equalsIgnoreCase(tipoSeleccionado)) {
+                        return !e.isEsExterior();
+                    }
+                    if ("Exterior".equalsIgnoreCase(tipoSeleccionado)) {
+                        return e.isEsExterior();
+                    }
+                    String tipo = e.getTipo() != null ? e.getTipo() : "";
+                    return tipo.equalsIgnoreCase(tipoSeleccionado);
+                })
+                .filter(e -> {
+                    if ("Todos los estados".equals(estadoSeleccionado)) {
+                        return true;
+                    }
+                    String estado = e.getEstado() != null ? e.getEstado() : "";
+                    if ("Disponible".equalsIgnoreCase(estadoSeleccionado)) {
+                        return "Disponible".equalsIgnoreCase(estado);
+                    }
+                    if ("Ocupado".equalsIgnoreCase(estadoSeleccionado)) {
+                        return !"Disponible".equalsIgnoreCase(estado);
+                    }
+                    return estado.equalsIgnoreCase(estadoSeleccionado);
+                })
                 .collect(Collectors.toList())
         );
-        
+
         tablaEspacios.setItems(listaEspaciosFiltrados);
     }
     
@@ -1226,13 +1705,24 @@ public class PanelAdministracionController implements Initializable {
         listaUsuariosFiltrados.clear();
         listaUsuariosFiltrados.addAll(
             listaUsuarios.stream()
-                .filter(u -> busqueda.isEmpty() || 
-                            u.getNombre().toLowerCase().contains(busqueda) ||
-                            u.getCorreo().toLowerCase().contains(busqueda))
-                .filter(u -> "Todos los roles".equals(rolSeleccionado) || u.getRol().equals(rolSeleccionado))
+                .filter(u -> {
+                    if (busqueda.isEmpty()) {
+                        return true;
+                    }
+                    String nombre = u.getNombre() != null ? u.getNombre().toLowerCase() : "";
+                    String correo = u.getCorreo() != null ? u.getCorreo().toLowerCase() : "";
+                    return nombre.contains(busqueda) || correo.contains(busqueda);
+                })
+                .filter(u -> {
+                    if ("Todos los roles".equals(rolSeleccionado)) {
+                        return true;
+                    }
+                    String rol = u.getRol() != null ? u.getRol() : "";
+                    return rol.equalsIgnoreCase(rolSeleccionado);
+                })
                 .collect(Collectors.toList())
         );
-        
+
         tablaUsuarios.setItems(listaUsuariosFiltrados);
     }
     
@@ -1250,18 +1740,26 @@ public class PanelAdministracionController implements Initializable {
             listaReservas.stream()
                 .filter(r -> {
                     if (busqueda.isEmpty()) return true;
-                    
-                    boolean coincideUsuario = r.getUsuario() != null && 
-                                             r.getUsuario().getNombre().toLowerCase().contains(busqueda);
-                    boolean coincideEspacio = r.getEspacio() != null && 
-                                             r.getEspacio().getNombre().toLowerCase().contains(busqueda);
-                    
+
+                    boolean coincideUsuario = r.getUsuario() != null
+                            && r.getUsuario().getNombre() != null
+                            && r.getUsuario().getNombre().toLowerCase().contains(busqueda);
+                    boolean coincideEspacio = r.getEspacio() != null
+                            && r.getEspacio().getNombre() != null
+                            && r.getEspacio().getNombre().toLowerCase().contains(busqueda);
+
                     return coincideUsuario || coincideEspacio;
                 })
-                .filter(r -> "Todos los estados".equals(estadoSeleccionado) || r.getEstado().equals(estadoSeleccionado))
+                .filter(r -> {
+                    if ("Todos los estados".equals(estadoSeleccionado)) {
+                        return true;
+                    }
+                    String estado = r.getEstado() != null ? r.getEstado() : "";
+                    return estado.equalsIgnoreCase(estadoSeleccionado);
+                })
                 .collect(Collectors.toList())
         );
-        
+
         tablaReservas.setItems(listaReservasFiltradas);
     }
     
@@ -1269,33 +1767,10 @@ public class PanelAdministracionController implements Initializable {
     
     @FXML
     private void nuevoEspacio(ActionEvent event) {
-        // TODO: Abrir diálogo para crear nuevo espacio
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Nuevo Espacio");
-        dialog.setHeaderText("Crear un nuevo espacio");
-        dialog.setContentText("Nombre del espacio:");
-        
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(nombre -> {
-            if (!nombre.trim().isEmpty()) {
-                // Crear nuevo espacio
-                Espacio nuevoEspacio = new Espacio(
-                    listaEspacios.size() + 1,
-                    nombre,
-                    "Interior",
-                    50,
-                    "Disponible",
-                    "Nuevo espacio creado",
-                    false
-                );
-                
-                listaEspacios.add(nuevoEspacio);
-                filtrarEspacios();
-                mostrarExito("Espacio creado exitosamente");
-            }
-        });
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "La creación de espacios se realizará desde el backend cuando la API lo permita.");
     }
-    
+
     private void verDetallesEspacio(Espacio espacio) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Detalles del Espacio");
@@ -1308,64 +1783,23 @@ public class PanelAdministracionController implements Initializable {
         );
         alert.showAndWait();
     }
-    
+
     private void editarEspacio(Espacio espacio) {
-        // TODO: Abrir diálogo de edición completo
-        TextInputDialog dialog = new TextInputDialog(espacio.getNombre());
-        dialog.setTitle("Editar Espacio");
-        dialog.setHeaderText("Editar " + espacio.getNombre());
-        dialog.setContentText("Nuevo nombre:");
-        
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(nuevoNombre -> {
-            espacio.setNombre(nuevoNombre);
-            tablaEspacios.refresh();
-            mostrarExito("Espacio actualizado exitosamente");
-        });
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "La edición de espacios se habilitará cuando la API exponga esta operación.");
     }
-    
+
     private void eliminarEspacio(Espacio espacio) {
-        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmacion.setTitle("Eliminar Espacio");
-        confirmacion.setHeaderText("¿Está seguro que desea eliminar este espacio?");
-        confirmacion.setContentText(espacio.getNombre());
-        
-        Optional<ButtonType> result = confirmacion.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            listaEspacios.remove(espacio);
-            filtrarEspacios();
-            mostrarExito("Espacio eliminado exitosamente");
-        }
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "La eliminación de espacios se sincronizará con el backend en una versión futura.");
     }
     
     // ==================== ACCIONES DE USUARIOS ====================
     
     @FXML
     private void agregarUsuario(ActionEvent event) {
-        // TODO: Abrir diálogo para agregar nuevo usuario
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Nuevo Usuario");
-        dialog.setHeaderText("Agregar un nuevo usuario");
-        dialog.setContentText("Nombre del usuario:");
-        
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(nombre -> {
-            if (!nombre.trim().isEmpty()) {
-                Usuario nuevoUsuario = new Usuario(
-                    listaUsuarios.size() + 1,
-                    nombre,
-                    nombre.toLowerCase().replace(" ", ".") + "@perezzeladon.go.cr",
-                    "Usuario",
-                    "Activo",
-                    LocalDate.now(),
-                    ""
-                );
-                
-                listaUsuarios.add(nuevoUsuario);
-                filtrarUsuarios();
-                mostrarExito("Usuario creado exitosamente");
-            }
-        });
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "La creación de usuarios debe realizarse desde los servicios del backend.");
     }
     
     private void editarUsuario(Usuario usuario) {
@@ -1378,19 +1812,8 @@ public class PanelAdministracionController implements Initializable {
     }
     
     private void cambiarEstadoUsuario(Usuario usuario) {
-        String nuevoEstado = "Activo".equals(usuario.getEstado()) ? "Inactivo" : "Activo";
-        
-        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmacion.setTitle("Cambiar Estado");
-        confirmacion.setHeaderText("¿Cambiar estado del usuario?");
-        confirmacion.setContentText("Se cambiará a: " + nuevoEstado);
-        
-        Optional<ButtonType> result = confirmacion.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            usuario.setEstado(nuevoEstado);
-            tablaUsuarios.refresh();
-            mostrarExito("Estado actualizado exitosamente");
-        }
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "El cambio de estado de usuarios se integrará con la API en próximas iteraciones.");
     }
     
     // ==================== ACCIONES DE RESERVAS ====================
@@ -1422,102 +1845,30 @@ public class PanelAdministracionController implements Initializable {
             return;
         }
         
-        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmacion.setTitle("Cancelar Reserva");
-        confirmacion.setHeaderText("¿Está seguro que desea cancelar esta reserva?");
-        confirmacion.setContentText("Reserva #" + reserva.getId() + " - " + 
-                                   (reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : ""));
-        
-        Optional<ButtonType> result = confirmacion.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            reserva.setEstado("Cancelada");
-            tablaReservas.refresh();
-            mostrarExito("Reserva cancelada exitosamente");
-            
-            // TODO: Enviar notificación al usuario
-        }
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "La cancelación de reservas debe realizarse desde el backend para mantener la integridad de los datos.");
     }
-    
+
     private void notificarUsuarioReserva(Reserva reserva) {
-        // TODO: Implementar envío de notificación real
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Notificar Usuario");
-        alert.setHeaderText("Enviando notificación...");
-        alert.setContentText("Se enviará una notificación a: " + 
-                           (reserva.getUsuario() != null ? reserva.getUsuario().getCorreo() : ""));
-        alert.showAndWait();
-        
-        mostrarExito("Notificación enviada exitosamente");
+        mostrarInformacion("Funcionalidad en desarrollo",
+                "El envío de notificaciones se integrará con los servicios de mensajería oficiales.");
     }
     
     // ==================== ACCIONES GENERALES ====================
     
     @FXML
     private void actualizarDatos(ActionEvent event) {
-        // Mostrar indicador de carga
-        mostrarIndicadorCarga("Actualizando datos...");
-        
-        // Simular carga asíncrona
-        Task<Void> task = new Task<Void>() {
-            @Override
-            protected Void call() throws Exception {
-                Thread.sleep(1000); // Simular tiempo de carga
-                return null;
-            }
-            
-            @Override
-            protected void succeeded() {
-                cargarDatosIniciales();
-                ocultarIndicadorCarga();
-                mostrarExito("Datos actualizados exitosamente");
-            }
-        };
-        
-        new Thread(task).start();
+        cargarDatosIniciales(true);
     }
-    
+
     @FXML
     private void actualizarClima(ActionEvent event) {
-        mostrarIndicadorCarga("Actualizando información climática...");
-        
-        Task<Void> task = new Task<Void>() {
-            @Override
-            protected Void call() throws Exception {
-                Thread.sleep(800);
-                return null;
-            }
-            
-            @Override
-            protected void succeeded() {
-                cargarReservas();
-                ocultarIndicadorCarga();
-                mostrarExito("Información climática actualizada");
-            }
-        };
-        
-        new Thread(task).start();
+        recargarClima(true);
     }
-    
+
     @FXML
     private void actualizarTodosClimas(ActionEvent event) {
-        mostrarIndicadorCarga("Actualizando todos los datos climáticos...");
-        
-        Task<Void> task = new Task<Void>() {
-            @Override
-            protected Void call() throws Exception {
-                Thread.sleep(1500);
-                return null;
-            }
-            
-            @Override
-            protected void succeeded() {
-                cargarClima();
-                ocultarIndicadorCarga();
-                mostrarExito("Datos climáticos actualizados exitosamente");
-            }
-        };
-        
-        new Thread(task).start();
+        recargarClima(true);
     }
     
     @FXML
@@ -1662,73 +2013,13 @@ public class PanelAdministracionController implements Initializable {
         mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }
     
-    // ==================== DATOS DE EJEMPLO ====================
-    
-    private List<Espacio> generarEspaciosEjemplo() {
-        List<Espacio> espacios = new ArrayList<>();
-        
-        espacios.add(new Espacio(1, "Salón Comunal Central", "Interior", 150, "Disponible",
-                                 "Salón principal para eventos", false));
-        espacios.add(new Espacio(2, "Cancha Deportiva Norte", "Exterior", 50, "Disponible",
-                                 "Cancha multiuso", true));
-        espacios.add(new Espacio(3, "Auditorio Municipal", "Interior", 200, "Ocupado",
-                                 "Auditorio con equipo audiovisual", false));
-        espacios.add(new Espacio(4, "Parque Recreativo Sur", "Exterior", 100, "Disponible",
-                                 "Área recreativa", true));
-        espacios.add(new Espacio(5, "Sala de Reuniones Este", "Interior", 30, "Disponible",
-                                 "Sala ejecutiva", false));
-        espacios.add(new Espacio(6, "Plaza Cultural", "Exterior", 200, "Disponible",
-                                 "Plaza para eventos culturales", true));
-        
-        return espacios;
-    }
-    
-    private List<Usuario> generarUsuariosEjemplo() {
-        List<Usuario> usuarios = new ArrayList<>();
-        
-        usuarios.add(new Usuario(1, "Carlos Rodríguez", "carlos.rodriguez@perezzeladon.go.cr",
-                                "Administrador", "Activo", LocalDate.now(), "8888-8888"));
-        usuarios.add(new Usuario(2, "María González", "maria.gonzalez@perezzeladon.go.cr",
-                                "Usuario", "Inactivo", null, "8888-7777"));
-        usuarios.add(new Usuario(3, "Juan Pérez", "juan.perez@perezzeladon.go.cr",
-                                "Usuario", "Activo", LocalDate.now().minusDays(1), "8888-6666"));
-        usuarios.add(new Usuario(4, "Ana Mora", "ana.mora@perezzeladon.go.cr",
-                                "Supervisor", "Activo", LocalDate.now(), "8888-5555"));
-        usuarios.add(new Usuario(5, "Pedro Sánchez", "pedro.sanchez@perezzeladon.go.cr",
-                                "Usuario", "Activo", LocalDate.now().minusDays(2), "8888-4444"));
-        
-        return usuarios;
-    }
-    
-    private List<Reserva> generarReservasEjemplo() {
-        List<Reserva> reservas = new ArrayList<>();
-        
-        List<Espacio> espacios = generarEspaciosEjemplo();
-        List<Usuario> usuarios = generarUsuariosEjemplo();
-        
-        DatosClimaticos clima1 = new DatosClimaticos(24.0, "Sunny", 10, 12.0, "Sin riesgo",
-                                                     "Excelente día");
-        DatosClimaticos clima2 = new DatosClimaticos(26.0, "Rainy", 70, 15.0, "Alerta climática",
-                                                     "Alta probabilidad de lluvia");
-        
-        reservas.add(new Reserva(1, usuarios.get(1), espacios.get(0), LocalDate.of(2025, 10, 20),
-                                LocalTime.of(14, 0), LocalTime.of(18, 0), "Confirmada",
-                                "QR-001", clima1, "Reunión comunitaria"));
-        reservas.add(new Reserva(2, usuarios.get(1), espacios.get(1), LocalDate.of(2025, 10, 22),
-                                LocalTime.of(9, 0), LocalTime.of(12, 0), "Confirmada",
-                                "QR-002", clima2, "Torneo deportivo"));
-        reservas.add(new Reserva(3, usuarios.get(1), espacios.get(4), LocalDate.of(2025, 10, 18),
-                                LocalTime.of(10, 0), LocalTime.of(12, 0), "Completada",
-                                "QR-003", null, "Reunión ejecutiva"));
-        reservas.add(new Reserva(4, usuarios.get(2), espacios.get(3), LocalDate.of(2025, 10, 17),
-                                LocalTime.of(15, 0), LocalTime.of(18, 0), "Confirmada",
-                                "QR-004", clima1, "Actividad recreativa"));
-        reservas.add(new Reserva(5, usuarios.get(4), espacios.get(0), LocalDate.of(2025, 10, 19),
-                                LocalTime.of(16, 0), LocalTime.of(20, 0), "Pendiente",
-                                "QR-005", clima1, "Evento cultural"));
-        
-        return reservas;
-    }
+}
+
+private record DatosIniciales(List<Espacio> espacios, List<Usuario> usuarios, List<Reserva> reservas,
+        DatosClimaticos clima, List<String> warnings) {
+}
+
+private record ClimaResultado(DatosClimaticos clima, List<String> warnings) {
 }
 
 // ==================== CLASES DE MODELO (Incluir en archivos separados) ====================
@@ -1737,15 +2028,15 @@ public class PanelAdministracionController implements Initializable {
  * Clase modelo para Espacio
  */
 class Espacio {
-    private int id;
+    private Long id;
     private String nombre;
     private String tipo;
     private int capacidad;
     private String estado;
     private String descripcion;
     private boolean esExterior;
-    
-    public Espacio(int id, String nombre, String tipo, int capacidad, String estado,
+
+    public Espacio(Long id, String nombre, String tipo, int capacidad, String estado,
                    String descripcion, boolean esExterior) {
         this.id = id;
         this.nombre = nombre;
@@ -1755,10 +2046,10 @@ class Espacio {
         this.descripcion = descripcion;
         this.esExterior = esExterior;
     }
-    
+
     // Getters y Setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
@@ -1783,16 +2074,16 @@ class Espacio {
  * Clase modelo para Usuario
  */
 class Usuario {
-    private int id;
+    private Long id;
     private String nombre;
     private String correo;
     private String rol;
     private String estado;
-    private LocalDate ultimoAcceso;
+    private LocalDateTime ultimoAcceso;
     private String telefono;
-    
-    public Usuario(int id, String nombre, String correo, String rol, String estado,
-                   LocalDate ultimoAcceso, String telefono) {
+
+    public Usuario(Long id, String nombre, String correo, String rol, String estado,
+                   LocalDateTime ultimoAcceso, String telefono) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -1801,10 +2092,10 @@ class Usuario {
         this.ultimoAcceso = ultimoAcceso;
         this.telefono = telefono;
     }
-    
+
     // Getters y Setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
@@ -1818,8 +2109,8 @@ class Usuario {
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }
     
-    public LocalDate getUltimoAcceso() { return ultimoAcceso; }
-    public void setUltimoAcceso(LocalDate ultimoAcceso) { this.ultimoAcceso = ultimoAcceso; }
+    public LocalDateTime getUltimoAcceso() { return ultimoAcceso; }
+    public void setUltimoAcceso(LocalDateTime ultimoAcceso) { this.ultimoAcceso = ultimoAcceso; }
     
     public String getTelefono() { return telefono; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
@@ -1829,7 +2120,7 @@ class Usuario {
  * Clase modelo para Reserva
  */
 class Reserva {
-    private int id;
+    private Long id;
     private Usuario usuario;
     private Espacio espacio;
     private LocalDate fecha;
@@ -1840,7 +2131,7 @@ class Reserva {
     private DatosClimaticos clima;
     private String notas;
     
-    public Reserva(int id, Usuario usuario, Espacio espacio, LocalDate fecha,
+    public Reserva(Long id, Usuario usuario, Espacio espacio, LocalDate fecha,
                    LocalTime horaInicio, LocalTime horaFin, String estado,
                    String codigoQR, DatosClimaticos clima, String notas) {
         this.id = id;
@@ -1854,10 +2145,10 @@ class Reserva {
         this.clima = clima;
         this.notas = notas;
     }
-    
+
     // Getters y Setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     
     public Usuario getUsuario() { return usuario; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }
@@ -1932,11 +2223,11 @@ class DatosClimaticos {
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
     
     public String getTemperaturaFormateada() {
-        return String.format("%.0f°C", temperatura);
+        return String.format(Locale.US, "%.0f°C", temperatura);
     }
-    
+
     public String getVientoFormateado() {
-        return String.format("%.0f km/h", velocidadViento);
+        return String.format(Locale.US, "%.0f km/h", velocidadViento);
     }
     
     public String getProbabilidadLluviaFormateada() {
