@@ -10,11 +10,13 @@ import com.municipal.controllers.AuthController;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.responses.AuthResponse;
 import com.municipal.session.SessionManager;
+import com.municipal.ui.navigation.FlowAware;
+import com.municipal.ui.navigation.FlowController;
+import com.municipal.ui.navigation.SessionAware;
+import com.municipal.ui.navigation.StageAware;
 import javafx.animation.FadeTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -29,7 +31,7 @@ import java.io.IOException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
-public class LoginController {
+public class LoginController implements FlowAware, SessionAware, StageAware {
 
     @FXML
     private StackPane root;
@@ -49,9 +51,10 @@ public class LoginController {
     private HBox statusContainer;
 
     private Stage stage;
+    private FlowController flowController;
+    private SessionManager sessionManager;
     private final AzureAuthService authService = new AzureAuthService();
     private final AuthController authController = new AuthController();
-    private final SessionManager sessionManager = new SessionManager();
     private static final double COMPACT_BREAKPOINT = 980;
 
     @FXML
@@ -211,12 +214,17 @@ public class LoginController {
 
         backendTask.setOnSucceeded(event -> {
             AuthResponse response = backendTask.getValue();
-            sessionManager.storeAuthResponse(response);
+            if (sessionManager != null) {
+                sessionManager.storeAuthResponse(response);
+            }
             String displayName = response.name() != null && !response.name().isBlank()
                     ? response.name()
                     : authenticationResult.account().username();
             showStatus("Bienvenido " + displayName, "status-success");
-            loadAdminDashboard();
+            String targetRole = sessionManager != null
+                    ? sessionManager.getUserRole()
+                    : response.role();
+            navigateToRole(targetRole);
         });
 
         backendTask.setOnFailed(event -> {
@@ -241,38 +249,35 @@ public class LoginController {
         thread.start();
     }
 
-    private void loadAdminDashboard() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/municipal/reservationsfx/ui/admin-dashboard.fxml"));
-            Parent dashboard = loader.load();
-            AdminDashboardController controller = loader.getController();
-            controller.setSessionManager(sessionManager);
-            controller.bootstrap();
-            Scene scene = stage.getScene();
-            scene.setRoot(dashboard);
-            scene.getStylesheets().setAll(
-                    getClass().getResource("/com/municipal/reservationsfx/styles/styles.css").toExternalForm(),
-                    getClass().getResource("/com/municipal/reservationsfx/styles/admin-dashboard.css").toExternalForm()
-            );
-            FadeTransition fade = new FadeTransition(Duration.millis(500), dashboard);
-            fade.setFromValue(0);
-            fade.setToValue(1);
-            fade.play();
-        } catch (IOException e) {
-            showStatus("Error al cargar el panel: " + e.getMessage(), "status-error");
-        } finally {
-            progressIndicator.setVisible(false);
-            progressIndicator.setManaged(false);
-            if (statusContainer != null) {
-                statusContainer.setVisible(false);
-                statusContainer.setManaged(false);
-            }
-            azureLoginButton.setDisable(false);
+    private void navigateToRole(String role) {
+        progressIndicator.setVisible(false);
+        progressIndicator.setManaged(false);
+        if (statusContainer != null) {
+            statusContainer.setVisible(false);
+            statusContainer.setManaged(false);
+        }
+        azureLoginButton.setDisable(false);
+        if (flowController != null) {
+            flowController.navigateToRole(role);
         }
     }
 
+    @Override
     public void setStage(Stage stage) {
         this.stage = stage;
+    }
+
+    @Override
+    public void setFlowController(FlowController flowController) {
+        this.flowController = flowController;
+        if (flowController != null && this.stage == null) {
+            this.stage = flowController.getStage();
+        }
+    }
+
+    @Override
+    public void setSessionManager(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     private void configureResponsiveBehavior() {

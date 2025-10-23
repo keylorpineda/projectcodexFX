@@ -11,6 +11,8 @@ import com.municipal.dtos.UserDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.session.SessionManager;
+import com.municipal.ui.navigation.SessionAware;
+import com.municipal.ui.navigation.ViewLifecycle;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -50,7 +52,7 @@ import java.util.stream.Collectors;
  * @author Tu Nombre
  * @version 1.0
  */
-public class PanelAdministracionController implements Initializable {
+public class AdminDashboardController implements Initializable, SessionAware, ViewLifecycle {
     
     // ==================== COMPONENTES PRINCIPALES ====================
     
@@ -208,8 +210,14 @@ public class PanelAdministracionController implements Initializable {
         System.out.println("Panel de Administración inicializado correctamente");
     }
 
+    @Override
     public void setSessionManager(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
+    }
+
+    @Override
+    public void onViewActivated() {
+        bootstrap();
     }
 
     public void bootstrap() {
@@ -1273,6 +1281,10 @@ public class PanelAdministracionController implements Initializable {
             lblNumAlertas.setText(String.valueOf(reservasConAlertas.size()));
         }
 
+        if (lblNotificacionesBadge != null) {
+            lblNotificacionesBadge.setText(String.valueOf(reservasConAlertas.size()));
+        }
+
         if (reservasConAlertas.isEmpty()) {
             Label sinAlertas = new Label("No hay alertas activas en este momento.");
             sinAlertas.setStyle("-fx-text-fill: #6C757D; -fx-font-style: italic;");
@@ -1507,6 +1519,19 @@ public class PanelAdministracionController implements Initializable {
         }
         if (lblReservasAfectadas != null) {
             lblReservasAfectadas.setText(String.valueOf(alertasActivas));
+        }
+
+        if (lblMensajeAlertaMeteo != null) {
+            if (alertasActivas > 0) {
+                lblMensajeAlertaMeteo.setText(String.format(Locale.getDefault(),
+                        "Se detectaron %d reserva(s) con alerta meteorológica activa.", alertasActivas));
+            } else {
+                lblMensajeAlertaMeteo.setText("No hay alertas meteorológicas activas.");
+            }
+        }
+
+        if (lblNotificacionesBadge != null) {
+            lblNotificacionesBadge.setText(String.valueOf(alertasActivas));
         }
 
         // Cargar tarjetas de clima
@@ -2015,11 +2040,11 @@ public class PanelAdministracionController implements Initializable {
     
 }
 
-private record DatosIniciales(List<Espacio> espacios, List<Usuario> usuarios, List<Reserva> reservas,
+record DatosIniciales(List<Espacio> espacios, List<Usuario> usuarios, List<Reserva> reservas,
         DatosClimaticos clima, List<String> warnings) {
 }
 
-private record ClimaResultado(DatosClimaticos clima, List<String> warnings) {
+record ClimaResultado(DatosClimaticos clima, List<String> warnings) {
 }
 
 // ==================== CLASES DE MODELO (Incluir en archivos separados) ====================
