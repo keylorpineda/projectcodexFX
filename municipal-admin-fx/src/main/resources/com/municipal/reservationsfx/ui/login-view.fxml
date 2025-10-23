@@ -1,112 +1,156 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
-<?import io.github.palexdev.materialfx.controls.MFXButton?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ProgressIndicator?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
 
-<StackPane fx:id="root" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-           fx:controller="com.municipal.reservationsfx.ui.controllers.LoginController"
-           stylesheets="/com/municipal/reservationsfx/styles/styles.css" styleClass="app-root">
-    <children>
-        <StackPane styleClass="backdrop-layer"/>
-        <GridPane fx:id="loginGrid" styleClass="login-grid" maxWidth="1160" alignment="CENTER">
-            <columnConstraints>
-                <ColumnConstraints fx:id="heroColumn" percentWidth="55"/>
-                <ColumnConstraints fx:id="cardColumn" percentWidth="45"/>
-            </columnConstraints>
-            <children>
-                <StackPane fx:id="heroPanel" GridPane.columnIndex="0" styleClass="hero-panel">
-                    <children>
-                        <StackPane styleClass="hero-glow"/>
-                        <VBox alignment="CENTER_LEFT" spacing="20" styleClass="hero-overlay">
-                            <children>
-                                <Label text="Sistema de Reservas" styleClass="hero-overline"/>
-                                <Label text="Municipalidad de Pérez Zeledón" styleClass="hero-title" wrapText="true"/>
-                                <Label text="Administra espacios, reservas y alertas en un solo lugar, con seguridad garantizada por Azure Active Directory." wrapText="true" styleClass="hero-body"/>
-                                <VBox spacing="12" styleClass="hero-points">
-                                    <children>
-                                        <HBox spacing="10" alignment="CENTER_LEFT">
-                                            <Label text="●" styleClass="hero-bullet"/>
-                                            <Label text="Monitoreo en tiempo real de reservas y clima" styleClass="hero-point" wrapText="true"/>
-                                        </HBox>
-                                        <HBox spacing="10" alignment="CENTER_LEFT">
-                                            <Label text="●" styleClass="hero-bullet"/>
-                                            <Label text="Indicadores clave y alertas automáticas" styleClass="hero-point" wrapText="true"/>
-                                        </HBox>
-                                        <HBox spacing="10" alignment="CENTER_LEFT">
-                                            <Label text="●" styleClass="hero-bullet"/>
-                                            <Label text="Integración segura con Azure Active Directory" styleClass="hero-point" wrapText="true"/>
-                                        </HBox>
-                                    </children>
-                                </VBox>
-                            </children>
-                            <padding><Insets top="64" right="64" left="72" bottom="64"/></padding>
-                        </VBox>
-                    </children>
-                </StackPane>
-                <AnchorPane fx:id="cardContainer" GridPane.columnIndex="1" styleClass="card-viewport">
-                    <children>
-                        <VBox spacing="22" alignment="CENTER_LEFT" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
-                              AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0" styleClass="login-card">
-                            <children>
-                                <VBox spacing="10" alignment="CENTER_LEFT">
-                                    <children>
-                                        <Label text="Bienvenido" styleClass="login-eyebrow"/>
-                                        <Label text="Panel Administrativo" styleClass="login-title"/>
-                                        <Label text="Ingresa con tu cuenta institucional para acceder al panel del administrador." styleClass="login-subtitle" wrapText="true"/>
-                                    </children>
-                                </VBox>
-                                <VBox spacing="14" alignment="CENTER_LEFT">
-                                    <children>
-                                        <Label text="Inicio de sesión" styleClass="section-title"/>
-                                        <MFXButton fx:id="azureLoginButton" maxWidth="Infinity" onAction="#handleAzureLogin"
-                                                  styleClass="azure-button" text="Continuar con Azure Active Directory">
-                                            <graphic>
-                                                <StackPane styleClass="azure-icon-badge">
-                                                    <Label text="AD" styleClass="azure-icon-text"/>
-                                                </StackPane>
-                                            </graphic>
-                                        </MFXButton>
-                                        <HBox spacing="12" alignment="CENTER_LEFT">
-                                            <ProgressIndicator fx:id="progressIndicator" prefHeight="28" prefWidth="28"/>
-                                            <Label fx:id="statusLabel" wrapText="true" styleClass="status-label"/>
-                                        </HBox>
-                                    </children>
-                                </VBox>
-                                <VBox spacing="14">
-                                    <children>
-                                        <HBox spacing="12" alignment="CENTER">
-                                            <StackPane styleClass="divider-line"/>
-                                            <Label text="Azure garantiza tu seguridad" styleClass="divider-label"/>
-                                            <StackPane styleClass="divider-line"/>
-                                        </HBox>
-                                        <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Usa tu cuenta institucional para acceder al panel administrativo de forma segura." wrapText="true" styleClass="muted-label"/>
-                                        <VBox spacing="10" styleClass="azure-guidelines">
-                                            <children>
-                                                <HBox spacing="10" alignment="CENTER_LEFT">
-                                                    <Label text="●" styleClass="hero-bullet"/>
-                                                    <Label text="Serás redirigido a la página oficial de Azure para iniciar sesión." styleClass="hero-point" wrapText="true"/>
-                                                </HBox>
-                                                <HBox spacing="10" alignment="CENTER_LEFT">
-                                                    <Label text="●" styleClass="hero-bullet"/>
-                                                    <Label text="Nunca compartas tus credenciales. Azure protege tu identidad institucional." styleClass="hero-point" wrapText="true"/>
-                                                </HBox>
-                                            </children>
-                                        </VBox>
-                                    </children>
-                                </VBox>
-                            </children>
-                            <padding><Insets top="48" right="56" left="56" bottom="48"/></padding>
-                        </VBox>
-                    </children>
-                </AnchorPane>
-            </children>
-        </GridPane>
-    </children>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:id="rootPane"
+           styleClass="login-root">
+    
+    <!-- Background Decorative Layer -->
+    <StackPane styleClass="backdrop-layer">
+        <Circle radius="300" styleClass="background-glow-1" opacity="0.3"/>
+        <Circle radius="250" styleClass="background-glow-2" opacity="0.25"/>
+    </StackPane>
+    
+    <!-- Main Login Container -->
+    <StackPane styleClass="login-container" maxWidth="1200">
+        <HBox fx:id="loginBox" styleClass="login-card" spacing="0" alignment="CENTER">
+            
+            <!-- Left Panel - Hero Section -->
+            <VBox fx:id="heroPanel" styleClass="hero-panel" spacing="24" alignment="CENTER_LEFT" 
+                  HBox.hgrow="SOMETIMES" prefWidth="600" minWidth="400">
+                <padding>
+                    <Insets top="64" right="56" bottom="64" left="56"/>
+                </padding>
+                
+                <!-- System Badge -->
+                <Label text="Sistema de Reservas" styleClass="hero-badge"/>
+                
+                <!-- Main Title -->
+                <VBox spacing="8">
+                    <Label text="Municipalidad de" styleClass="hero-title" wrapText="true"/>
+                    <Label text="Pérez" styleClass="hero-title" wrapText="true"/>
+                    <Label text="Zeledón" styleClass="hero-title" wrapText="true"/>
+                </VBox>
+                
+                <!-- Description -->
+                <Label text="Administra espacios, reservas y alertas en un solo lugar, con seguridad garantizada por Azure Active Directory." 
+                       styleClass="hero-description" wrapText="true"/>
+                
+                <!-- Features List -->
+                <VBox spacing="14" styleClass="hero-features">
+                    <HBox spacing="12" alignment="CENTER_LEFT">
+                        <Label text="●" styleClass="feature-bullet"/>
+                        <Label text="Monitoreo en tiempo real de reservas y clima" 
+                               styleClass="feature-text" wrapText="true" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                    
+                    <HBox spacing="12" alignment="CENTER_LEFT">
+                        <Label text="●" styleClass="feature-bullet"/>
+                        <Label text="Indicadores clave y alertas automáticas" 
+                               styleClass="feature-text" wrapText="true" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                    
+                    <HBox spacing="12" alignment="CENTER_LEFT">
+                        <Label text="●" styleClass="feature-bullet"/>
+                        <Label text="Integración segura con Azure Active Directory" 
+                               styleClass="feature-text" wrapText="true" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                </VBox>
+                
+                <!-- Info Button -->
+                <Button text="Información sobre el sistema" styleClass="info-button">
+                    <graphic>
+                        <HBox spacing="8" alignment="CENTER">
+                            <Circle radius="4" styleClass="info-button-icon"/>
+                            <Label text="ℹ" styleClass="info-button-emoji"/>
+                        </HBox>
+                    </graphic>
+                </Button>
+                
+                <!-- Footer -->
+                <Region VBox.vgrow="ALWAYS"/>
+                <Label text="© 2025 Municipalidad de Pérez Zeledón — Sistema de Reservas" 
+                       styleClass="hero-footer" wrapText="true"/>
+            </VBox>
+            
+            <!-- Right Panel - Login Form -->
+            <VBox fx:id="cardPanel" styleClass="card-panel" spacing="28" alignment="TOP_CENTER" 
+                  HBox.hgrow="SOMETIMES" prefWidth="500" minWidth="400">
+                <padding>
+                    <Insets top="56" right="56" bottom="56" left="56"/>
+                </padding>
+                
+                <!-- Welcome Section -->
+                <VBox spacing="12" alignment="CENTER_LEFT">
+                    <Label text="Bienvenido" styleClass="welcome-badge"/>
+                    <Label text="Panel Administrativo" styleClass="welcome-title"/>
+                    <Label text="Ingresa con tu cuenta institucional para acceder al panel del administrador." 
+                           styleClass="welcome-subtitle" wrapText="true"/>
+                </VBox>
+                
+                <!-- Security Badge -->
+                <VBox spacing="6" alignment="CENTER_LEFT">
+                    <Label text="Azure garantiza tu seguridad" styleClass="security-title"/>
+                </VBox>
+                
+                <!-- Azure Login Button -->
+                <VBox spacing="16" fillWidth="true">
+                    <Label text="Inicio de sesión" styleClass="section-label"/>
+                    
+                    <Button fx:id="azureLoginButton" styleClass="azure-button" maxWidth="Infinity">
+                        <graphic>
+                            <HBox spacing="14" alignment="CENTER_LEFT">
+                                <StackPane styleClass="azure-icon-badge">
+                                    <Label text="AD" styleClass="azure-icon-text"/>
+                                </StackPane>
+                                <Label text="Iniciar sesión con Microsoft" styleClass="azure-button-text"/>
+                            </HBox>
+                        </graphic>
+                    </Button>
+                    
+                    <!-- Status Area -->
+                    <HBox fx:id="statusContainer" spacing="12" alignment="CENTER_LEFT" managed="false" visible="false">
+                        <ProgressIndicator fx:id="progressIndicator" prefWidth="28" prefHeight="28"/>
+                        <Label fx:id="statusLabel" styleClass="status-label" wrapText="true" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                </VBox>
+                
+                <!-- Divider -->
+                <HBox spacing="12" alignment="CENTER" fillHeight="false">
+                    <StackPane styleClass="divider-line" HBox.hgrow="SOMETIMES"/>
+                    <Label text="SEGURIDAD GARANTIZADA" styleClass="divider-text"/>
+                    <StackPane styleClass="divider-line" HBox.hgrow="SOMETIMES"/>
+                </HBox>
+                
+                <!-- Security Info -->
+                <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Usa tu cuenta institucional para acceder al panel administrativo de forma segura." 
+                       styleClass="security-info" wrapText="true"/>
+                
+                <!-- Guidelines Box -->
+                <VBox styleClass="guidelines-box" spacing="12">
+                    <padding>
+                        <Insets top="18" right="18" bottom="18" left="18"/>
+                    </padding>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="●" styleClass="guideline-bullet"/>
+                        <Label text="Serás redirigido a la página oficial de Microsoft para autenticarte." 
+                               styleClass="guideline-text" wrapText="true" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="●" styleClass="guideline-bullet"/>
+                        <Label text="Nunca compartas tus credenciales. Microsoft y la Municipalidad protegen tu información." 
+                               styleClass="guideline-text" wrapText="true" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                </VBox>
+                
+            </VBox>
+        </HBox>
+    </StackPane>
 </StackPane>
