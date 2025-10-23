@@ -2,19 +2,18 @@ package com.municipal.reservationsfx.ui.controllers;
 
 import com.microsoft.aad.msal4j.IAuthenticationResult;
 import com.municipal.reservationsfx.auth.AzureAuthService;
-import io.github.palexdev.materialfx.controls.MFXButton;
 import javafx.animation.FadeTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -25,21 +24,19 @@ public class LoginController {
     @FXML
     private StackPane root;
     @FXML
-    private GridPane loginGrid;
+    private HBox loginGrid;
     @FXML
-    private AnchorPane cardContainer;
+    private VBox cardPanel;
     @FXML
-    private StackPane heroPanel;
+    private VBox heroPanel;
     @FXML
-    private ColumnConstraints heroColumn;
-    @FXML
-    private ColumnConstraints cardColumn;
-    @FXML
-    private MFXButton azureLoginButton;
+    private Button azureLoginButton;
     @FXML
     private ProgressIndicator progressIndicator;
     @FXML
     private Label statusLabel;
+    @FXML
+    private HBox statusContainer;
 
     private Stage stage;
     private final AzureAuthService authService = new AzureAuthService();
@@ -47,12 +44,16 @@ public class LoginController {
 
     @FXML
     public void initialize() {
+        if (statusContainer != null) {
+            statusContainer.setVisible(false);
+            statusContainer.setManaged(false);
+        }
         progressIndicator.setVisible(false);
         progressIndicator.setManaged(false);
         statusLabel.setText("");
         statusLabel.setVisible(false);
         statusLabel.setManaged(false);
-        FadeTransition fade = new FadeTransition(Duration.millis(750), cardContainer);
+        FadeTransition fade = new FadeTransition(Duration.millis(750), cardPanel);
         fade.setFromValue(0);
         fade.setToValue(1);
         fade.play();
@@ -100,7 +101,10 @@ public class LoginController {
             controller.bootstrap();
             Scene scene = stage.getScene();
             scene.setRoot(dashboard);
-            scene.getStylesheets().add(getClass().getResource("/com/municipal/reservationsfx/styles/styles.css").toExternalForm());
+            scene.getStylesheets().setAll(
+                    getClass().getResource("/com/municipal/reservationsfx/styles/styles.css").toExternalForm(),
+                    getClass().getResource("/com/municipal/reservationsfx/styles/admin-dashboard.css").toExternalForm()
+            );
             FadeTransition fade = new FadeTransition(Duration.millis(500), dashboard);
             fade.setFromValue(0);
             fade.setToValue(1);
@@ -110,6 +114,10 @@ public class LoginController {
         } finally {
             progressIndicator.setVisible(false);
             progressIndicator.setManaged(false);
+            if (statusContainer != null) {
+                statusContainer.setVisible(false);
+                statusContainer.setManaged(false);
+            }
             azureLoginButton.setDisable(false);
         }
     }
@@ -143,8 +151,7 @@ public class LoginController {
         boolean compact = width < COMPACT_BREAKPOINT;
         heroPanel.setVisible(!compact);
         heroPanel.setManaged(!compact);
-        heroColumn.setPercentWidth(compact ? 0 : 55);
-        cardColumn.setPercentWidth(compact ? 100 : 45);
+        cardPanel.setPrefWidth(compact ? Double.MAX_VALUE : 500);
         if (compact) {
             if (!loginGrid.getStyleClass().contains("compact")) {
                 loginGrid.getStyleClass().add("compact");
@@ -162,5 +169,9 @@ public class LoginController {
         }
         statusLabel.setVisible(true);
         statusLabel.setManaged(true);
+        if (statusContainer != null) {
+            statusContainer.setVisible(true);
+            statusContainer.setManaged(true);
+        }
     }
 }
