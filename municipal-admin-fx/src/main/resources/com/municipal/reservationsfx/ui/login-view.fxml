@@ -90,7 +90,7 @@
                 <VBox spacing="12" alignment="CENTER_LEFT">
                     <Label text="Bienvenido" styleClass="welcome-badge"/>
                     <Label text="Panel Administrativo" styleClass="welcome-title"/>
-                    <Label text="Ingresa con tu cuenta institucional para acceder al panel del administrador." 
+                    <Label text="Ingresa con tu cuenta Microsoft personal o institucional para acceder al panel del administrador."
                            styleClass="welcome-subtitle" wrapText="true"/>
                 </VBox>
                 
@@ -129,7 +129,7 @@
                 </HBox>
                 
                 <!-- Security Info -->
-                <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Usa tu cuenta institucional para acceder al panel administrativo de forma segura." 
+                <Label text="La autenticación se realiza exclusivamente mediante Azure Active Directory. Inicia sesión con tu cuenta Microsoft personal o institucional para acceder al panel administrativo de forma segura."
                        styleClass="security-info" wrapText="true"/>
                 
                 <!-- Guidelines Box -->
