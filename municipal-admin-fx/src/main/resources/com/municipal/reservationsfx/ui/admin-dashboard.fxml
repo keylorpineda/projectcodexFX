@@ -52,8 +52,8 @@
             <HBox styleClass="user-menu" spacing="8" alignment="CENTER">
                 <Circle radius="16" styleClass="user-avatar"/>
                 <VBox spacing="0">
-                    <Label text="Carlos Rodríguez" styleClass="user-name"/>
-                    <Label text="Administrador" styleClass="user-role"/>
+                    <Label fx:id="userNameLabel" text="Carlos Rodríguez" styleClass="user-name"/>
+                    <Label fx:id="userRoleLabel" text="Administrador" styleClass="user-role"/>
                 </VBox>
             </HBox>
         </HBox>
@@ -374,69 +374,32 @@
                             </padding>
 
                             <HBox spacing="12" alignment="CENTER_LEFT">
-                                <Label text="Espacios (6)" styleClass="card-title" HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="spacesCountLabel" text="Espacios (0)" styleClass="card-title" HBox.hgrow="ALWAYS"/>
+                                <Button text="Actualizar" styleClass="pill-button" onAction="#handleRefreshSpaces">
+                                    <graphic>
+                                        <Label text="🔄" styleClass="button-icon"/>
+                                    </graphic>
+                                </Button>
                                 <Button text="Exportar" styleClass="pill-button"/>
                             </HBox>
 
-                            <GridPane hgap="12" vgap="12">
-                                <columnConstraints>
-                                    <ColumnConstraints percentWidth="30"/>
-                                    <ColumnConstraints percentWidth="14"/>
-                                    <ColumnConstraints percentWidth="16"/>
-                                    <ColumnConstraints percentWidth="16"/>
-                                    <ColumnConstraints percentWidth="24"/>
-                                </columnConstraints>
-
-                                <Label text="Nombre" styleClass="card-subtitle" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                                <Label text="Capacidad" styleClass="card-subtitle" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                                <Label text="Estado" styleClass="card-subtitle" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-                                <Label text="Tipo" styleClass="card-subtitle" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
-                                <Label text="Acciones" styleClass="card-subtitle" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
-
-                                <HBox spacing="10" alignment="CENTER_LEFT" styleClass="top-space-cell" GridPane.rowIndex="1" GridPane.columnIndex="0">
-                                    <Label text="Salón Comunal Central" styleClass="user-name"/>
-                                </HBox>
-                                <Label text="150 personas" styleClass="muted-label" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                                <Label text="Disponible" styleClass="pill-button" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                                <Label text="Interior" styleClass="muted-label" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="4">
-                                    <Button text="Editar" styleClass="pill-button"/>
-                                    <Button text="Detalle" styleClass="ghost-button"/>
-                                </HBox>
-
-                                <HBox spacing="10" alignment="CENTER_LEFT" styleClass="top-space-cell" GridPane.rowIndex="2" GridPane.columnIndex="0">
-                                    <Label text="Cancha Deportiva Norte" styleClass="user-name"/>
-                                </HBox>
-                                <Label text="120 personas" styleClass="muted-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                                <Label text="Disponible" styleClass="pill-button" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
-                                <Label text="Exterior" styleClass="muted-label" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT" GridPane.rowIndex="2" GridPane.columnIndex="4">
-                                    <Button text="Editar" styleClass="pill-button"/>
-                                    <Button text="Detalle" styleClass="ghost-button"/>
-                                </HBox>
-
-                                <HBox spacing="10" alignment="CENTER_LEFT" styleClass="top-space-cell" GridPane.rowIndex="3" GridPane.columnIndex="0">
-                                    <Label text="Auditorio Municipal" styleClass="user-name"/>
-                                </HBox>
-                                <Label text="180 personas" styleClass="muted-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                                <Label text="En mantenimiento" styleClass="alert-badge alert-badge-warning" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
-                                <Label text="Interior" styleClass="muted-label" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT" GridPane.rowIndex="3" GridPane.columnIndex="4">
-                                    <Button text="Editar" styleClass="pill-button"/>
-                                    <Button text="Detalle" styleClass="ghost-button"/>
-                                </HBox>
-
-                                <HBox spacing="10" alignment="CENTER_LEFT" styleClass="top-space-cell" GridPane.rowIndex="4" GridPane.columnIndex="0">
-                                    <Label text="Cancha Multiuso Este" styleClass="user-name"/>
-                                </HBox>
-                                <Label text="90 personas" styleClass="muted-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-                                <Label text="Disponible" styleClass="pill-button" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
-                                <Label text="Exterior" styleClass="muted-label" GridPane.rowIndex="4" GridPane.columnIndex="3"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT" GridPane.rowIndex="4" GridPane.columnIndex="4">
-                                    <Button text="Editar" styleClass="pill-button"/>
-                                    <Button text="Detalle" styleClass="ghost-button"/>
-                                </HBox>
-                            </GridPane>
+                            <VBox spacing="10" fillWidth="true">
+                                <StackPane styleClass="table-container">
+                                    <TableView fx:id="spacesTable" prefHeight="420" columnResizePolicy="CONSTRAINED_RESIZE_POLICY">
+                                        <columns>
+                                            <TableColumn fx:id="spaceNameColumn" text="Nombre" prefWidth="220"/>
+                                            <TableColumn fx:id="spaceCapacityColumn" text="Capacidad" prefWidth="140"/>
+                                            <TableColumn fx:id="spaceStatusColumn" text="Estado" prefWidth="140"/>
+                                            <TableColumn fx:id="spaceTypeColumn" text="Tipo" prefWidth="160"/>
+                                        </columns>
+                                    </TableView>
+                                    <VBox fx:id="spacesLoadingOverlay" alignment="CENTER" spacing="12" visible="false" managed="false" styleClass="loading-overlay">
+                                        <ProgressIndicator prefWidth="42" prefHeight="42"/>
+                                        <Label fx:id="spacesLoadingLabel" text="Cargando espacios..." styleClass="status-label status-info" wrapText="true"/>
+                                    </VBox>
+                                </StackPane>
+                                <Label fx:id="spacesStatusLabel" text="" visible="false" managed="false" styleClass="status-label" wrapText="true"/>
+                            </VBox>
                         </VBox>
                     </VBox>
 

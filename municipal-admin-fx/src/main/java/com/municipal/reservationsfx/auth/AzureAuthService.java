@@ -22,11 +22,11 @@ public class AzureAuthService {
 
     public AzureAuthService() {
         try {
-            String authority = AppConfig.get("azure.authority");
-            this.application = PublicClientApplication.builder(AppConfig.get("azure.client-id"))
+            String authority = AppConfig.require("azure.authority");
+            this.application = PublicClientApplication.builder(AppConfig.require("azure.client-id"))
                     .authority(authority)
                     .build();
-            this.scopes = Collections.singleton(AppConfig.get("azure.scope"));
+            this.scopes = Collections.singleton(AppConfig.require("azure.scope"));
         } catch (Exception e) {
             throw new IllegalStateException("Failed to initialize Azure authentication", e);
         }
@@ -35,7 +35,7 @@ public class AzureAuthService {
     public CompletableFuture<IAuthenticationResult> signInInteractive() {
         try {
             InteractiveRequestParameters parameters = InteractiveRequestParameters
-                    .builder(new URI(AppConfig.get("azure.redirect-uri")))
+                    .builder(new URI(AppConfig.require("azure.redirect-uri")))
                     .scopes(scopes)
                     .prompt(Prompt.SELECT_ACCOUNT)
                     .build();

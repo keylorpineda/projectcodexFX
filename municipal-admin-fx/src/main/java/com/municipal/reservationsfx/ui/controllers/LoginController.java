@@ -2,6 +2,10 @@ package com.municipal.reservationsfx.ui.controllers;
 
 import com.microsoft.aad.msal4j.IAuthenticationResult;
 import com.municipal.reservationsfx.auth.AzureAuthService;
+import com.municipal.reservationsfx.backend.controllers.AuthController;
+import com.municipal.reservationsfx.backend.exceptions.ApiClientException;
+import com.municipal.reservationsfx.backend.responses.AuthResponse;
+import com.municipal.reservationsfx.session.SessionManager;
 import javafx.animation.FadeTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -40,6 +44,8 @@ public class LoginController {
 
     private Stage stage;
     private final AzureAuthService authService = new AzureAuthService();
+    private final AuthController authController = new AuthController();
+    private final SessionManager sessionManager = new SessionManager();
     private static final double COMPACT_BREAKPOINT = 980;
 
     @FXML
@@ -76,8 +82,8 @@ public class LoginController {
 
         task.setOnSucceeded(event -> {
             IAuthenticationResult result = task.getValue();
-            showStatus("Bienvenido " + result.account().username(), "status-success");
-            loadAdminDashboard();
+            showStatus("Autenticando con el sistema...", "status-info");
+            authenticateWithBackend(result);
         });
 
         task.setOnFailed(event -> {
@@ -93,11 +99,52 @@ public class LoginController {
         thread.start();
     }
 
+    private void authenticateWithBackend(IAuthenticationResult authenticationResult) {
+        Task<AuthResponse> backendTask = new Task<>() {
+            @Override
+            protected AuthResponse call() {
+                return authController.authenticateWithAzure(authenticationResult.accessToken());
+            }
+        };
+
+        backendTask.setOnSucceeded(event -> {
+            AuthResponse response = backendTask.getValue();
+            sessionManager.storeAuthResponse(response);
+            String displayName = response.name() != null && !response.name().isBlank()
+                    ? response.name()
+                    : authenticationResult.account().username();
+            showStatus("Bienvenido " + displayName, "status-success");
+            loadAdminDashboard();
+        });
+
+        backendTask.setOnFailed(event -> {
+            Throwable error = backendTask.getException();
+            String message;
+            if (error instanceof ApiClientException apiError) {
+                message = "Error " + apiError.getStatusCode();
+                if (apiError.getResponseBody() != null && !apiError.getResponseBody().isBlank()) {
+                    message += ": " + apiError.getResponseBody();
+                }
+            } else {
+                message = error != null ? error.getMessage() : "Error desconocido";
+            }
+            showStatus("No se pudo validar el acceso: " + message, "status-error");
+            progressIndicator.setVisible(false);
+            progressIndicator.setManaged(false);
+            azureLoginButton.setDisable(false);
+        });
+
+        Thread thread = new Thread(backendTask);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
     private void loadAdminDashboard() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/municipal/reservationsfx/ui/admin-dashboard.fxml"));
             Parent dashboard = loader.load();
             AdminDashboardController controller = loader.getController();
+            controller.setSessionManager(sessionManager);
             controller.bootstrap();
             Scene scene = stage.getScene();
             scene.setRoot(dashboard);
