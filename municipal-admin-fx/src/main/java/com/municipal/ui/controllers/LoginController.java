@@ -1,6 +1,10 @@
 package com.municipal.ui.controllers;
 
 import com.microsoft.aad.msal4j.IAuthenticationResult;
+import com.microsoft.aad.msal4j.MsalClientException;
+import com.microsoft.aad.msal4j.MsalException;
+import com.microsoft.aad.msal4j.MsalInteractionRequiredException;
+import com.microsoft.aad.msal4j.MsalServiceException;
 import com.municipal.auth.AzureAuthService;
 import com.municipal.controllers.AuthController;
 import com.municipal.exceptions.ApiClientException;
@@ -22,6 +26,8 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 public class LoginController {
 
@@ -87,8 +93,8 @@ public class LoginController {
         });
 
         task.setOnFailed(event -> {
-            Throwable error = task.getException();
-            showStatus("No se pudo iniciar sesión: " + error.getMessage(), "status-error");
+            Throwable error = unwrapAuthenticationError(task.getException());
+            showStatus(buildFriendlyAuthenticationError(error), "status-error");
             progressIndicator.setVisible(false);
             progressIndicator.setManaged(false);
             azureLoginButton.setDisable(false);
@@ -97,6 +103,102 @@ public class LoginController {
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private Throwable unwrapAuthenticationError(Throwable error) {
+        if (error == null) {
+            return null;
+        }
+        Throwable current = error;
+        while (current instanceof ExecutionException || current instanceof CompletionException) {
+            Throwable cause = current.getCause();
+            if (cause == null || cause == current) {
+                break;
+            }
+            current = cause;
+        }
+        return current;
+    }
+
+    private String buildFriendlyAuthenticationError(Throwable error) {
+        if (error == null) {
+            return "No se pudo iniciar sesión. Microsoft no devolvió detalles adicionales.";
+        }
+
+        System.err.println("Azure sign-in failed" + (error.getMessage() != null
+                ? ": " + error.getMessage()
+                : " with an unknown error"));
+
+        if (error instanceof MsalInteractionRequiredException interactionRequired) {
+            String code = normalizeErrorCode(interactionRequired.errorCode());
+            if ("consent_required".equals(code) || "interaction_required".equals(code)) {
+                return "Microsoft necesita que completes un paso adicional (como otorgar permisos o verificar tu identidad). Intenta nuevamente y sigue las indicaciones.";
+            }
+            return formatGenericMicrosoftError(code, interactionRequired.getMessage());
+        }
+
+        if (error instanceof MsalServiceException service) {
+            String code = normalizeErrorCode(service.errorCode());
+            if ("invalid_scope".equals(code)) {
+                return "La cuenta seleccionada no tiene permisos para completar el inicio de sesión en Microsoft. Prueba con otra cuenta o contacta al administrador del sistema.";
+            }
+            if ("unauthorized_client".equals(code)) {
+                return "La aplicación no está autorizada para iniciar sesión con esta cuenta de Microsoft. Confirma con el administrador que tu cuenta esté habilitada.";
+            }
+            return formatGenericMicrosoftError(code, service.getMessage());
+        }
+
+        if (error instanceof MsalClientException client) {
+            String code = normalizeErrorCode(client.errorCode());
+            if ("authentication_canceled".equals(code)) {
+                return "El inicio de sesión se canceló antes de completarse. Vuelve a intentarlo cuando estés listo.";
+            }
+            if ("unknown_authority".equals(code) || "invalid_authority".equals(code)) {
+                return "No se pudo validar la dirección del servicio de inicio de sesión de Microsoft configurada para la aplicación.";
+            }
+            return formatGenericMicrosoftError(code, client.getMessage());
+        }
+
+        if (error instanceof MsalException msal) {
+            return formatGenericMicrosoftError(normalizeErrorCode(msal.errorCode()), msal.getMessage());
+        }
+
+        String message = safeErrorMessage(error.getMessage());
+        if (message == null) {
+            return "No se pudo iniciar sesión. Se produjo un error inesperado.";
+        }
+        return "No se pudo iniciar sesión. Detalle: " + message;
+    }
+
+    private String normalizeErrorCode(String code) {
+        return code == null ? "" : code.trim().toLowerCase();
+    }
+
+    private String safeErrorMessage(String message) {
+        if (message == null) {
+            return null;
+        }
+        String sanitized = message.replaceAll("\s+", " ").trim();
+        if (sanitized.isEmpty()) {
+            return null;
+        }
+        if (sanitized.length() > 180) {
+            return sanitized.substring(0, 177) + "...";
+        }
+        return sanitized;
+    }
+
+    private String formatGenericMicrosoftError(String code, String rawMessage) {
+        StringBuilder builder = new StringBuilder("No se pudo iniciar sesión con Microsoft");
+        if (code != null && !code.isBlank()) {
+            builder.append(" (código: ").append(code).append(")");
+        }
+        String sanitizedMessage = safeErrorMessage(rawMessage);
+        if (sanitizedMessage != null) {
+            builder.append(". Detalle: ").append(sanitizedMessage);
+        }
+        builder.append('.');
+        return builder.toString();
     }
 
     private void authenticateWithBackend(IAuthenticationResult authenticationResult) {
