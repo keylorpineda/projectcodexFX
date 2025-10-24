@@ -14,6 +14,7 @@ public class App extends Application {
     private static final String LOGIN_VIEW = "login";
     private static final String ADMIN_VIEW = "admin-dashboard";
     private static final String USER_VIEW = "user-dashboard";
+    private static final String SUPERVISOR_VIEW = "supervisor-dashboard";
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -36,6 +37,12 @@ public class App extends Application {
                         "/com/municipal/reservationsfx/styles/admin-dashboard.css"
                 )));
 
+        flowController.registerView(SUPERVISOR_VIEW, new ViewConfig(
+                "/com/municipal/reservationsfx/ui/supervisor-dashboard.fxml",
+                List.of(
+                        "/com/municipal/reservationsfx/styles/styles.css"
+                )));
+
         flowController.registerView(USER_VIEW, new ViewConfig(
                 "/com/municipal/reservationsfx/ui/user-dashboard.fxml",
                 List.of(
@@ -47,6 +54,8 @@ public class App extends Application {
         flowController.registerRoleRoute("ADMIN", ADMIN_VIEW);
         flowController.registerRoleRoute("SUPER_ADMIN", ADMIN_VIEW);
         flowController.registerRoleRoute("MANAGER", ADMIN_VIEW);
+        flowController.registerRoleRoute("SUPERVISOR", SUPERVISOR_VIEW);
+
 
         stage.setTitle("Sistema de Reservas Municipales");
         stage.setMinWidth(860);
