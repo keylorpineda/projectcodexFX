@@ -1,34 +1,393 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.municipal.ui.controllers.UserDashboardController"
-            stylesheets="@styles.css"
-            styleClass="root-container">
-    <center>
-        <VBox alignment="CENTER" spacing="24">
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:id="mainContainer"
+      fx:controller="com.municipal.reservationsfx.ui.controllers.UserDashboardController"
+      stylesheets="@../styles/user-dashboard.css"
+      styleClass="user-root"
+      spacing="0">
+
+    <!-- Top Header -->
+    <HBox styleClass="user-header" alignment="CENTER_LEFT" spacing="0" VBox.vgrow="NEVER">
+        <padding>
+            <Insets top="16" right="24" bottom="16" left="24"/>
+        </padding>
+
+        <!-- Logo Section -->
+        <HBox alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
+            <StackPane styleClass="logo-container" minWidth="40" minHeight="40">
+                <Circle radius="20" styleClass="logo-bg"/>
+                <Label text="🏛" styleClass="logo-icon"/>
+            </StackPane>
+            <VBox spacing="2">
+                <Label text="Sistema de Reservas" styleClass="header-title"/>
+                <Label text="Municipalidad de Pérez Zeledón" styleClass="header-subtitle"/>
+            </VBox>
+        </HBox>
+
+        <!-- Spacer -->
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <!-- User Menu -->
+        <HBox styleClass="user-menu" spacing="8" alignment="CENTER">
+            <Circle radius="16" styleClass="user-avatar"/>
+            <VBox spacing="0">
+                <Label fx:id="userNameLabel" text="Usuario" styleClass="user-name"/>
+                <Label fx:id="userRoleLabel" text="Ciudadano" styleClass="user-role"/>
+            </VBox>
+        </HBox>
+    </HBox>
+
+    <!-- Main Content Area -->
+    <HBox spacing="0" VBox.vgrow="ALWAYS">
+
+        <!-- Left Sidebar -->
+        <VBox styleClass="sidebar" spacing="8" prefWidth="260" minWidth="240" HBox.hgrow="NEVER">
             <padding>
-                <Insets top="48" right="32" bottom="48" left="32"/>
+                <Insets top="16" right="0" bottom="16" left="0"/>
             </padding>
 
-            <VBox alignment="CENTER" spacing="16" styleClass="welcome-card">
-                <Label fx:id="lblWelcome" text="Bienvenido" styleClass="welcome-title"/>
-                <Label fx:id="lblSubtitle" text="Explora y reserva espacios municipales desde aquí"
-                       wrapText="true"
-                       styleClass="welcome-subtitle"/>
-            </VBox>
+            <Label text="MENÚ PRINCIPAL" styleClass="sidebar-section-title">
+                <padding>
+                    <Insets left="16"/>
+                </padding>
+            </Label>
 
-            <HBox spacing="16">
-                <Button fx:id="btnExplorar" text="Explorar espacios" disable="true"/>
-                <Button fx:id="btnMisReservas" text="Mis reservas" disable="true"/>
-            </HBox>
+            <Button fx:id="navDashboardButton" text="📊  Panel de inicio" styleClass="nav-item nav-item-active"
+                    onAction="#handleNavigateDashboard" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+            </Button>
+
+            <Button fx:id="navSpacesButton" text="🏢  Espacios disponibles" styleClass="nav-item"
+                    onAction="#handleNavigateSpaces" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+            </Button>
+
+            <Button fx:id="navMyReservationsButton" text="📅  Mis reservas" styleClass="nav-item"
+                    onAction="#handleNavigateMyReservations" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+            </Button>
+
+            <Button fx:id="navReportsButton" text="📈  Reportes personales" styleClass="nav-item"
+                    onAction="#handleNavigateReports" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+            </Button>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <Button fx:id="navLogoutButton" text="🚪  Cerrar sesión" styleClass="nav-item nav-item-logout"
+                    onAction="#handleLogout" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+            </Button>
         </VBox>
-    </center>
-</BorderPane>
+
+        <!-- Main Content Scroll -->
+        <ScrollPane fx:id="contentScroll" fitToWidth="true" fitToHeight="true" styleClass="content-scroll" HBox.hgrow="ALWAYS">
+            <content>
+                <StackPane>
+                    <!-- Dashboard Section -->
+                    <VBox fx:id="dashboardSection" styleClass="main-content" spacing="24">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <!-- Page Header -->
+                        <VBox spacing="8">
+                            <Label text="Panel de inicio" styleClass="page-title"/>
+                            <Label text="Bienvenido al sistema de reservas municipales" styleClass="page-subtitle"/>
+                        </VBox>
+
+                        <!-- Metrics Cards -->
+                        <HBox spacing="20">
+                            <!-- Active Reservations -->
+                            <VBox styleClass="metric-card" spacing="12" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="20" right="20" bottom="20" left="20"/>
+                                </padding>
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <Label text="📅" styleClass="metric-icon"/>
+                                    <Label text="Reservas activas" styleClass="metric-label"/>
+                                </HBox>
+                                <Label fx:id="activeReservationsLabel" text="0" styleClass="metric-value"/>
+                                <Label text="Próximas reservas confirmadas" styleClass="metric-description"/>
+                            </VBox>
+
+                            <!-- No Shows -->
+                            <VBox styleClass="metric-card metric-destructive" spacing="12" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="20" right="20" bottom="20" left="20"/>
+                                </padding>
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <Label text="⊗" styleClass="metric-icon"/>
+                                    <Label text="Inasistencias" styleClass="metric-label"/>
+                                </HBox>
+                                <Label fx:id="noShowsLabel" text="0" styleClass="metric-value"/>
+                                <Label text="Reservas no atendidas" styleClass="metric-description"/>
+                            </VBox>
+
+                            <!-- Completed -->
+                            <VBox styleClass="metric-card metric-success" spacing="12" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="20" right="20" bottom="20" left="20"/>
+                                </padding>
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <Label text="✓" styleClass="metric-icon"/>
+                                    <Label text="Reservas completadas" styleClass="metric-label"/>
+                                </HBox>
+                                <Label fx:id="completedReservationsLabel" text="0" styleClass="metric-value"/>
+                                <Label text="Total de reservas cumplidas" styleClass="metric-description"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Weather and Quick Actions -->
+                        <HBox spacing="20">
+                            <!-- Weather Card -->
+                            <VBox styleClass="card weather-card" spacing="16" prefWidth="400">
+                                <padding>
+                                    <Insets top="24" right="24" bottom="24" left="24"/>
+                                </padding>
+                                <Label text="Clima actual" styleClass="card-title"/>
+                                
+                                <HBox spacing="20" alignment="CENTER_LEFT">
+                                    <StackPane styleClass="weather-icon-container">
+                                        <Label fx:id="weatherIconLabel" text="☀" styleClass="weather-icon-large"/>
+                                    </StackPane>
+                                    <VBox spacing="8">
+                                        <Label fx:id="weatherTempLabel" text="24°C" styleClass="weather-temp"/>
+                                        <Label fx:id="weatherConditionLabel" text="Sunny" styleClass="weather-condition"/>
+                                    </VBox>
+                                </HBox>
+                                
+                                <HBox spacing="20">
+                                    <Label fx:id="weatherWindLabel" text="Viento: 12 km/h" styleClass="weather-detail"/>
+                                    <Label fx:id="weatherHumidityLabel" text="Humedad: 65%" styleClass="weather-detail"/>
+                                </HBox>
+                                
+                                <Label fx:id="weatherMessageLabel" text="Excelente día para actividades al aire libre" 
+                                       styleClass="weather-message-success" wrapText="true"/>
+                            </VBox>
+
+                            <!-- Quick Actions -->
+                            <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="24" right="24" bottom="24" left="24"/>
+                                </padding>
+                                <Label text="Acciones rápidas" styleClass="card-title"/>
+                                <Label text="Accede a las funciones más utilizadas" styleClass="card-subtitle"/>
+                                
+                                <VBox spacing="12">
+                                    <Button text="🏢  Ver espacios disponibles" styleClass="pill-button" 
+                                            maxWidth="Infinity" onAction="#handleNavigateSpaces"/>
+                                    <Button text="📅  Mis reservas" styleClass="pill-button" 
+                                            maxWidth="Infinity" onAction="#handleNavigateMyReservations"/>
+                                    <Button text="📄  Ver reportes" styleClass="pill-button" 
+                                            maxWidth="Infinity" onAction="#handleNavigateReports"/>
+                                </VBox>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Spaces Section -->
+                    <VBox fx:id="spacesSection" styleClass="main-content" spacing="24" visible="false" managed="false">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <!-- Page Header -->
+                        <HBox alignment="CENTER_LEFT">
+                            <VBox spacing="8" HBox.hgrow="ALWAYS">
+                                <Label text="Espacios disponibles" styleClass="page-title"/>
+                                <Label text="Explora y reserva espacios públicos municipales" styleClass="page-subtitle"/>
+                            </VBox>
+                            <Label fx:id="spacesCountLabel" text="Espacios disponibles (0)" styleClass="card-subtitle"/>
+                        </HBox>
+
+                        <!-- Filters -->
+                        <HBox styleClass="card" spacing="16" alignment="CENTER_LEFT">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            
+                            <VBox spacing="8" HBox.hgrow="ALWAYS">
+                                <Label text="Buscar espacio"/>
+                                <TextField fx:id="searchSpaceField" promptText="Nombre del espacio..." styleClass="search-field"/>
+                            </VBox>
+                            
+                            <VBox spacing="8">
+                                <Label text="Tipo de espacio"/>
+                                <ChoiceBox fx:id="spaceTypeChoice" prefWidth="150"/>
+                            </VBox>
+                            
+                            <VBox spacing="8">
+                                <Label text="Capacidad"/>
+                                <ChoiceBox fx:id="capacityChoice" prefWidth="150"/>
+                            </VBox>
+                            
+                            <VBox spacing="8">
+                                <Label text="Fecha"/>
+                                <DatePicker fx:id="datePicker" prefWidth="150"/>
+                            </VBox>
+                            
+                            <Button text="🔍 Aplicar filtros" styleClass="primary-button" onAction="#handleApplyFilters">
+                                <VBox.margin>
+                                    <Insets top="20"/>
+                                </VBox.margin>
+                            </Button>
+                        </HBox>
+
+                        <!-- Spaces Grid -->
+                        <StackPane>
+                            <FlowPane fx:id="spacesFlowPane" hgap="20" vgap="20"/>
+                            
+                            <!-- Loading Overlay -->
+                            <StackPane fx:id="spacesLoadingOverlay" styleClass="loading-overlay" visible="false" managed="false">
+                                <VBox alignment="CENTER" spacing="16">
+                                    <ProgressIndicator/>
+                                    <Label fx:id="spacesLoadingLabel" text="Cargando espacios..." styleClass="loading-text"/>
+                                </VBox>
+                            </StackPane>
+                        </StackPane>
+                        
+                        <Label fx:id="spacesStatusLabel" styleClass="status-message" visible="false" managed="false"/>
+                    </VBox>
+
+                    <!-- My Reservations Section -->
+                    <VBox fx:id="myReservationsSection" styleClass="main-content" spacing="24" visible="false" managed="false">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <!-- Page Header -->
+                        <HBox alignment="CENTER_LEFT">
+                            <VBox spacing="8" HBox.hgrow="ALWAYS">
+                                <Label text="Mis reservas" styleClass="page-title"/>
+                                <Label text="Gestiona tus reservas de espacios municipales" styleClass="page-subtitle"/>
+                            </VBox>
+                            <Button text="+ Nueva reserva" styleClass="primary-button-raised" onAction="#handleNewReservation"/>
+                        </HBox>
+
+                        <!-- Reservations Table -->
+                        <VBox styleClass="card table-container" spacing="16">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            
+                            <HBox alignment="CENTER_LEFT">
+                                <Label fx:id="reservationsCountLabel" text="Reservas (0)" styleClass="card-title"/>
+                            </HBox>
+                            
+                            <StackPane>
+                                <TableView fx:id="reservationsTable" styleClass="table-view">
+                                    <columns>
+                                        <TableColumn fx:id="reservationSpaceColumn" text="Espacio" prefWidth="200"/>
+                                        <TableColumn fx:id="reservationDateColumn" text="Fecha" prefWidth="120"/>
+                                        <TableColumn fx:id="reservationTimeColumn" text="Horario" prefWidth="150"/>
+                                        <TableColumn fx:id="reservationEventColumn" text="Tipo de evento" prefWidth="180"/>
+                                        <TableColumn fx:id="reservationStatusColumn" text="Estado" prefWidth="130"/>
+                                        <TableColumn fx:id="reservationActionsColumn" text="Acciones" prefWidth="100"/>
+                                    </columns>
+                                </TableView>
+                                
+                                <!-- Loading Overlay -->
+                                <StackPane fx:id="reservationsLoadingOverlay" styleClass="loading-overlay" visible="false" managed="false">
+                                    <VBox alignment="CENTER" spacing="16">
+                                        <ProgressIndicator/>
+                                        <Label fx:id="reservationsLoadingLabel" text="Cargando reservas..." styleClass="loading-text"/>
+                                    </VBox>
+                                </StackPane>
+                            </StackPane>
+                            
+                            <Label fx:id="reservationsStatusLabel" styleClass="status-message" visible="false" managed="false"/>
+                        </VBox>
+                    </VBox>
+
+                    <!-- Reports Section -->
+                    <VBox fx:id="reportsSection" styleClass="main-content" spacing="24" visible="false" managed="false">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <!-- Page Header -->
+                        <VBox spacing="8">
+                            <Label text="Reportes personales" styleClass="page-title"/>
+                            <Label text="Visualiza tus estadísticas y patrones de uso" styleClass="page-subtitle"/>
+                        </VBox>
+
+                        <!-- Summary Cards -->
+                        <HBox spacing="20">
+                            <VBox styleClass="card metric-card" spacing="12" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="20" right="20" bottom="20" left="20"/>
+                                </padding>
+                                <Label text="Total de reservas" styleClass="metric-label"/>
+                                <Label fx:id="totalReservationsReportLabel" text="0" styleClass="metric-value"/>
+                            </VBox>
+                            
+                            <VBox styleClass="card metric-card" spacing="12" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="20" right="20" bottom="20" left="20"/>
+                                </padding>
+                                <Label text="Tasa de asistencia" styleClass="metric-label"/>
+                                <Label fx:id="attendanceRateLabel" text="0%" styleClass="metric-value"/>
+                            </VBox>
+                            
+                            <VBox styleClass="card metric-card" spacing="12" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="20" right="20" bottom="20" left="20"/>
+                                </padding>
+                                <Label text="Espacio favorito" styleClass="metric-label"/>
+                                <Label fx:id="favoriteSpaceLabel" text="N/A" styleClass="metric-value-small"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Charts -->
+                        <HBox spacing="20">
+                            <!-- Spaces Distribution -->
+                            <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="24" right="24" bottom="24" left="24"/>
+                                </padding>
+                                <Label text="Espacios más reservados" styleClass="card-title"/>
+                                <Label text="Distribución de tus reservas por espacio" styleClass="card-subtitle"/>
+                                <PieChart fx:id="spacesDistributionChart" legendVisible="true" prefHeight="300"/>
+                            </VBox>
+
+                            <!-- Attendance Chart -->
+                            <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="24" right="24" bottom="24" left="24"/>
+                                </padding>
+                                <Label text="Porcentaje de asistencia" styleClass="card-title"/>
+                                <Label text="Relación entre reservas asistidas e inasistencias" styleClass="card-subtitle"/>
+                                <StackPane>
+                                    <PieChart fx:id="attendanceChart" legendVisible="true" prefHeight="300"/>
+                                    <VBox alignment="CENTER">
+                                        <Label fx:id="attendancePercentageLabel" text="0%" styleClass="metric-value"/>
+                                        <Label text="Tasa de asistencia" styleClass="metric-description"/>
+                                    </VBox>
+                                </StackPane>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+                </StackPane>
+            </content>
+        </ScrollPane>
+    </HBox>
+</VBox>
