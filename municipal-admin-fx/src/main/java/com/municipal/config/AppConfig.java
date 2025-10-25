@@ -8,6 +8,14 @@ public final class AppConfig {
 
     private static final Properties PROPERTIES = new Properties();
 
+    static {
+        try {
+            load();
+        } catch (IOException exception) {
+            throw new ExceptionInInitializerError("Failed to load application configuration: " + exception.getMessage());
+        }
+    }
+
     private AppConfig() {
     }
 
