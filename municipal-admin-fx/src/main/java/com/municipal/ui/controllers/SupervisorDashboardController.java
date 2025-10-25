@@ -18,6 +18,8 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Window;
+import com.municipal.ui.navigation.FlowAware;
+import com.municipal.ui.navigation.FlowController;
 
 import java.net.URL;
 import java.util.Arrays;
@@ -27,10 +29,13 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.Consumer;
 
-public class SupervisorDashboardController implements Initializable, SessionAware {
+public class SupervisorDashboardController implements Initializable, SessionAware, FlowAware {
+
+    private static final String LOGIN_VIEW_ID = "login";
 
     @FXML private StackPane contenedorPrincipal;
     @FXML private Label lblNombreSupervisor;
+    @FXML private Label lblCorreoSupervisor;
 
     @FXML private Button btnInicio;
     @FXML private Button btnReservas;
@@ -60,6 +65,7 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     @FXML private ComboBox<String> cmbEstadoReserva;
 
     private SessionManager sessionManager;
+    private FlowController flowController;
     private List<ScrollPane> secciones;
     private List<Button> menuButtons;
 
@@ -417,6 +423,11 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         actualizarNombreSupervisor();
     }
 
+    @Override
+    public void setFlowController(FlowController flowController) {
+        this.flowController = flowController;
+    }
+
     @FXML
     private void mostrarInicio() {
         mostrarSeccion(vistaInicio, btnInicio);
@@ -494,6 +505,25 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             lblNombreSupervisor.setText("Supervisor");
         } else {
             lblNombreSupervisor.setText(displayName);
+        }
+
+        if (lblCorreoSupervisor != null) {
+            String email = sessionManager != null ? sessionManager.getUserEmail() : null;
+            if (email == null || email.isBlank()) {
+                lblCorreoSupervisor.setText("supervisor@perezzeledón.go.cr");
+            } else {
+                lblCorreoSupervisor.setText(email);
+            }
+        }
+    }
+
+    @FXML
+    private void cerrarSesion(ActionEvent event) {
+        if (sessionManager != null) {
+            sessionManager.clear();
+        }
+        if (flowController != null) {
+            flowController.showView(LOGIN_VIEW_ID);
         }
     }
 

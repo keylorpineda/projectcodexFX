@@ -11,6 +11,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
+<?import javafx.scene.image.ImageView?>
 
 <HBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
@@ -27,7 +28,8 @@
             </padding>
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <StackPane styleClass="app-logo">
-                    <Label text="🏛" styleClass="logo-text"/>
+                     <ImageView fitHeight="56" fitWidth="56" pickOnBounds="true" preserveRatio="true"
+                               styleClass="logo-image"/>
                 </StackPane>
                 <VBox spacing="2">
                     <Label text="Sistema de Reservas" styleClass="app-title"/>
@@ -68,13 +70,10 @@
             <padding>
                 <Insets top="16" right="16" bottom="24" left="16"/>
             </padding>
-            <HBox alignment="CENTER_LEFT" spacing="10">
-                <Circle radius="18" styleClass="user-avatar"/>
-                <VBox spacing="2" HBox.hgrow="ALWAYS">
-                    <Label fx:id="lblNombreSupervisor" text="SV" styleClass="user-name"/>
-                    <Label text="supervisor@perezzeledón.go.cr" styleClass="user-email"/>
-                </VBox>
-            </HBox>
+           <Button fx:id="btnCerrarSesion" text="⎋  Cerrar sesión" styleClass="logout-button"
+                    maxWidth="Infinity" onAction="#cerrarSesion">
+                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
+            </Button>
         </VBox>
     </VBox>
 
@@ -91,14 +90,23 @@
                     </padding>
 
                     <!-- Header -->
-                    <HBox alignment="CENTER_LEFT">
+                     <HBox alignment="CENTER_LEFT" spacing="12">
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Panel de Supervisor" styleClass="page-title"/>
                             <Label text="Gestión de reservas y espacios municipales" styleClass="page-subtitle"/>
                         </VBox>
+                         <Region HBox.hgrow="ALWAYS"/>
                         <Button text="✚  Nueva Reserva" styleClass="btn-primary">
                             <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
                         </Button>
+                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="user-header-container">
+                            <Circle radius="18" styleClass="user-header-avatar"/>
+                            <VBox spacing="2">
+                                <Label fx:id="lblNombreSupervisor" text="Supervisor" styleClass="user-header-name"/>
+                                <Label fx:id="lblCorreoSupervisor" text="supervisor@perezzeledón.go.cr"
+                                       styleClass="user-header-email"/>
+                            </VBox>
+                        </HBox>
                     </HBox>
 
                     <!-- Métricas -->
