@@ -17,7 +17,7 @@
 <BorderPane xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
-            stylesheets="@styles.css">
+            stylesheets="@../styles/styles.css">
 
     <top>
         <HBox alignment="CENTER_LEFT" spacing="15" styleClass="header">
