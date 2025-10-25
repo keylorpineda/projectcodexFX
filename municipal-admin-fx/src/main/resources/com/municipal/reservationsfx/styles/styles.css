@@ -21,7 +21,7 @@
     -fx-text-secondary: #6C757D;
     -fx-text-light: #868E96;
     
-    -fx-border-color: #DEE2E6;
+    -fx-border-base-color: #DEE2E6;
     -fx-shadow: rgba(0, 0, 0, 0.1);
 }
 
@@ -31,7 +31,7 @@
 
 .header {
     -fx-background-color: -fx-bg-primary;
-    -fx-border-color: transparent transparent -fx-border-color transparent;
+    -fx-border-color: transparent transparent -fx-border-base-color transparent;
     -fx-border-width: 0 0 1 0;
     -fx-effect: dropshadow(gaussian, -fx-shadow, 5, 0, 0, 2);
 }
@@ -95,7 +95,7 @@
 
 .sidebar {
     -fx-background-color: -fx-bg-sidebar;
-    -fx-border-color: transparent -fx-border-color transparent transparent;
+    -fx-border-color: transparent -fx-border-base-color transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
 
@@ -185,7 +185,7 @@
     -fx-font-weight: 600;
     -fx-padding: 10 20 10 20;
     -fx-background-radius: 6;
-    -fx-border-color: -fx-border-color;
+    -fx-border-color: -fx-border-base-color;
     -fx-border-width: 1;
     -fx-border-radius: 6;
     -fx-cursor: hand;
@@ -547,7 +547,7 @@
     -fx-font-size: 14px;
     -fx-padding: 10 15 10 15;
     -fx-background-color: white;
-    -fx-border-color: -fx-border-color;
+    -fx-border-color: -fx-border-base-color;
     -fx-border-width: 1;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
@@ -560,7 +560,7 @@
 .filter-combo {
     -fx-font-size: 14px;
     -fx-background-color: white;
-    -fx-border-color: -fx-border-color;
+    -fx-border-color: -fx-border-base-color;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
 }
@@ -606,7 +606,7 @@
 
 .data-table .table-row-cell {
     -fx-background-color: white;
-    -fx-border-color: transparent transparent -fx-border-color transparent;
+    -fx-border-color: transparent transparent -fx-border-base-color transparent;
     -fx-border-width: 0 0 1 0;
 }
 
@@ -705,7 +705,7 @@
     -fx-font-size: 14px;
     -fx-padding: 10 15 10 15;
     -fx-background-color: white;
-    -fx-border-color: -fx-border-color;
+    -fx-border-color: -fx-border-base-color;
     -fx-border-width: 1;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
@@ -837,7 +837,7 @@
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: -fx-border-color;
+    -fx-background-color: -fx-border-base-color;
     -fx-background-radius: 5;
 }
 
