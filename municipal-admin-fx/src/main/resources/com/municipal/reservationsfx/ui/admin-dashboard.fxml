@@ -53,26 +53,41 @@
                 </HBox>
             </HBox>
 
-            <VBox fx:id="panelNotificaciones" styleClass="slide-panel" spacing="12" visible="false" managed="false"
-                  StackPane.alignment="TOP_RIGHT">
+            <VBox fx:id="panelNotificaciones" styleClass="notification-panel" spacing="12" visible="false" managed="false"
+                  StackPane.alignment="TOP_RIGHT" prefWidth="320" maxWidth="320" maxHeight="360">
                 <StackPane.margin>
                     <Insets top="70" right="20" bottom="0" left="0"/>
                 </StackPane.margin>
-                <Label text="Notificaciones" styleClass="panel-title"/>
-                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" prefHeight="260">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Notificaciones" styleClass="panel-title" HBox.hgrow="ALWAYS"/>
+                    <Button onAction="#cerrarPanelNotificaciones" styleClass="panel-close-button">
+                        <graphic>
+                            <Label text="✕" styleClass="panel-close-icon"/>
+                        </graphic>
+                    </Button>
+                </HBox>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" prefHeight="240" maxHeight="260">
                     <VBox fx:id="panelNotificacionesContent" spacing="12"/>
                 </ScrollPane>
             </VBox>
 
-            <VBox fx:id="panelPerfil" styleClass="profile-panel" spacing="12" visible="false" managed="false"
-                  StackPane.alignment="TOP_RIGHT">
+            <VBox fx:id="panelPerfil" styleClass="profile-panel" spacing="16" visible="false" managed="false"
+                  StackPane.alignment="TOP_RIGHT" prefWidth="260" maxWidth="260">
                 <StackPane.margin>
                     <Insets top="70" right="20" bottom="0" left="0"/>
                 </StackPane.margin>
-                <VBox spacing="4">
-                    <Label fx:id="lblPerfilNombre" text="Usuario" styleClass="panel-title"/>
-                    <Label fx:id="lblPerfilCorreo" text="correo@municipal.go.cr" styleClass="panel-subtitle"/>
-                </VBox>
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label fx:id="lblPerfilNombre" text="Usuario" styleClass="panel-title"/>
+                        <Label fx:id="lblPerfilCorreo" text="correo@municipal.go.cr" styleClass="panel-subtitle"/>
+                    </VBox>
+                    <Button onAction="#cerrarPanelPerfil" styleClass="panel-close-button">
+                        <graphic>
+                            <Label text="✕" styleClass="panel-close-icon"/>
+                        </graphic>
+                    </Button>
+                </HBox>
+                <Separator/>
                 <Button text="Editar perfil" styleClass="panel-button" onAction="#editarPerfil"/>
                 <Button text="Cerrar sesión" styleClass="panel-button-danger" onAction="#cerrarSesion"/>
             </VBox>
