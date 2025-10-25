@@ -12,6 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 
 <HBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
@@ -28,8 +29,12 @@
             </padding>
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <StackPane styleClass="app-logo">
-                     <ImageView fitHeight="56" fitWidth="56" pickOnBounds="true" preserveRatio="true"
-                               styleClass="logo-image"/>
+                   <ImageView fitHeight="56" fitWidth="56" pickOnBounds="true" preserveRatio="true"
+                               styleClass="logo-image">
+                        <image>
+                            <Image url="@../../../../images/EscudoMunicipalidadPérezZeledon.png" />
+                        </image>
+                    </ImageView>
                 </StackPane>
                 <VBox spacing="2">
                     <Label text="Sistema de Reservas" styleClass="app-title"/>
