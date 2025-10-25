@@ -39,8 +39,9 @@ public class App extends Application {
 
         flowController.registerView(SUPERVISOR_VIEW, new ViewConfig(
                 "/com/municipal/reservationsfx/ui/supervisor-dashboard.fxml",
-                List.of( 
-                        "/com/municipal/reservationsfx/ui/supervisor-dashboard.css"
+                List.of(
+                        "/com/municipal/reservationsfx/styles/styles.css",
+                        "/com/municipal/reservationsfx/styles/supervisor-dashboard.css"
                 )));
 
         flowController.registerView(USER_VIEW, new ViewConfig(
