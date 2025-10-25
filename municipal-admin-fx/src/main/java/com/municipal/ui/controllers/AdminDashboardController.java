@@ -614,8 +614,54 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 new SimpleStringProperty(formatearNombreUsuario(cellData.getValue())));
         colCorreo.setCellValueFactory(cellData ->
                 new SimpleStringProperty(formatearCorreoUsuario(cellData.getValue())));
-        colRol.setCellValueFactory(new PropertyValueFactory<>("rol"));
-        colEstadoUsuario.setCellValueFactory(new PropertyValueFactory<>("estado"));
+        colRol.setCellValueFactory(cellData -> {
+            Usuario usuario = cellData.getValue();
+            if (usuario == null) {
+                return new SimpleStringProperty("");
+            }
+            String rol = defaultString(usuario.getRol()).trim();
+            if (rol.isEmpty()) {
+                rol = obtenerRolFriendly(usuario.getRolCodigo());
+            }
+            if (rol.isEmpty()) {
+                rol = ROLES_FRIENDLY.getOrDefault("USER", "Usuario");
+            }
+            return new SimpleStringProperty(rol);
+        });
+        colEstadoUsuario.setCellValueFactory(cellData -> {
+            Usuario usuario = cellData.getValue();
+            if (usuario == null) {
+                return new SimpleStringProperty("");
+            }
+            String estado = defaultString(usuario.getEstado()).trim();
+            if (estado.isEmpty()) {
+                estado = usuario.isActivo() ? "Activo" : "Inactivo";
+            }
+            return new SimpleStringProperty(estado);
+        });
+
+        tablaUsuarios.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        if (colUsuario != null) {
+            colUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.21));
+        }
+        if (colCorreo != null) {
+            colCorreo.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.24));
+        }
+        if (colRol != null) {
+            colRol.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.12));
+        }
+        if (colEstadoUsuario != null) {
+            colEstadoUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.10));
+        }
+        if (colUltimoAcceso != null) {
+            colUltimoAcceso.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.15));
+        }
+        if (colReservasUsuario != null) {
+            colReservasUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.09));
+        }
+        if (colAccionesUsuario != null) {
+            colAccionesUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.06));
+        }
 
         // Formatear columna de último acceso
         colUltimoAcceso.setCellValueFactory(cellData -> {
@@ -662,13 +708,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             @Override
             protected void updateItem(String rol, boolean empty) {
                 super.updateItem(rol, empty);
-                
+
                 if (empty || rol == null) {
                     setText(null);
                     setGraphic(null);
                 } else {
                     Label label = new Label(rol);
-                    
+
                     switch (rol) {
                         case "Administrador":
                             label.setStyle("-fx-background-color: #7C3AED; -fx-text-fill: white; " +
@@ -682,11 +728,43 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                             label.setStyle("-fx-background-color: #6C757D; -fx-text-fill: white; " +
                                          "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;");
                             break;
+                        default:
+                            label.setStyle("-fx-background-color: #0D6EFD; -fx-text-fill: white; " +
+                                         "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;");
+                            break;
                     }
-                    
+
                     setGraphic(label);
                     setText(null);
                 }
+            }
+        });
+
+        // Personalizar columna de estado para mostrar chips visuales
+        colEstadoUsuario.setCellFactory(column -> new TableCell<Usuario, String>() {
+            @Override
+            protected void updateItem(String estado, boolean empty) {
+                super.updateItem(estado, empty);
+
+                if (empty || estado == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                String texto = estado.isBlank() ? "Activo" : estado;
+                Label etiqueta = new Label(texto);
+                etiqueta.setStyle(switch (texto.toLowerCase(Locale.ROOT)) {
+                    case "activo" -> "-fx-background-color: #22C55E; -fx-text-fill: white; " +
+                            "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;";
+                    case "inactivo" -> "-fx-background-color: #DC2626; -fx-text-fill: white; " +
+                            "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;";
+                    default -> "-fx-background-color: #F59E0B; -fx-text-fill: white; " +
+                            "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;";
+                });
+
+                setGraphic(etiqueta);
+                setText(null);
             }
         });
         
