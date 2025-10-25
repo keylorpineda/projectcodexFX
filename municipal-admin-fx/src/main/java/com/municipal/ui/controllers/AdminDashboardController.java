@@ -210,13 +210,17 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private EstadisticasDashboard estadisticas;
     private DatosClimaticos climaActual;
     private Timeline climaTimeline;
+    private Timeline datosTimeline;
     private boolean panelNotificacionesVisible;
     private boolean panelPerfilVisible;
+    private boolean datosCargando;
+    private boolean datosInicialesCargados;
 
     private static final String LOGIN_VIEW_ID = "login";
     private static final double PANEL_SLIDE_OFFSET = 360;
     private static final Duration PANEL_ANIMATION_DURATION = Duration.millis(260);
     private static final Duration CLIMA_REFRESH_INTERVAL = Duration.seconds(30);
+    private static final Duration DATA_REFRESH_INTERVAL = Duration.minutes(2);
     private static final List<String> TIPOS_ESPACIO = List.of("SALA", "CANCHA", "AUDITORIO");
     private static final Map<String, String> ROLES_FRIENDLY = Map.of(
             "ADMIN", "Administrador",
@@ -266,6 +270,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         cargarUsuarioActual();
         cargarDatosIniciales(false);
         iniciarActualizacionClima();
+        iniciarActualizacionDatos();
     }
     
     /**
@@ -279,6 +284,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         listaReservas = FXCollections.observableArrayList();
         listaReservasFiltradas = FXCollections.observableArrayList();
         estadisticas = new EstadisticasDashboard();
+        datosInicialesCargados = false;
     }
 
     private void inicializarPanelesDeslizables() {
@@ -604,8 +610,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private void configurarTablaUsuarios() {
         if (tablaUsuarios == null) return;
         
-        colUsuario.setCellValueFactory(new PropertyValueFactory<>("nombre"));
-        colCorreo.setCellValueFactory(new PropertyValueFactory<>("correo"));
+        colUsuario.setCellValueFactory(cellData ->
+                new SimpleStringProperty(formatearNombreUsuario(cellData.getValue())));
+        colCorreo.setCellValueFactory(cellData ->
+                new SimpleStringProperty(formatearCorreoUsuario(cellData.getValue())));
         colRol.setCellValueFactory(new PropertyValueFactory<>("rol"));
         colEstadoUsuario.setCellValueFactory(new PropertyValueFactory<>("estado"));
 
@@ -719,6 +727,32 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             }
         });
     }
+
+    private String formatearNombreUsuario(Usuario usuario) {
+        if (usuario == null) {
+            return "Usuario no disponible";
+        }
+        String nombre = defaultString(usuario.getNombre()).trim();
+        if (!nombre.isEmpty()) {
+            return nombre;
+        }
+        String correo = defaultString(usuario.getCorreo()).trim();
+        if (!correo.isEmpty()) {
+            return correo;
+        }
+        return "Usuario no disponible";
+    }
+
+    private String formatearCorreoUsuario(Usuario usuario) {
+        if (usuario == null) {
+            return "Correo no disponible";
+        }
+        String correo = defaultString(usuario.getCorreo()).trim();
+        if (!correo.isEmpty()) {
+            return correo;
+        }
+        return "Correo no disponible";
+    }
     
     /**
      * Configura la tabla de reservas
@@ -728,10 +762,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         
         colIdReserva.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        colUsuarioReserva.setCellValueFactory(cellData -> {
-            Usuario usuario = cellData.getValue().getUsuario();
-            return new SimpleStringProperty(usuario != null ? usuario.getNombre() : "N/A");
-        });
+        colUsuarioReserva.setCellValueFactory(cellData ->
+                new SimpleStringProperty(formatearNombreUsuario(cellData.getValue().getUsuario())));
         
         colEspacioReserva.setCellValueFactory(cellData -> {
             Espacio espacio = cellData.getValue().getEspacio();
@@ -1107,6 +1139,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
 
+        if (datosCargando) {
+            return;
+        }
+
+        datosCargando = true;
+        boolean mostrarCarga = notifySuccess || !datosInicialesCargados;
+
         Task<DatosIniciales> task = new Task<>() {
             @Override
             protected DatosIniciales call() {
@@ -1129,10 +1168,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             }
         };
 
-        task.setOnRunning(event -> mostrarIndicadorCarga("Cargando datos del sistema..."));
+        if (mostrarCarga) {
+            task.setOnRunning(event -> mostrarIndicadorCarga("Cargando datos del sistema..."));
+        }
 
         task.setOnSucceeded(event -> {
+            datosCargando = false;
             DatosIniciales resultado = task.getValue();
+
+            datosInicialesCargados = true;
 
             listaEspacios.setAll(resultado.espacios());
             listaUsuarios.setAll(resultado.usuarios());
@@ -1150,7 +1194,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             cargarDatosDashboard();
             cargarClima();
 
-            ocultarIndicadorCarga();
+            if (mostrarCarga) {
+                ocultarIndicadorCarga();
+            }
 
             if (notifySuccess) {
                 mostrarExito("Datos actualizados exitosamente");
@@ -1162,10 +1208,20 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         });
 
         task.setOnFailed(event -> {
-            ocultarIndicadorCarga();
+            datosCargando = false;
+            if (mostrarCarga) {
+                ocultarIndicadorCarga();
+            }
             Throwable error = task.getException();
             String message = error != null ? error.getMessage() : "Error desconocido";
             mostrarError("No se pudieron cargar los datos: " + message);
+        });
+
+        task.setOnCancelled(event -> {
+            datosCargando = false;
+            if (mostrarCarga) {
+                ocultarIndicadorCarga();
+            }
         });
 
         Thread thread = new Thread(task);
@@ -1272,9 +1328,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return null;
         }
         Long id = dto.id();
-        String nombre = defaultString(dto.name());
-        String correo = defaultString(dto.email());
-        String rolCodigo = defaultString(dto.role()).toUpperCase(Locale.ROOT);
+        String nombre = defaultString(dto.name()).trim();
+        String correo = defaultString(dto.email()).trim();
+        String rolCodigo = defaultString(dto.role()).trim();
+        if (rolCodigo.isEmpty()) {
+            rolCodigo = "USER";
+        } else {
+            rolCodigo = rolCodigo.toUpperCase(Locale.ROOT);
+        }
         String rol = obtenerRolFriendly(rolCodigo);
         boolean activo = dto.active() == null || Boolean.TRUE.equals(dto.active());
         String estado = activo ? "Activo" : "Inactivo";
@@ -1442,6 +1503,19 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         actualizarIndicadoresClimaticos();
     }
 
+    private void iniciarActualizacionDatos() {
+        if (datosTimeline != null) {
+            datosTimeline.stop();
+        }
+        datosTimeline = new Timeline(new KeyFrame(DATA_REFRESH_INTERVAL, event -> {
+            if (!datosCargando) {
+                cargarDatosIniciales(false);
+            }
+        }));
+        datosTimeline.setCycleCount(Timeline.INDEFINITE);
+        datosTimeline.play();
+    }
+
     private void iniciarActualizacionClima() {
         if (climaTimeline != null) {
             climaTimeline.stop();
@@ -1450,6 +1524,18 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         climaTimeline.setCycleCount(Timeline.INDEFINITE);
         climaTimeline.play();
         recargarClima(false);
+    }
+
+    private void detenerActualizaciones() {
+        if (datosTimeline != null) {
+            datosTimeline.stop();
+            datosTimeline = null;
+        }
+        if (climaTimeline != null) {
+            climaTimeline.stop();
+            climaTimeline = null;
+        }
+        datosInicialesCargados = false;
     }
 
     private void recargarClima(boolean notifySuccess) {
@@ -2390,6 +2476,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         chkActivo.setSelected(true);
         chkActivo.getStyleClass().add("form-check");
 
+        boolean puedeEditarRol = esUsuarioActualAdministrador();
+        cmbRol.setDisable(!puedeEditarRol);
+        if (!puedeEditarRol) {
+            cmbRol.setTooltip(new Tooltip("Solo los administradores pueden modificar el rol."));
+        }
+
         if (usuario != null) {
             txtNombre.setText(usuario.getNombre());
             txtCorreo.setText(usuario.getCorreo());
@@ -2632,24 +2724,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     // ==================== ACCIONES GENERALES ====================
     
     @FXML
-    private void actualizarDatos(ActionEvent event) {
-        cargarDatosIniciales(true);
-    }
-
-    @FXML
-    private void actualizarClima(ActionEvent event) {
-        recargarClima(true);
-    }
-
-    @FXML
-    private void actualizarTodosClimas(ActionEvent event) {
-        recargarClima(true);
-    }
-    
-    @FXML
     private void exportarExcel(ActionEvent event) {
         // TODO: Implementar exportación a Excel
-        mostrarInformacion("Exportando a Excel...", 
+        mostrarInformacion("Exportando a Excel...",
                           "Esta funcionalidad está en desarrollo.\n" +
                           "Pronto podrás exportar los reportes a formato Excel.");
     }
@@ -2731,6 +2808,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return null;
         }
         return token;
+    }
+
+    private boolean esUsuarioActualAdministrador() {
+        if (sessionManager == null) {
+            return false;
+        }
+        String rol = sessionManager.getUserRole();
+        return rol != null && rol.equalsIgnoreCase("ADMIN");
     }
 
     @FXML
@@ -2873,6 +2958,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     @FXML
     private void cerrarSesion(ActionEvent event) {
         cerrarPanelesDeslizables();
+        detenerActualizaciones();
         if (sessionManager != null) {
             sessionManager.clear();
         }

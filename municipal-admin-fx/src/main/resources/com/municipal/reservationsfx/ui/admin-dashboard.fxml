@@ -164,17 +164,10 @@
                     </padding>
                     
                     <!-- Título de la sección -->
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox HBox.hgrow="ALWAYS">
-                            <Label text="Panel de Administración" styleClass="section-title"/>
-                            <Label text="Resumen general del sistema de reservas" styleClass="section-subtitle"/>
-                        </VBox>
-                        <Button text="Actualizar datos" styleClass="btn-primary" onAction="#actualizarDatos">
-                            <graphic>
-                                <Label text="🔄" styleClass="icon"/>
-                            </graphic>
-                        </Button>
-                    </HBox>
+                    <VBox spacing="5">
+                        <Label text="Panel de Administración" styleClass="section-title"/>
+                        <Label text="Resumen general del sistema de reservas" styleClass="section-subtitle"/>
+                    </VBox>
                     
                     <!-- Cards superiores -->
                     <GridPane hgap="20" vgap="20">
@@ -446,17 +439,10 @@
                     </padding>
                     
                     <!-- Título y botón -->
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox HBox.hgrow="ALWAYS">
-                            <Label text="Control de Reservas" styleClass="section-title"/>
-                            <Label text="Visualiza y gestiona todas las reservas del sistema" styleClass="section-subtitle"/>
-                        </VBox>
-                        <Button text="Actualizar clima" styleClass="btn-secondary" onAction="#actualizarClima">
-                            <graphic>
-                                <Label text="🔄" styleClass="icon"/>
-                            </graphic>
-                        </Button>
-                    </HBox>
+                    <VBox spacing="5">
+                        <Label text="Control de Reservas" styleClass="section-title"/>
+                        <Label text="Visualiza y gestiona todas las reservas del sistema" styleClass="section-subtitle"/>
+                    </VBox>
                     
                     <!-- Filtros -->
                     <VBox styleClass="filter-card" spacing="15">
@@ -644,17 +630,10 @@
                     </padding>
                     
                     <!-- Título y botón -->
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox HBox.hgrow="ALWAYS">
-                            <Label text="Monitoreo Climático" styleClass="section-title"/>
-                            <Label text="Vista global del clima y alertas automáticas" styleClass="section-subtitle"/>
-                        </VBox>
-                        <Button text="Actualizar todos" styleClass="btn-primary" onAction="#actualizarTodosClimas">
-                            <graphic>
-                                <Label text="🔄" styleClass="icon"/>
-                            </graphic>
-                        </Button>
-                    </HBox>
+                    <VBox spacing="5">
+                        <Label text="Monitoreo Climático" styleClass="section-title"/>
+                        <Label text="Vista global del clima y alertas automáticas" styleClass="section-subtitle"/>
+                    </VBox>
                     
                     <!-- Alerta meteorológica -->
                     <HBox styleClass="weather-alert" spacing="15" alignment="CENTER_LEFT">
