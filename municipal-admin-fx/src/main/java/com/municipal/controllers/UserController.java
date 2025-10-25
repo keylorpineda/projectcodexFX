@@ -1,6 +1,7 @@
 package com.municipal.controllers;
 
 import com.municipal.dtos.UserDTO;
+import com.municipal.dtos.UserInputDTO;
 import com.municipal.services.UserService;
 
 import java.util.List;
@@ -22,5 +23,17 @@ public class UserController {
 
     public List<UserDTO> loadUsers(String bearerToken) {
         return userService.findAll(bearerToken);
+    }
+
+    public UserDTO createUser(UserInputDTO input, String bearerToken) {
+        return userService.create(input, bearerToken);
+    }
+
+    public UserDTO updateUser(Long id, UserInputDTO input, String bearerToken) {
+        return userService.update(id, input, bearerToken);
+    }
+
+    public void deleteUser(Long id, String bearerToken) {
+        userService.delete(id, bearerToken);
     }
 }
