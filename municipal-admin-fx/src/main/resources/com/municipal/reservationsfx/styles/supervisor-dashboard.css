@@ -26,10 +26,21 @@
 }
 
 .app-logo {
-    -fx-background-color: #1976d2;
-    -fx-background-radius: 6;
-    -fx-pref-width: 40;
-    -fx-pref-height: 40;
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-pref-width: 50;
+    -fx-pref-height: 50;
+}
+
+.logo-image {
+    -fx-background-image: url('../../../resources/images/escudo-municipal.png');
+    -fx-background-size: contain;
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: center;
+    -fx-min-width: 50;
+    -fx-min-height: 50;
+    -fx-max-width: 50;
+    -fx-max-height: 50;
 }
 
 .logo-text {
@@ -44,7 +55,7 @@
 }
 
 .app-subtitle {
-    -fx-font-size: 10px;
+    -fx-font-size: 9px;
     -fx-text-fill: #757575;
     -fx-wrap-text: true;
 }
@@ -81,29 +92,58 @@
     -fx-background-color: #1565c0;
 }
 
-/* ==================== SIDEBAR FOOTER ==================== */
-.sidebar-footer {
+/* ==================== HEADER SUPERIOR ==================== */
+.top-header {
     -fx-background-color: #ffffff;
     -fx-border-color: #e0e0e0;
-    -fx-border-width: 1 0 0 0;
+    -fx-border-width: 0 0 1 0;
 }
 
-.user-avatar {
-    -fx-fill: #1976d2;
-    -fx-stroke: #e0e0e0;
-    -fx-stroke-width: 2;
+.notification-bell {
+    -fx-padding: 8;
+    -fx-cursor: hand;
 }
 
-.user-name {
-    -fx-font-size: 11px;
+.bell-icon {
+    -fx-font-size: 18px;
+    -fx-text-fill: #616161;
+}
+
+.notification-dot {
+    -fx-font-size: 20px;
+    -fx-text-fill: #f44336;
+    -fx-translate-x: 8;
+    -fx-translate-y: -8;
+}
+
+.user-header-container {
+    -fx-background-color: #fafafa;
+    -fx-background-radius: 20;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+    -fx-cursor: hand;
+}
+
+.user-header-container:hover {
+    -fx-background-color: #f5f5f5;
+}
+
+.user-header-name {
+    -fx-font-size: 12px;
     -fx-font-weight: 600;
     -fx-text-fill: #212121;
 }
 
-.user-email {
-    -fx-font-size: 9px;
+.user-header-role {
+    -fx-font-size: 10px;
     -fx-text-fill: #757575;
-    -fx-wrap-text: true;
+}
+
+.user-header-avatar {
+    -fx-fill: #1976d2;
+    -fx-stroke: #e0e0e0;
+    -fx-stroke-width: 2;
 }
 
 /* ==================== CONTENEDOR PRINCIPAL ==================== */
