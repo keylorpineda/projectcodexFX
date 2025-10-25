@@ -26,6 +26,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -221,6 +222,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             "ADMIN", "Administrador",
             "SUPERVISOR", "Supervisor",
             "USER", "Usuario");
+    private static final String MAIN_STYLESHEET = "/com/municipal/reservationsfx/styles/styles.css";
     
     // ==================== INICIALIZACIÓN ====================
     
@@ -325,10 +327,18 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     private void cerrarPanelesDeslizables() {
+        cerrarPanelNotificacionesInterno();
+        cerrarPanelPerfilInterno();
+    }
+
+    private void cerrarPanelNotificacionesInterno() {
         if (panelNotificacionesVisible) {
             ocultarPanel(panelNotificaciones);
             panelNotificacionesVisible = false;
         }
+    }
+
+    private void cerrarPanelPerfilInterno() {
         if (panelPerfilVisible) {
             ocultarPanel(panelPerfil);
             panelPerfilVisible = false;
@@ -895,6 +905,49 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         if (userProfileBox != null) {
             userProfileBox.addEventHandler(MouseEvent.MOUSE_CLICKED, this::togglePerfilPanel);
         }
+
+        configurarCierreAutomaticoPaneles();
+    }
+
+    private void configurarCierreAutomaticoPaneles() {
+        EventHandler<MouseEvent> closeHandler = event -> {
+            Node target = event.getPickResult() != null ? event.getPickResult().getIntersectedNode() : null;
+
+            if (panelNotificacionesVisible
+                    && !esClickDentroDe(panelNotificaciones, target)
+                    && !esClickDentroDe(btnNotificaciones, target)) {
+                cerrarPanelNotificacionesInterno();
+            }
+
+            if (panelPerfilVisible
+                    && !esClickDentroDe(panelPerfil, target)
+                    && !esClickDentroDe(userProfileBox, target)) {
+                cerrarPanelPerfilInterno();
+            }
+        };
+
+        if (headerStack != null) {
+            headerStack.addEventFilter(MouseEvent.MOUSE_CLICKED, closeHandler);
+        }
+
+        if (contenedorPrincipal != null) {
+            contenedorPrincipal.addEventFilter(MouseEvent.MOUSE_CLICKED, closeHandler);
+        }
+    }
+
+    private boolean esClickDentroDe(Node contenedor, Node objetivo) {
+        if (contenedor == null || objetivo == null) {
+            return false;
+        }
+
+        Node actual = objetivo;
+        while (actual != null) {
+            if (actual == contenedor) {
+                return true;
+            }
+            actual = actual.getParent();
+        }
+        return false;
     }
     
     // ==================== NAVEGACIÓN ENTRE MÓDULOS ====================
@@ -2061,6 +2114,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     listaEspacios.removeIf(item -> Objects.equals(item.getId(), espacio.getId()));
                     listaEspaciosFiltrados.removeIf(item -> Objects.equals(item.getId(), espacio.getId()));
                     filtrarEspacios();
+                    cargarDatosDashboard();
                     mostrarExito("Espacio eliminado correctamente");
                 },
                 "Eliminando espacio...",
@@ -2074,29 +2128,39 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 ? "Completa la información del nuevo espacio."
                 : "Actualiza la información del espacio seleccionado.");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+        dialog.setResizable(false);
 
         TextField txtNombre = new TextField();
         txtNombre.setPromptText("Nombre del espacio");
+        txtNombre.getStyleClass().add("form-field");
 
         ComboBox<String> cmbTipo = new ComboBox<>(FXCollections.observableArrayList(TIPOS_ESPACIO));
         cmbTipo.setPromptText("Tipo de espacio");
+        cmbTipo.getStyleClass().add("form-field");
 
         Spinner<Integer> spCapacidad = new Spinner<>(1, 500, 10);
         spCapacidad.setEditable(true);
+        spCapacidad.getStyleClass().add("form-field");
 
         TextField txtUbicacion = new TextField();
         txtUbicacion.setPromptText("Ubicación");
+        txtUbicacion.getStyleClass().add("form-field");
 
         Spinner<Integer> spMaxDuracion = new Spinner<>(1, 12, 2);
         spMaxDuracion.setEditable(true);
+        spMaxDuracion.getStyleClass().add("form-field");
 
         CheckBox chkRequiereAprobacion = new CheckBox("Requiere aprobación");
         CheckBox chkActivo = new CheckBox("Activo");
         chkActivo.setSelected(true);
+        chkRequiereAprobacion.getStyleClass().add("form-check");
+        chkActivo.getStyleClass().add("form-check");
 
         TextArea txtDescripcion = new TextArea();
         txtDescripcion.setPromptText("Descripción del espacio");
+        txtDescripcion.setWrapText(true);
         txtDescripcion.setPrefRowCount(4);
+        txtDescripcion.getStyleClass().addAll("form-field", "form-textarea");
 
         if (espacio != null) {
             txtNombre.setText(espacio.getNombre());
@@ -2114,39 +2178,58 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
 
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10, 10, 0, 10));
+        grid.getStyleClass().add("form-grid");
+        grid.setHgap(18);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(20, 20, 10, 20));
+        grid.setPrefWidth(440);
 
-        grid.add(new Label("Nombre"), 0, 0);
+        grid.add(crearEtiquetaFormulario("Nombre"), 0, 0);
         grid.add(txtNombre, 1, 0);
-        grid.add(new Label("Tipo"), 0, 1);
+        grid.add(crearEtiquetaFormulario("Tipo"), 0, 1);
         grid.add(cmbTipo, 1, 1);
-        grid.add(new Label("Capacidad"), 0, 2);
+        grid.add(crearEtiquetaFormulario("Capacidad"), 0, 2);
         grid.add(spCapacidad, 1, 2);
-        grid.add(new Label("Ubicación"), 0, 3);
+        grid.add(crearEtiquetaFormulario("Ubicación"), 0, 3);
         grid.add(txtUbicacion, 1, 3);
-        grid.add(new Label("Duración máx. (horas)"), 0, 4);
+        grid.add(crearEtiquetaFormulario("Duración máx. (horas)"), 0, 4);
         grid.add(spMaxDuracion, 1, 4);
         grid.add(chkRequiereAprobacion, 0, 5);
         grid.add(chkActivo, 1, 5);
-        grid.add(new Label("Descripción"), 0, 6);
+        grid.add(crearEtiquetaFormulario("Descripción"), 0, 6);
         grid.add(txtDescripcion, 1, 6);
 
+        GridPane.setHgrow(txtNombre, Priority.ALWAYS);
+        GridPane.setHgrow(cmbTipo, Priority.ALWAYS);
+        GridPane.setHgrow(spCapacidad, Priority.ALWAYS);
+        GridPane.setHgrow(txtUbicacion, Priority.ALWAYS);
+        GridPane.setHgrow(spMaxDuracion, Priority.ALWAYS);
+        GridPane.setHgrow(txtDescripcion, Priority.ALWAYS);
+
         dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().setPrefWidth(520);
+
+        aplicarEstilosDialogo(dialog);
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        okButton.setText("Guardar");
+        if (okButton != null) {
+            okButton.setText("Guardar");
+            okButton.getStyleClass().add("dialog-primary-button");
+            okButton.addEventFilter(ActionEvent.ACTION, action -> {
+                if (txtNombre.getText().isBlank()) {
+                    mostrarAdvertencia("El nombre del espacio es obligatorio.");
+                    action.consume();
+                } else if (cmbTipo.getValue() == null || cmbTipo.getValue().isBlank()) {
+                    mostrarAdvertencia("Selecciona un tipo de espacio.");
+                    action.consume();
+                }
+            });
+        }
 
-        okButton.addEventFilter(ActionEvent.ACTION, action -> {
-            if (txtNombre.getText().isBlank()) {
-                mostrarAdvertencia("El nombre del espacio es obligatorio.");
-                action.consume();
-            } else if (cmbTipo.getValue() == null || cmbTipo.getValue().isBlank()) {
-                mostrarAdvertencia("Selecciona un tipo de espacio.");
-                action.consume();
-            }
-        });
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().add("dialog-cancel-button");
+        }
 
         dialog.setResultConverter(button -> {
             if (button != ButtonType.OK) {
@@ -2182,6 +2265,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                         Espacio creado = mapearEspacio(dto);
                         listaEspacios.add(creado);
                         filtrarEspacios();
+                        cargarDatosDashboard();
                         mostrarExito("Espacio creado correctamente");
                     },
                     "Creando espacio...",
@@ -2274,6 +2358,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     listaUsuarios.removeIf(item -> Objects.equals(item.getId(), usuario.getId()));
                     listaUsuariosFiltrados.removeIf(item -> Objects.equals(item.getId(), usuario.getId()));
                     filtrarUsuarios();
+                    cargarDatosDashboard();
                     mostrarExito("Usuario eliminado correctamente");
                 },
                 "Eliminando usuario...",
@@ -2287,18 +2372,23 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 ? "Completa los datos del nuevo usuario."
                 : "Actualiza los datos del usuario seleccionado.");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+        dialog.setResizable(false);
 
         TextField txtNombre = new TextField();
         txtNombre.setPromptText("Nombre completo");
+        txtNombre.getStyleClass().add("form-field");
 
         TextField txtCorreo = new TextField();
         txtCorreo.setPromptText("Correo electrónico");
+        txtCorreo.getStyleClass().add("form-field");
 
         ComboBox<String> cmbRol = new ComboBox<>(FXCollections.observableArrayList(ROLES_FRIENDLY.values()));
         cmbRol.setPromptText("Rol del usuario");
+        cmbRol.getStyleClass().add("form-field");
 
         CheckBox chkActivo = new CheckBox("Activo");
         chkActivo.setSelected(true);
+        chkActivo.getStyleClass().add("form-check");
 
         if (usuario != null) {
             txtNombre.setText(usuario.getNombre());
@@ -2310,32 +2400,48 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
 
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10, 10, 0, 10));
+        grid.getStyleClass().add("form-grid");
+        grid.setHgap(18);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(20, 20, 10, 20));
+        grid.setPrefWidth(420);
 
-        grid.add(new Label("Nombre"), 0, 0);
+        grid.add(crearEtiquetaFormulario("Nombre"), 0, 0);
         grid.add(txtNombre, 1, 0);
-        grid.add(new Label("Correo"), 0, 1);
+        grid.add(crearEtiquetaFormulario("Correo"), 0, 1);
         grid.add(txtCorreo, 1, 1);
-        grid.add(new Label("Rol"), 0, 2);
+        grid.add(crearEtiquetaFormulario("Rol"), 0, 2);
         grid.add(cmbRol, 1, 2);
         grid.add(chkActivo, 1, 3);
 
+        GridPane.setHgrow(txtNombre, Priority.ALWAYS);
+        GridPane.setHgrow(txtCorreo, Priority.ALWAYS);
+        GridPane.setHgrow(cmbRol, Priority.ALWAYS);
+
         dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().setPrefWidth(480);
+
+        aplicarEstilosDialogo(dialog);
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        okButton.setText("Guardar");
+        if (okButton != null) {
+            okButton.setText("Guardar");
+            okButton.getStyleClass().add("dialog-primary-button");
+            okButton.addEventFilter(ActionEvent.ACTION, action -> {
+                if (txtCorreo.getText().isBlank()) {
+                    mostrarAdvertencia("El correo electrónico es obligatorio.");
+                    action.consume();
+                } else if (cmbRol.getValue() == null) {
+                    mostrarAdvertencia("Selecciona un rol para el usuario.");
+                    action.consume();
+                }
+            });
+        }
 
-        okButton.addEventFilter(ActionEvent.ACTION, action -> {
-            if (txtCorreo.getText().isBlank()) {
-                mostrarAdvertencia("El correo electrónico es obligatorio.");
-                action.consume();
-            } else if (cmbRol.getValue() == null) {
-                mostrarAdvertencia("Selecciona un rol para el usuario.");
-                action.consume();
-            }
-        });
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().add("dialog-cancel-button");
+        }
 
         dialog.setResultConverter(button -> {
             if (button != ButtonType.OK) {
@@ -2353,6 +2459,37 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         dialog.showAndWait().ifPresent(input -> guardarUsuario(usuario, input));
     }
 
+    private Label crearEtiquetaFormulario(String texto) {
+        Label label = new Label(texto);
+        label.getStyleClass().add("form-label");
+        return label;
+    }
+
+    private void aplicarEstilosDialogo(Dialog<?> dialog) {
+        if (dialog == null) {
+            return;
+        }
+
+        DialogPane pane = dialog.getDialogPane();
+        if (pane == null) {
+            return;
+        }
+
+        String stylesheet = obtenerStylesheetPrincipal();
+        if (stylesheet != null && pane.getStylesheets().stream().noneMatch(stylesheet::equals)) {
+            pane.getStylesheets().add(stylesheet);
+        }
+
+        if (!pane.getStyleClass().contains("admin-dialog")) {
+            pane.getStyleClass().add("admin-dialog");
+        }
+    }
+
+    private String obtenerStylesheetPrincipal() {
+        URL resource = getClass().getResource(MAIN_STYLESHEET);
+        return resource != null ? resource.toExternalForm() : null;
+    }
+
     private void guardarUsuario(Usuario usuarioOriginal, UserInputDTO input) {
         String token = obtenerToken();
         if (token == null) {
@@ -2366,6 +2503,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                         Usuario creado = mapearUsuario(dto);
                         listaUsuarios.add(creado);
                         filtrarUsuarios();
+                        cargarDatosDashboard();
                         mostrarExito("Usuario agregado correctamente");
                     },
                     "Creando usuario...",
@@ -2396,6 +2534,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         reemplazarEspacio(listaEspacios, espacioActualizado);
         reemplazarEspacio(listaEspaciosFiltrados, espacioActualizado);
         filtrarEspacios();
+        cargarDatosDashboard();
     }
 
     private void reemplazarEspacio(ObservableList<Espacio> lista, Espacio actualizado) {
@@ -2418,6 +2557,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         reemplazarUsuario(listaUsuarios, usuarioActualizado);
         reemplazarUsuario(listaUsuariosFiltrados, usuarioActualizado);
         filtrarUsuarios();
+        cargarDatosDashboard();
     }
 
     private void reemplazarUsuario(ObservableList<Usuario> lista, Usuario actualizado) {
@@ -2600,19 +2740,23 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
 
         if (panelNotificacionesVisible) {
-            ocultarPanel(panelNotificaciones);
-            panelNotificacionesVisible = false;
+            cerrarPanelNotificacionesInterno();
             return;
         }
 
         List<Reserva> reservasConAlertas = obtenerReservasConAlertas();
         actualizarPanelNotificaciones(reservasConAlertas);
 
-        ocultarPanel(panelPerfil);
-        panelPerfilVisible = false;
+        cerrarPanelPerfilInterno();
 
         mostrarPanel(panelNotificaciones);
         panelNotificacionesVisible = true;
+    }
+
+    @FXML
+    private void cerrarPanelNotificaciones(ActionEvent event) {
+        cerrarPanelNotificacionesInterno();
+        event.consume();
     }
 
     private void actualizarPanelNotificaciones(List<Reserva> reservasConAlertas) {
@@ -2679,17 +2823,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
 
         if (panelPerfilVisible) {
-            ocultarPanel(panelPerfil);
-            panelPerfilVisible = false;
+            cerrarPanelPerfilInterno();
             return;
         }
 
         actualizarPanelPerfil();
-        ocultarPanel(panelNotificaciones);
-        panelNotificacionesVisible = false;
+        cerrarPanelNotificacionesInterno();
 
         mostrarPanel(panelPerfil);
         panelPerfilVisible = true;
+    }
+
+    @FXML
+    private void cerrarPanelPerfil(ActionEvent event) {
+        cerrarPanelPerfilInterno();
+        event.consume();
     }
 
     private void actualizarPanelPerfil() {
