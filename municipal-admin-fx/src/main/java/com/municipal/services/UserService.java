@@ -3,6 +3,7 @@ package com.municipal.services;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.municipal.ApiClient;
 import com.municipal.dtos.UserDTO;
+import com.municipal.dtos.UserInputDTO;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,5 +28,21 @@ public class UserService {
 
     public List<UserDTO> findAll(String bearerToken) {
         return apiClient.get("/api/users", bearerToken, USER_LIST_TYPE);
+    }
+
+    public UserDTO create(UserInputDTO input, String bearerToken) {
+        Objects.requireNonNull(input, "input");
+        return apiClient.post("/api/users", input, bearerToken, UserDTO.class);
+    }
+
+    public UserDTO update(Long id, UserInputDTO input, String bearerToken) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(input, "input");
+        return apiClient.put("/api/users/" + id, input, bearerToken, UserDTO.class);
+    }
+
+    public void delete(Long id, String bearerToken) {
+        Objects.requireNonNull(id, "id");
+        apiClient.delete("/api/users/" + id, bearerToken);
     }
 }

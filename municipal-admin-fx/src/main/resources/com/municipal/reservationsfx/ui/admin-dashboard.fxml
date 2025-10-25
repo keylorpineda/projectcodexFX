@@ -15,42 +15,68 @@
     
     <!-- HEADER -->
     <top>
-        <HBox styleClass="header" alignment="CENTER_LEFT" spacing="15">
-            <padding>
-                <Insets top="15" right="20" bottom="15" left="20"/>
-            </padding>
-            
-            <!-- Logo y título -->
-            <HBox alignment="CENTER_LEFT" spacing="10" HBox.hgrow="ALWAYS">
-                <ImageView fitHeight="40" fitWidth="40" preserveRatio="true">
-                    <image>
-                        <Image url="@../images/microsoftlogo.png"/>
-                    </image>
-                </ImageView>
-                <VBox>
-                    <Label text="Panel de Administración" styleClass="header-title"/>
-                    <Label text="Municipalidad de Pérez Zeledón" styleClass="header-subtitle"/>
-                </VBox>
-            </HBox>
-            
-            <!-- Notificaciones y usuario -->
-            <HBox alignment="CENTER_RIGHT" spacing="20">
-                <Button fx:id="btnNotificaciones" styleClass="icon-button">
-                    <graphic>
-                        <StackPane>
-                            <Label text="🔔" styleClass="icon"/>
-                            <Label fx:id="lblNotificacionesBadge" text="0" styleClass="badge"
-                                   StackPane.alignment="TOP_RIGHT" visible="true"/>
-                        </StackPane>
-                    </graphic>
-                </Button>
-                
-                <HBox alignment="CENTER" spacing="10" styleClass="user-profile">
-                    <Circle radius="18" styleClass="avatar"/>
-                    <Label fx:id="lblNombreUsuario" text="Usuario" styleClass="username"/>
+        <StackPane fx:id="headerStack">
+            <HBox styleClass="header" alignment="CENTER_LEFT" spacing="15">
+                <padding>
+                    <Insets top="15" right="20" bottom="15" left="20"/>
+                </padding>
+
+                <!-- Logo y título -->
+                <HBox alignment="CENTER_LEFT" spacing="10" HBox.hgrow="ALWAYS">
+                    <ImageView fitHeight="40" fitWidth="40" preserveRatio="true">
+                        <image>
+                            <Image url="@../images/microsoftlogo.png"/>
+                        </image>
+                    </ImageView>
+                    <VBox>
+                        <Label text="Panel de Administración" styleClass="header-title"/>
+                        <Label text="Municipalidad de Pérez Zeledón" styleClass="header-subtitle"/>
+                    </VBox>
+                </HBox>
+
+                <!-- Notificaciones y usuario -->
+                <HBox alignment="CENTER_RIGHT" spacing="20">
+                    <Button fx:id="btnNotificaciones" styleClass="icon-button">
+                        <graphic>
+                            <StackPane>
+                                <Label text="🔔" styleClass="icon"/>
+                                <Label fx:id="lblNotificacionesBadge" text="0" styleClass="badge"
+                                       StackPane.alignment="TOP_RIGHT" visible="true"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+
+                    <HBox fx:id="userProfileBox" alignment="CENTER" spacing="10" styleClass="user-profile">
+                        <Circle radius="18" styleClass="avatar"/>
+                        <Label fx:id="lblNombreUsuario" text="Usuario" styleClass="username"/>
+                    </HBox>
                 </HBox>
             </HBox>
-        </HBox>
+
+            <VBox fx:id="panelNotificaciones" styleClass="slide-panel" spacing="12" visible="false" managed="false"
+                  StackPane.alignment="TOP_RIGHT">
+                <StackPane.margin>
+                    <Insets top="70" right="20" bottom="0" left="0"/>
+                </StackPane.margin>
+                <Label text="Notificaciones" styleClass="panel-title"/>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" prefHeight="260">
+                    <VBox fx:id="panelNotificacionesContent" spacing="12"/>
+                </ScrollPane>
+            </VBox>
+
+            <VBox fx:id="panelPerfil" styleClass="profile-panel" spacing="12" visible="false" managed="false"
+                  StackPane.alignment="TOP_RIGHT">
+                <StackPane.margin>
+                    <Insets top="70" right="20" bottom="0" left="0"/>
+                </StackPane.margin>
+                <VBox spacing="4">
+                    <Label fx:id="lblPerfilNombre" text="Usuario" styleClass="panel-title"/>
+                    <Label fx:id="lblPerfilCorreo" text="correo@municipal.go.cr" styleClass="panel-subtitle"/>
+                </VBox>
+                <Button text="Editar perfil" styleClass="panel-button" onAction="#editarPerfil"/>
+                <Button text="Cerrar sesión" styleClass="panel-button-danger" onAction="#cerrarSesion"/>
+            </VBox>
+        </StackPane>
     </top>
     
     <!-- SIDEBAR -->
@@ -278,7 +304,7 @@
                             <Label text="Gestión de Espacios" styleClass="section-title"/>
                             <Label text="Administra todos los espacios disponibles" styleClass="section-subtitle"/>
                         </VBox>
-                        <Button text="Nuevo Espacio" styleClass="btn-primary" onAction="#nuevoEspacio">
+                        <Button text="Agregar Espacio" styleClass="btn-primary" onAction="#agregarEspacio">
                             <graphic>
                                 <Label text="+" styleClass="icon"/>
                             </graphic>
@@ -389,7 +415,8 @@
                                 <TableColumn fx:id="colRol" text="Rol" prefWidth="150"/>
                                 <TableColumn fx:id="colEstadoUsuario" text="Estado" prefWidth="120"/>
                                 <TableColumn fx:id="colUltimoAcceso" text="Último acceso" prefWidth="180"/>
-                                <TableColumn fx:id="colAccionesUsuario" text="Acciones" prefWidth="120"/>
+                                <TableColumn fx:id="colReservasUsuario" text="Reservas" prefWidth="160"/>
+                                <TableColumn fx:id="colAccionesUsuario" text="Acciones" prefWidth="160"/>
                             </columns>
                         </TableView>
                     </VBox>
