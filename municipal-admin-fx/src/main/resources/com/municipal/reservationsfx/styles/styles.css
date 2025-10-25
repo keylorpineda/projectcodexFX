@@ -4,25 +4,25 @@
 
 /* Colores principales */
 .root {
-    -fx-primary-color: #0066CC;
-    -fx-primary-hover: #0052A3;
-    -fx-secondary-color: #6C757D;
-    -fx-success-color: #28A745;
-    -fx-warning-color: #FFC107;
+    -fx-primary-color: #0D6EFD;
+    -fx-primary-hover: #0B5ED7;
+    -fx-secondary-color: #5A6A85;
+    -fx-success-color: #2BB673;
+    -fx-warning-color: #FFB020;
     -fx-danger-color: #DC3545;
-    -fx-info-color: #17A2B8;
-    
-    -fx-bg-primary: #FFFFFF;
-    -fx-bg-secondary: #F8F9FA;
-    -fx-bg-sidebar: #F5F5F5;
+    -fx-info-color: #0DCAF0;
+
+    -fx-bg-primary: linear-gradient(to right, #f3f7ff, #e8f2ff);
+    -fx-bg-secondary: #eef4ff;
+    -fx-bg-sidebar: linear-gradient(to bottom, rgba(13, 71, 161, 0.95), rgba(21, 101, 192, 0.95));
     -fx-bg-card: #FFFFFF;
-    
-    -fx-text-primary: #212529;
-    -fx-text-secondary: #6C757D;
-    -fx-text-light: #868E96;
-    
-    -fx-border-base-color: #DEE2E6;
-    -fx-shadow: rgba(0, 0, 0, 0.1);
+
+    -fx-text-primary: #0f1f3d;
+    -fx-text-secondary: #4c5a74;
+    -fx-text-light: #6b7a96;
+
+    -fx-border-base-color: rgba(13, 110, 253, 0.25);
+    -fx-shadow: rgba(13, 71, 161, 0.18);
 }
 
 /* ============================================
@@ -31,9 +31,8 @@
 
 .header {
     -fx-background-color: -fx-bg-primary;
-    -fx-border-color: transparent transparent -fx-border-base-color transparent;
-    -fx-border-width: 0 0 1 0;
-    -fx-effect: dropshadow(gaussian, -fx-shadow, 5, 0, 0, 2);
+    -fx-border-color: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(13, 71, 161, 0.25), 18, 0, 0, 6);
 }
 
 .header-title {
@@ -54,7 +53,7 @@
 }
 
 .icon-button:hover {
-    -fx-background-color: -fx-bg-secondary;
+    -fx-background-color: rgba(13, 110, 253, 0.12);
     -fx-background-radius: 50%;
 }
 
@@ -69,14 +68,24 @@
     -fx-translate-y: -8;
 }
 
+.tag-info {
+    -fx-background-color: rgba(13, 110, 253, 0.15);
+    -fx-text-fill: #0D47A1;
+    -fx-font-weight: 600;
+    -fx-padding: 4 12 4 12;
+    -fx-background-radius: 14;
+    -fx-alignment: CENTER;
+}
+
 .user-profile {
     -fx-cursor: hand;
-    -fx-padding: 5 10 5 10;
-    -fx-background-radius: 20;
+    -fx-padding: 6 14 6 14;
+    -fx-background-radius: 24;
+    -fx-background-color: rgba(13, 110, 253, 0.08);
 }
 
 .user-profile:hover {
-    -fx-background-color: -fx-bg-secondary;
+    -fx-background-color: rgba(13, 110, 253, 0.18);
 }
 
 .avatar {
@@ -95,13 +104,13 @@
 
 .sidebar {
     -fx-background-color: -fx-bg-sidebar;
-    -fx-border-color: transparent -fx-border-base-color transparent transparent;
-    -fx-border-width: 0 1 0 0;
+    -fx-border-color: transparent;
+    -fx-padding: 0 0 20 0;
 }
 
 .menu-item {
     -fx-background-color: transparent;
-    -fx-text-fill: -fx-text-secondary;
+    -fx-text-fill: rgba(255, 255, 255, 0.75);
     -fx-font-size: 14px;
     -fx-padding: 12 15 12 15;
     -fx-alignment: CENTER_LEFT;
@@ -110,12 +119,12 @@
 }
 
 .menu-item:hover {
-    -fx-background-color: rgba(0, 102, 204, 0.1);
-    -fx-text-fill: -fx-primary-color;
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-text-fill: white;
 }
 
 .menu-item.active {
-    -fx-background-color: -fx-primary-color;
+    -fx-background-color: rgba(255, 255, 255, 0.22);
     -fx-text-fill: white;
 }
 
@@ -129,7 +138,8 @@
    ============================================ */
 
 .main-content {
-    -fx-background-color: -fx-bg-secondary;
+    -fx-background-color: linear-gradient(to bottom, rgba(213, 227, 255, 0.88), rgba(234, 243, 255, 0.97));
+    -fx-padding: 0 10 10 0;
 }
 
 .content-section {
@@ -200,12 +210,112 @@
 }
 
 /* ============================================
+   PANELES DESLIZABLES Y PERFIL
+   ============================================ */
+
+.slide-panel {
+    -fx-background-color: rgba(13, 110, 253, 0.92);
+    -fx-background-radius: 20;
+    -fx-padding: 18;
+    -fx-effect: dropshadow(gaussian, rgba(13, 71, 161, 0.32), 24, 0, 0, 12);
+    -fx-min-width: 320;
+    -fx-max-width: 320;
+}
+
+.slide-panel .label {
+    -fx-text-fill: rgba(255, 255, 255, 0.92);
+}
+
+.profile-panel {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #f0f6ff);
+    -fx-background-radius: 20;
+    -fx-padding: 18;
+    -fx-effect: dropshadow(gaussian, rgba(13, 71, 161, 0.18), 18, 0, 0, 10);
+    -fx-min-width: 260;
+    -fx-border-color: rgba(13, 110, 253, 0.18);
+    -fx-border-radius: 18;
+    -fx-border-width: 1;
+}
+
+.panel-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #0D47A1;
+}
+
+.panel-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5c6c82;
+}
+
+.panel-button {
+    -fx-background-color: rgba(13, 110, 253, 0.12);
+    -fx-text-fill: #0D47A1;
+    -fx-font-weight: 600;
+    -fx-background-radius: 12;
+    -fx-padding: 10 16 10 16;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(13, 110, 253, 0.35);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+.panel-button:hover {
+    -fx-background-color: rgba(13, 110, 253, 0.2);
+}
+
+.panel-button-danger {
+    -fx-background-color: rgba(220, 53, 69, 0.12);
+    -fx-text-fill: #c21c2b;
+    -fx-font-weight: 600;
+    -fx-background-radius: 12;
+    -fx-padding: 10 16 10 16;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+
+.panel-button-danger:hover {
+    -fx-background-color: rgba(220, 53, 69, 0.22);
+}
+
+.notification-item {
+    -fx-background-color: rgba(255, 255, 255, 0.14);
+    -fx-background-radius: 14;
+    -fx-padding: 12 16 12 16;
+}
+
+.notification-title {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+}
+
+.notification-detail {
+    -fx-text-fill: rgba(255, 255, 255, 0.85);
+    -fx-font-size: 12px;
+}
+
+.notification-meta {
+    -fx-text-fill: rgba(255, 255, 255, 0.7);
+    -fx-font-size: 11px;
+}
+
+.notification-empty {
+    -fx-text-fill: rgba(255, 255, 255, 0.85);
+    -fx-font-style: italic;
+    -fx-alignment: CENTER;
+}
+
+/* ============================================
    CARDS Y ESTADÍSTICAS
    ============================================ */
 
 .stat-card {
-    -fx-background-color: -fx-bg-card;
+    -fx-background-color: linear-gradient(to bottom right, rgba(13, 110, 253, 0.12), rgba(255, 255, 255, 0.98));
     -fx-background-radius: 12;
+    -fx-border-color: rgba(13, 110, 253, 0.18);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
     -fx-effect: dropshadow(gaussian, -fx-shadow, 8, 0, 0, 2);
 }
 
@@ -275,8 +385,11 @@
 }
 
 .info-card {
-    -fx-background-color: -fx-bg-card;
+    -fx-background-color: linear-gradient(to bottom right, rgba(13, 110, 253, 0.06), rgba(255, 255, 255, 0.96));
     -fx-background-radius: 12;
+    -fx-border-color: rgba(13, 110, 253, 0.15);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
     -fx-effect: dropshadow(gaussian, -fx-shadow, 8, 0, 0, 2);
 }
 
@@ -527,8 +640,11 @@
    ============================================ */
 
 .filter-card {
-    -fx-background-color: -fx-bg-card;
+    -fx-background-color: linear-gradient(to bottom right, rgba(13, 110, 253, 0.08), rgba(255, 255, 255, 0.96));
     -fx-background-radius: 12;
+    -fx-border-color: rgba(13, 110, 253, 0.18);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
     -fx-effect: dropshadow(gaussian, -fx-shadow, 8, 0, 0, 2);
 }
 
@@ -570,8 +686,11 @@
    ============================================ */
 
 .table-card {
-    -fx-background-color: -fx-bg-card;
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.96), rgba(205, 221, 255, 0.6));
     -fx-background-radius: 12;
+    -fx-border-color: rgba(13, 110, 253, 0.15);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
     -fx-effect: dropshadow(gaussian, -fx-shadow, 8, 0, 0, 2);
 }
 

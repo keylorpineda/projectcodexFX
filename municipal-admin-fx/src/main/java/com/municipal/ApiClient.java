@@ -50,12 +50,50 @@ public class ApiClient {
         return send(request, responseType);
     }
 
+    public <T> T post(String path, Object body, String bearerToken, Class<T> responseType) {
+        HttpRequest.Builder builder = authorizedBuilder(path, bearerToken)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.toJson(body)));
+        return send(builder.build(), responseType);
+    }
+
+    public <T> T put(String path, Object body, String bearerToken, Class<T> responseType) {
+        HttpRequest.Builder builder = authorizedBuilder(path, bearerToken)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(JsonUtils.toJson(body)));
+        return send(builder.build(), responseType);
+    }
+
+    public <T> T patch(String path, Object body, String bearerToken, Class<T> responseType) {
+        HttpRequest.BodyPublisher publisher = body != null
+                ? HttpRequest.BodyPublishers.ofString(JsonUtils.toJson(body))
+                : HttpRequest.BodyPublishers.noBody();
+        HttpRequest.Builder builder = authorizedBuilder(path, bearerToken)
+                .header("Content-Type", "application/json")
+                .method("PATCH", publisher);
+        return send(builder.build(), responseType);
+    }
+
+    public void delete(String path, String bearerToken) {
+        HttpRequest.Builder builder = authorizedBuilder(path, bearerToken)
+                .DELETE();
+        send(builder.build(), Void.class);
+    }
+
     public <T> T get(String path, String bearerToken, TypeReference<T> responseType) {
         HttpRequest.Builder builder = requestBuilder(path).GET();
         if (bearerToken != null && !bearerToken.isBlank()) {
             builder.header("Authorization", "Bearer " + bearerToken);
         }
         return send(builder.build(), responseType);
+    }
+
+    private HttpRequest.Builder authorizedBuilder(String path, String bearerToken) {
+        HttpRequest.Builder builder = requestBuilder(path);
+        if (bearerToken != null && !bearerToken.isBlank()) {
+            builder.header("Authorization", "Bearer " + bearerToken);
+        }
+        return builder;
     }
 
     public <T> T send(HttpRequest request, Class<T> responseType) {

@@ -1,6 +1,7 @@
 package com.municipal.controllers;
 
 import com.municipal.dtos.SpaceDTO;
+import com.municipal.dtos.SpaceInputDTO;
 import com.municipal.services.SpaceService;
 
 import java.util.List;
@@ -23,5 +24,21 @@ public class SpaceController {
 
     public List<SpaceDTO> loadSpaces(String bearerToken) {
         return spaceService.findAll(bearerToken);
+    }
+
+    public SpaceDTO createSpace(SpaceInputDTO input, String bearerToken) {
+        return spaceService.create(input, bearerToken);
+    }
+
+    public SpaceDTO updateSpace(Long id, SpaceInputDTO input, String bearerToken) {
+        return spaceService.update(id, input, bearerToken);
+    }
+
+    public SpaceDTO changeStatus(Long id, boolean active, String bearerToken) {
+        return spaceService.changeStatus(id, active, bearerToken);
+    }
+
+    public void deleteSpace(Long id, String bearerToken) {
+        spaceService.delete(id, bearerToken);
     }
 }

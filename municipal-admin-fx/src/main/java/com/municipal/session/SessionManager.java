@@ -42,4 +42,24 @@ public final class SessionManager {
         }
         return authResponse.role();
     }
+
+    public Long getUserId() {
+        return authResponse != null ? authResponse.userId() : null;
+    }
+
+    public void updateProfileInfo(String name, String email) {
+        if (authResponse == null) {
+            return;
+        }
+        authResponse = new AuthResponse(
+                authResponse.token(),
+                authResponse.tokenType(),
+                authResponse.expiresAt(),
+                authResponse.userId(),
+                authResponse.role(),
+                email != null && !email.isBlank() ? email : authResponse.email(),
+                name != null && !name.isBlank() ? name : authResponse.name(),
+                authResponse.profileComplete(),
+                authResponse.newUser());
+    }
 }

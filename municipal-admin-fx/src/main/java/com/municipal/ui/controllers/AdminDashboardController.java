@@ -7,12 +7,19 @@ import com.municipal.controllers.UserController;
 import com.municipal.controllers.WeatherController;
 import com.municipal.dtos.ReservationDTO;
 import com.municipal.dtos.SpaceDTO;
+import com.municipal.dtos.SpaceInputDTO;
 import com.municipal.dtos.UserDTO;
+import com.municipal.dtos.UserInputDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.session.SessionManager;
+import com.municipal.ui.navigation.FlowAware;
+import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
 import com.municipal.ui.navigation.ViewLifecycle;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -27,7 +34,9 @@ import javafx.scene.Node;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 
 import java.net.URL;
 import java.time.LocalDate;
@@ -42,7 +51,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -52,15 +64,22 @@ import java.util.stream.Collectors;
  * @author Tu Nombre
  * @version 1.0
  */
-public class AdminDashboardController implements Initializable, SessionAware, ViewLifecycle {
+public class AdminDashboardController implements Initializable, SessionAware, FlowAware, ViewLifecycle {
     
     // ==================== COMPONENTES PRINCIPALES ====================
     
     @FXML private StackPane contenedorPrincipal;
+    @FXML private StackPane headerStack;
     @FXML private Label lblNombreUsuario;
     @FXML private Label lblNotificacionesBadge;
     @FXML private Button btnNotificaciones;
-    
+    @FXML private VBox panelNotificaciones;
+    @FXML private VBox panelPerfil;
+    @FXML private VBox panelNotificacionesContent;
+    @FXML private Label lblPerfilNombre;
+    @FXML private Label lblPerfilCorreo;
+    @FXML private HBox userProfileBox;
+
     // Botones del menú lateral
     @FXML private Button btnInicio;
     @FXML private Button btnGestionEspacios;
@@ -115,6 +134,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     @FXML private TableColumn<Usuario, String> colRol;
     @FXML private TableColumn<Usuario, String> colEstadoUsuario;
     @FXML private TableColumn<Usuario, String> colUltimoAcceso;
+    @FXML private TableColumn<Usuario, String> colReservasUsuario;
     @FXML private TableColumn<Usuario, Void> colAccionesUsuario;
     
     // ==================== CONTROL DE RESERVAS ====================
@@ -178,6 +198,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     private final WeatherController weatherController = new WeatherController();
 
     private SessionManager sessionManager;
+    private FlowController flowController;
 
     private ObservableList<Espacio> listaEspacios;
     private ObservableList<Espacio> listaEspaciosFiltrados;
@@ -187,16 +208,30 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     private ObservableList<Reserva> listaReservasFiltradas;
     private EstadisticasDashboard estadisticas;
     private DatosClimaticos climaActual;
+    private Timeline climaTimeline;
+    private boolean panelNotificacionesVisible;
+    private boolean panelPerfilVisible;
+
+    private static final String LOGIN_VIEW_ID = "login";
+    private static final double PANEL_SLIDE_OFFSET = 360;
+    private static final Duration PANEL_ANIMATION_DURATION = Duration.millis(260);
+    private static final Duration CLIMA_REFRESH_INTERVAL = Duration.seconds(30);
+    private static final List<String> TIPOS_ESPACIO = List.of("SALA", "CANCHA", "AUDITORIO");
+    private static final Map<String, String> ROLES_FRIENDLY = Map.of(
+            "ADMIN", "Administrador",
+            "SUPERVISOR", "Supervisor",
+            "USER", "Usuario");
     
     // ==================== INICIALIZACIÓN ====================
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         System.out.println("Inicializando Panel de Administración...");
-        
+
         // Inicializar listas de datos
         inicializarDatos();
-        
+        inicializarPanelesDeslizables();
+
         // Configurar componentes de la interfaz
         inicializarComboBoxes();
         inicializarSpinners();
@@ -216,6 +251,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     }
 
     @Override
+    public void setFlowController(FlowController flowController) {
+        this.flowController = flowController;
+    }
+
+    @Override
     public void onViewActivated() {
         bootstrap();
     }
@@ -223,6 +263,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     public void bootstrap() {
         cargarUsuarioActual();
         cargarDatosIniciales(false);
+        iniciarActualizacionClima();
     }
     
     /**
@@ -236,6 +277,62 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         listaReservas = FXCollections.observableArrayList();
         listaReservasFiltradas = FXCollections.observableArrayList();
         estadisticas = new EstadisticasDashboard();
+    }
+
+    private void inicializarPanelesDeslizables() {
+        configurarPanelDeslizable(panelNotificaciones);
+        configurarPanelDeslizable(panelPerfil);
+        panelNotificacionesVisible = false;
+        panelPerfilVisible = false;
+    }
+
+    private void configurarPanelDeslizable(VBox panel) {
+        if (panel == null) {
+            return;
+        }
+        panel.setVisible(false);
+        panel.setManaged(false);
+        panel.setTranslateX(PANEL_SLIDE_OFFSET);
+    }
+
+    private void mostrarPanel(VBox panel) {
+        if (panel == null) {
+            return;
+        }
+        panel.setVisible(true);
+        panel.setManaged(true);
+        panel.setTranslateX(PANEL_SLIDE_OFFSET);
+        panel.toFront();
+        TranslateTransition transition = new TranslateTransition(PANEL_ANIMATION_DURATION, panel);
+        transition.setFromX(PANEL_SLIDE_OFFSET);
+        transition.setToX(0);
+        transition.play();
+    }
+
+    private void ocultarPanel(VBox panel) {
+        if (panel == null || !panel.isVisible()) {
+            return;
+        }
+        TranslateTransition transition = new TranslateTransition(PANEL_ANIMATION_DURATION, panel);
+        transition.setFromX(panel.getTranslateX());
+        transition.setToX(PANEL_SLIDE_OFFSET);
+        transition.setOnFinished(event -> {
+            panel.setVisible(false);
+            panel.setManaged(false);
+            panel.setTranslateX(PANEL_SLIDE_OFFSET);
+        });
+        transition.play();
+    }
+
+    private void cerrarPanelesDeslizables() {
+        if (panelNotificacionesVisible) {
+            ocultarPanel(panelNotificaciones);
+            panelNotificacionesVisible = false;
+        }
+        if (panelPerfilVisible) {
+            ocultarPanel(panelPerfil);
+            panelPerfilVisible = false;
+        }
     }
     
     /**
@@ -448,31 +545,38 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         // Configurar columna de acciones
         colAccionesEspacio.setCellFactory(param -> new TableCell<Espacio, Void>() {
             private final Button btnEditar = new Button("✏️");
+            private final Button btnEstado = new Button("🔁");
             private final Button btnEliminar = new Button("🗑️");
             private final Button btnVer = new Button("👁️");
-            private final HBox contenedor = new HBox(5, btnVer, btnEditar, btnEliminar);
-            
+            private final HBox contenedor = new HBox(5, btnVer, btnEditar, btnEstado, btnEliminar);
+
             {
                 btnVer.setOnAction(e -> {
                     Espacio espacio = getTableView().getItems().get(getIndex());
                     verDetallesEspacio(espacio);
                 });
-                
+
                 btnEditar.setOnAction(e -> {
                     Espacio espacio = getTableView().getItems().get(getIndex());
                     editarEspacio(espacio);
                 });
-                
+
+                btnEstado.setOnAction(e -> {
+                    Espacio espacio = getTableView().getItems().get(getIndex());
+                    cambiarEstadoEspacio(espacio);
+                });
+
                 btnEliminar.setOnAction(e -> {
                     Espacio espacio = getTableView().getItems().get(getIndex());
                     eliminarEspacio(espacio);
                 });
-                
+
                 // Estilos para los botones
                 btnVer.setStyle("-fx-background-color: #17A2B8; -fx-text-fill: white; -fx-cursor: hand;");
                 btnEditar.setStyle("-fx-background-color: #FFC107; -fx-text-fill: white; -fx-cursor: hand;");
+                btnEstado.setStyle("-fx-background-color: #0D6EFD; -fx-text-fill: white; -fx-cursor: hand;");
                 btnEliminar.setStyle("-fx-background-color: #DC3545; -fx-text-fill: white; -fx-cursor: hand;");
-                
+
                 contenedor.setAlignment(Pos.CENTER);
             }
             
@@ -494,7 +598,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         colCorreo.setCellValueFactory(new PropertyValueFactory<>("correo"));
         colRol.setCellValueFactory(new PropertyValueFactory<>("rol"));
         colEstadoUsuario.setCellValueFactory(new PropertyValueFactory<>("estado"));
-        
+
         // Formatear columna de último acceso
         colUltimoAcceso.setCellValueFactory(cellData -> {
             LocalDateTime fecha = cellData.getValue().getUltimoAcceso();
@@ -504,7 +608,37 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             return new SimpleStringProperty(fecha.format(formatter));
         });
-        
+
+        if (colReservasUsuario != null) {
+            colReservasUsuario.setCellValueFactory(cellData -> {
+                Usuario usuario = cellData.getValue();
+                if (usuario == null) {
+                    return new SimpleStringProperty("0 / 0");
+                }
+                String resumen = String.format(Locale.getDefault(), "%d / %d",
+                        Math.max(usuario.getTotalReservas(), 0),
+                        Math.max(usuario.getReservasAprobadas(), 0));
+                return new SimpleStringProperty(resumen);
+            });
+
+            colReservasUsuario.setCellFactory(column -> new TableCell<>() {
+                @Override
+                protected void updateItem(String value, boolean empty) {
+                    super.updateItem(value, empty);
+
+                    if (empty || value == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        Label etiqueta = new Label(value + " (tot/apr)");
+                        etiqueta.getStyleClass().add("tag-info");
+                        setGraphic(etiqueta);
+                        setText(null);
+                    }
+                }
+            });
+        }
+
         // Personalizar columna de rol
         colRol.setCellFactory(column -> new TableCell<Usuario, String>() {
             @Override
@@ -542,25 +676,32 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         colAccionesUsuario.setCellFactory(param -> new TableCell<Usuario, Void>() {
             private final Button btnEditar = new Button("✏️");
             private final Button btnCambiarEstado = new Button("🔄");
-            private final HBox contenedor = new HBox(5, btnEditar, btnCambiarEstado);
-            
+            private final Button btnEliminar = new Button("🗑️");
+            private final HBox contenedor = new HBox(5, btnEditar, btnCambiarEstado, btnEliminar);
+
             {
                 btnEditar.setOnAction(e -> {
                     Usuario usuario = getTableView().getItems().get(getIndex());
                     editarUsuario(usuario);
                 });
-                
+
                 btnCambiarEstado.setOnAction(e -> {
                     Usuario usuario = getTableView().getItems().get(getIndex());
                     cambiarEstadoUsuario(usuario);
                 });
-                
+
+                btnEliminar.setOnAction(e -> {
+                    Usuario usuario = getTableView().getItems().get(getIndex());
+                    eliminarUsuario(usuario);
+                });
+
                 btnEditar.setStyle("-fx-background-color: #FFC107; -fx-text-fill: white; -fx-cursor: hand;");
                 btnCambiarEstado.setStyle("-fx-background-color: #17A2B8; -fx-text-fill: white; -fx-cursor: hand;");
-                
+                btnEliminar.setStyle("-fx-background-color: #DC3545; -fx-text-fill: white; -fx-cursor: hand;");
+
                 contenedor.setAlignment(Pos.CENTER);
             }
-            
+
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
@@ -748,7 +889,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     private void configurarBotones() {
         // Botón de notificaciones
         if (btnNotificaciones != null) {
-            btnNotificaciones.setOnAction(e -> mostrarNotificaciones());
+            btnNotificaciones.setOnAction(this::toggleNotificacionesPanel);
+        }
+
+        if (userProfileBox != null) {
+            userProfileBox.addEventHandler(MouseEvent.MOUSE_CLICKED, this::togglePerfilPanel);
         }
     }
     
@@ -756,54 +901,61 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     
     @FXML
     private void mostrarInicio() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaInicio.setVisible(true);
         actualizarMenuActivo(btnInicio);
         cargarDatosDashboard();
     }
-    
+
     @FXML
     private void mostrarGestionEspacios() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaGestionEspacios.setVisible(true);
         actualizarMenuActivo(btnGestionEspacios);
         cargarEspacios();
     }
-    
+
     @FXML
     private void mostrarGestionUsuarios() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaGestionUsuarios.setVisible(true);
         actualizarMenuActivo(btnGestionUsuarios);
         cargarUsuarios();
     }
-    
+
     @FXML
     private void mostrarControlReservas() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaControlReservas.setVisible(true);
         actualizarMenuActivo(btnControlReservas);
         cargarReservas();
     }
-    
+
     @FXML
     private void mostrarReportesGlobales() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaReportesGlobales.setVisible(true);
         actualizarMenuActivo(btnReportesGlobales);
         cargarReportes();
     }
-    
+
     @FXML
     private void mostrarMonitoreoClimatico() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaMonitoreoClimatico.setVisible(true);
         actualizarMenuActivo(btnMonitoreoClimatico);
         cargarClima();
     }
-    
+
     @FXML
     private void mostrarConfiguracion() {
+        cerrarPanelesDeslizables();
         ocultarTodasLasVistas();
         vistaConfiguracion.setVisible(true);
         actualizarMenuActivo(btnConfiguracion);
@@ -866,7 +1018,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
                 displayName = "Usuario";
             }
             lblNombreUsuario.setText(displayName);
-        }, () -> lblNombreUsuario.setText("Usuario"));
+            if (lblPerfilNombre != null) {
+                lblPerfilNombre.setText(displayName);
+            }
+            if (lblPerfilCorreo != null) {
+                lblPerfilCorreo.setText(response.email() != null ? response.email() : "Sin correo registrado");
+            }
+        }, () -> {
+            lblNombreUsuario.setText("Usuario");
+            if (lblPerfilNombre != null) {
+                lblPerfilNombre.setText("Usuario");
+            }
+            if (lblPerfilCorreo != null) {
+                lblPerfilCorreo.setText("correo@municipal.go.cr");
+            }
+        });
     }
 
     /**
@@ -1041,7 +1207,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         String estado = activo ? "Disponible" : "Inactivo";
         boolean esExterior = "CANCHA".equalsIgnoreCase(tipo);
         String descripcion = defaultString(dto.description());
-        return new Espacio(id, nombre, tipo, capacidad, estado, descripcion, esExterior);
+        String ubicacion = defaultString(dto.location());
+        Integer maxDuracion = dto.maxReservationDuration();
+        boolean requiereAprobacion = dto.requiresApproval() != null && dto.requiresApproval();
+        return new Espacio(id, nombre, tipo, capacidad, estado, descripcion, esExterior,
+                ubicacion, maxDuracion, requiereAprobacion, activo);
     }
 
     private Usuario mapearUsuario(UserDTO dto) {
@@ -1051,10 +1221,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         Long id = dto.id();
         String nombre = defaultString(dto.name());
         String correo = defaultString(dto.email());
-        String rol = defaultString(dto.role());
-        String estado = Boolean.TRUE.equals(dto.active()) ? "Activo" : "Inactivo";
+        String rolCodigo = defaultString(dto.role()).toUpperCase(Locale.ROOT);
+        String rol = obtenerRolFriendly(rolCodigo);
+        boolean activo = dto.active() == null || Boolean.TRUE.equals(dto.active());
+        String estado = activo ? "Activo" : "Inactivo";
         LocalDateTime ultimoAcceso = dto.lastLoginAt();
-        return new Usuario(id, nombre, correo, rol, estado, ultimoAcceso, null);
+        int totalReservas = dto.reservationIds() != null ? dto.reservationIds().size() : 0;
+        int reservasAprobadas = dto.approvedReservationIds() != null
+                ? dto.approvedReservationIds().size() : 0;
+        return new Usuario(id, nombre, correo, rol, estado, ultimoAcceso, null, rolCodigo, activo,
+                totalReservas, reservasAprobadas);
     }
 
     private Reserva mapearReserva(ReservationDTO dto, Map<Long, Usuario> usuariosPorId,
@@ -1213,6 +1389,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
         actualizarIndicadoresClimaticos();
     }
 
+    private void iniciarActualizacionClima() {
+        if (climaTimeline != null) {
+            climaTimeline.stop();
+        }
+        climaTimeline = new Timeline(new KeyFrame(CLIMA_REFRESH_INTERVAL, event -> recargarClima(false)));
+        climaTimeline.setCycleCount(Timeline.INDEFINITE);
+        climaTimeline.play();
+        recargarClima(false);
+    }
+
     private void recargarClima(boolean notifySuccess) {
         if (sessionManager == null) {
             mostrarAdvertencia("No hay sesión activa para actualizar el clima.");
@@ -1268,14 +1454,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
 
         contenedorAlertas.getChildren().clear();
 
-        List<Reserva> reservasConAlertas = listaReservas.stream()
-                .filter(reserva -> {
-                    String estado = reserva.getEstado();
-                    return "Pendiente".equalsIgnoreCase(estado)
-                            || "Cancelada".equalsIgnoreCase(estado)
-                            || "Inasistencia".equalsIgnoreCase(estado);
-                })
-                .collect(Collectors.toList());
+        List<Reserva> reservasConAlertas = obtenerReservasConAlertas();
 
         if (lblNumAlertas != null) {
             lblNumAlertas.setText(String.valueOf(reservasConAlertas.size()));
@@ -1289,6 +1468,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
             Label sinAlertas = new Label("No hay alertas activas en este momento.");
             sinAlertas.setStyle("-fx-text-fill: #6C757D; -fx-font-style: italic;");
             contenedorAlertas.getChildren().add(sinAlertas);
+            actualizarPanelNotificaciones(reservasConAlertas);
             return;
         }
 
@@ -1296,6 +1476,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
                 .limit(5)
                 .map(this::crearAlertaDesdeReserva)
                 .forEach(contenedorAlertas.getChildren()::add);
+
+        actualizarPanelNotificaciones(reservasConAlertas);
     }
 
     private HBox crearAlertaDesdeReserva(Reserva reserva) {
@@ -1791,54 +1973,482 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     // ==================== ACCIONES DE ESPACIOS ====================
     
     @FXML
-    private void nuevoEspacio(ActionEvent event) {
-        mostrarInformacion("Funcionalidad en desarrollo",
-                "La creación de espacios se realizará desde el backend cuando la API lo permita.");
+    private void agregarEspacio(ActionEvent event) {
+        mostrarFormularioEspacio(null);
     }
 
     private void verDetallesEspacio(Espacio espacio) {
+        if (espacio == null) {
+            return;
+        }
+        StringBuilder detalles = new StringBuilder();
+        detalles.append("Tipo: ").append(espacio.getTipo()).append('\n');
+        detalles.append("Capacidad: ").append(espacio.getCapacidad()).append(" personas\n");
+        detalles.append("Ubicación: ")
+                .append(espacio.getUbicacion() != null && !espacio.getUbicacion().isBlank()
+                        ? espacio.getUbicacion()
+                        : "No registrada")
+                .append('\n');
+        detalles.append("Duración máxima: ")
+                .append(espacio.getMaxDuracion() != null ? espacio.getMaxDuracion() + " horas" : "No definida")
+                .append('\n');
+        detalles.append("Requiere aprobación: ").append(espacio.isRequiereAprobacion() ? "Sí" : "No").append('\n');
+        detalles.append("Estado: ").append(espacio.getEstado()).append('\n');
+        detalles.append("Descripción: ")
+                .append(espacio.getDescripcion() != null && !espacio.getDescripcion().isBlank()
+                        ? espacio.getDescripcion()
+                        : "Sin descripción disponible");
+
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Detalles del Espacio");
+        alert.setTitle("Detalles del espacio");
         alert.setHeaderText(espacio.getNombre());
-        alert.setContentText(
-            "Tipo: " + espacio.getTipo() + "\n" +
-            "Capacidad: " + espacio.getCapacidad() + " personas\n" +
-            "Estado: " + espacio.getEstado() + "\n" +
-            "Descripción: " + espacio.getDescripcion()
-        );
+        alert.setContentText(detalles.toString());
         alert.showAndWait();
     }
 
     private void editarEspacio(Espacio espacio) {
-        mostrarInformacion("Funcionalidad en desarrollo",
-                "La edición de espacios se habilitará cuando la API exponga esta operación.");
+        mostrarFormularioEspacio(espacio);
+    }
+
+    private void cambiarEstadoEspacio(Espacio espacio) {
+        if (espacio == null || espacio.getId() == null) {
+            mostrarAdvertencia("Selecciona un espacio válido para actualizar su estado.");
+            return;
+        }
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+        boolean nuevoEstado = !espacio.isActivo();
+        ejecutarOperacionAsync(
+                () -> spaceController.changeStatus(espacio.getId(), nuevoEstado, token),
+                dto -> {
+                    Espacio actualizado = mapearEspacio(dto);
+                    actualizarEspacioEnListas(actualizado);
+                    mostrarExito(nuevoEstado ? "Espacio activado" : "Espacio desactivado");
+                },
+                "Actualizando espacio...",
+                "No se pudo actualizar el estado del espacio");
     }
 
     private void eliminarEspacio(Espacio espacio) {
-        mostrarInformacion("Funcionalidad en desarrollo",
-                "La eliminación de espacios se sincronizará con el backend en una versión futura.");
+        if (espacio == null || espacio.getId() == null) {
+            mostrarAdvertencia("Selecciona un espacio válido para eliminar.");
+            return;
+        }
+
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacion.setTitle("Eliminar espacio");
+        confirmacion.setHeaderText("¿Deseas eliminar el espacio " + espacio.getNombre() + "?");
+        confirmacion.setContentText("Esta acción no se puede deshacer.");
+
+        Optional<ButtonType> resultado = confirmacion.showAndWait();
+        if (resultado.isEmpty() || resultado.get() != ButtonType.OK) {
+            return;
+        }
+
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+
+        ejecutarOperacionAsync(
+                () -> {
+                    spaceController.deleteSpace(espacio.getId(), token);
+                    return null;
+                },
+                unused -> {
+                    listaEspacios.removeIf(item -> Objects.equals(item.getId(), espacio.getId()));
+                    listaEspaciosFiltrados.removeIf(item -> Objects.equals(item.getId(), espacio.getId()));
+                    filtrarEspacios();
+                    mostrarExito("Espacio eliminado correctamente");
+                },
+                "Eliminando espacio...",
+                "No se pudo eliminar el espacio");
     }
-    
+
+    private void mostrarFormularioEspacio(Espacio espacio) {
+        Dialog<SpaceInputDTO> dialog = new Dialog<>();
+        dialog.setTitle(espacio == null ? "Agregar espacio" : "Editar espacio");
+        dialog.setHeaderText(espacio == null
+                ? "Completa la información del nuevo espacio."
+                : "Actualiza la información del espacio seleccionado.");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+
+        TextField txtNombre = new TextField();
+        txtNombre.setPromptText("Nombre del espacio");
+
+        ComboBox<String> cmbTipo = new ComboBox<>(FXCollections.observableArrayList(TIPOS_ESPACIO));
+        cmbTipo.setPromptText("Tipo de espacio");
+
+        Spinner<Integer> spCapacidad = new Spinner<>(1, 500, 10);
+        spCapacidad.setEditable(true);
+
+        TextField txtUbicacion = new TextField();
+        txtUbicacion.setPromptText("Ubicación");
+
+        Spinner<Integer> spMaxDuracion = new Spinner<>(1, 12, 2);
+        spMaxDuracion.setEditable(true);
+
+        CheckBox chkRequiereAprobacion = new CheckBox("Requiere aprobación");
+        CheckBox chkActivo = new CheckBox("Activo");
+        chkActivo.setSelected(true);
+
+        TextArea txtDescripcion = new TextArea();
+        txtDescripcion.setPromptText("Descripción del espacio");
+        txtDescripcion.setPrefRowCount(4);
+
+        if (espacio != null) {
+            txtNombre.setText(espacio.getNombre());
+            cmbTipo.setValue(espacio.getTipo());
+            spCapacidad.getValueFactory().setValue(espacio.getCapacidad());
+            txtUbicacion.setText(espacio.getUbicacion());
+            if (espacio.getMaxDuracion() != null) {
+                spMaxDuracion.getValueFactory().setValue(espacio.getMaxDuracion());
+            }
+            chkRequiereAprobacion.setSelected(espacio.isRequiereAprobacion());
+            chkActivo.setSelected(espacio.isActivo());
+            txtDescripcion.setText(espacio.getDescripcion());
+        } else {
+            cmbTipo.getSelectionModel().selectFirst();
+        }
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10, 10, 0, 10));
+
+        grid.add(new Label("Nombre"), 0, 0);
+        grid.add(txtNombre, 1, 0);
+        grid.add(new Label("Tipo"), 0, 1);
+        grid.add(cmbTipo, 1, 1);
+        grid.add(new Label("Capacidad"), 0, 2);
+        grid.add(spCapacidad, 1, 2);
+        grid.add(new Label("Ubicación"), 0, 3);
+        grid.add(txtUbicacion, 1, 3);
+        grid.add(new Label("Duración máx. (horas)"), 0, 4);
+        grid.add(spMaxDuracion, 1, 4);
+        grid.add(chkRequiereAprobacion, 0, 5);
+        grid.add(chkActivo, 1, 5);
+        grid.add(new Label("Descripción"), 0, 6);
+        grid.add(txtDescripcion, 1, 6);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.setText("Guardar");
+
+        okButton.addEventFilter(ActionEvent.ACTION, action -> {
+            if (txtNombre.getText().isBlank()) {
+                mostrarAdvertencia("El nombre del espacio es obligatorio.");
+                action.consume();
+            } else if (cmbTipo.getValue() == null || cmbTipo.getValue().isBlank()) {
+                mostrarAdvertencia("Selecciona un tipo de espacio.");
+                action.consume();
+            }
+        });
+
+        dialog.setResultConverter(button -> {
+            if (button != ButtonType.OK) {
+                return null;
+            }
+            String descripcion = txtDescripcion.getText() != null ? txtDescripcion.getText().trim() : "";
+            String ubicacion = txtUbicacion.getText() != null ? txtUbicacion.getText().trim() : "";
+            return new SpaceInputDTO(
+                    txtNombre.getText().trim(),
+                    cmbTipo.getValue(),
+                    spCapacidad.getValue(),
+                    descripcion,
+                    ubicacion,
+                    chkActivo.isSelected(),
+                    spMaxDuracion.getValue(),
+                    chkRequiereAprobacion.isSelected()
+            );
+        });
+
+        dialog.showAndWait().ifPresent(input -> guardarEspacio(espacio, input));
+    }
+
+    private void guardarEspacio(Espacio espacioOriginal, SpaceInputDTO input) {
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+
+        if (espacioOriginal == null || espacioOriginal.getId() == null) {
+            ejecutarOperacionAsync(
+                    () -> spaceController.createSpace(input, token),
+                    dto -> {
+                        Espacio creado = mapearEspacio(dto);
+                        listaEspacios.add(creado);
+                        filtrarEspacios();
+                        mostrarExito("Espacio creado correctamente");
+                    },
+                    "Creando espacio...",
+                    "No se pudo crear el espacio");
+        } else {
+            ejecutarOperacionAsync(
+                    () -> spaceController.updateSpace(espacioOriginal.getId(), input, token),
+                    dto -> {
+                        Espacio actualizado = mapearEspacio(dto);
+                        actualizarEspacioEnListas(actualizado);
+                        mostrarExito("Espacio actualizado correctamente");
+                    },
+                    "Actualizando espacio...",
+                    "No se pudo actualizar el espacio");
+        }
+    }
+
     // ==================== ACCIONES DE USUARIOS ====================
-    
+
     @FXML
     private void agregarUsuario(ActionEvent event) {
-        mostrarInformacion("Funcionalidad en desarrollo",
-                "La creación de usuarios debe realizarse desde los servicios del backend.");
+        mostrarFormularioUsuario(null);
     }
-    
+
     private void editarUsuario(Usuario usuario) {
-        // TODO: Abrir diálogo de edición completo
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Editar Usuario");
-        alert.setHeaderText("Funcionalidad en desarrollo");
-        alert.setContentText("Aquí podrás editar: " + usuario.getNombre());
-        alert.showAndWait();
+        mostrarFormularioUsuario(usuario);
     }
-    
+
     private void cambiarEstadoUsuario(Usuario usuario) {
-        mostrarInformacion("Funcionalidad en desarrollo",
-                "El cambio de estado de usuarios se integrará con la API en próximas iteraciones.");
+        if (usuario == null || usuario.getId() == null) {
+            mostrarAdvertencia("Selecciona un usuario válido para actualizar su estado.");
+            return;
+        }
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+
+        boolean nuevoEstado = !usuario.isActivo();
+        UserInputDTO input = new UserInputDTO(
+                usuario.getRolCodigo(),
+                usuario.getNombre(),
+                usuario.getCorreo(),
+                nuevoEstado);
+
+        ejecutarOperacionAsync(
+                () -> userController.updateUser(usuario.getId(), input, token),
+                dto -> {
+                    Usuario actualizado = mapearUsuario(dto);
+                    actualizarUsuarioEnListas(actualizado);
+                    if (sessionManager != null && sessionManager.getUserId() != null
+                            && sessionManager.getUserId().equals(actualizado.getId())) {
+                        sessionManager.updateProfileInfo(actualizado.getNombre(), actualizado.getCorreo());
+                        cargarUsuarioActual();
+                        actualizarPanelPerfil();
+                    }
+                    mostrarExito(nuevoEstado ? "Usuario activado" : "Usuario desactivado");
+                },
+                "Actualizando usuario...",
+                "No se pudo actualizar el usuario");
+    }
+
+    private void eliminarUsuario(Usuario usuario) {
+        if (usuario == null || usuario.getId() == null) {
+            mostrarAdvertencia("Selecciona un usuario válido para eliminar.");
+            return;
+        }
+
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacion.setTitle("Eliminar usuario");
+        confirmacion.setHeaderText("¿Deseas eliminar al usuario " + usuario.getNombre() + "?");
+        confirmacion.setContentText("Esta acción no se puede deshacer.");
+
+        Optional<ButtonType> resultado = confirmacion.showAndWait();
+        if (resultado.isEmpty() || resultado.get() != ButtonType.OK) {
+            return;
+        }
+
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+
+        ejecutarOperacionAsync(
+                () -> {
+                    userController.deleteUser(usuario.getId(), token);
+                    return null;
+                },
+                unused -> {
+                    listaUsuarios.removeIf(item -> Objects.equals(item.getId(), usuario.getId()));
+                    listaUsuariosFiltrados.removeIf(item -> Objects.equals(item.getId(), usuario.getId()));
+                    filtrarUsuarios();
+                    mostrarExito("Usuario eliminado correctamente");
+                },
+                "Eliminando usuario...",
+                "No se pudo eliminar el usuario");
+    }
+
+    private void mostrarFormularioUsuario(Usuario usuario) {
+        Dialog<UserInputDTO> dialog = new Dialog<>();
+        dialog.setTitle(usuario == null ? "Agregar usuario" : "Editar usuario");
+        dialog.setHeaderText(usuario == null
+                ? "Completa los datos del nuevo usuario."
+                : "Actualiza los datos del usuario seleccionado.");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+
+        TextField txtNombre = new TextField();
+        txtNombre.setPromptText("Nombre completo");
+
+        TextField txtCorreo = new TextField();
+        txtCorreo.setPromptText("Correo electrónico");
+
+        ComboBox<String> cmbRol = new ComboBox<>(FXCollections.observableArrayList(ROLES_FRIENDLY.values()));
+        cmbRol.setPromptText("Rol del usuario");
+
+        CheckBox chkActivo = new CheckBox("Activo");
+        chkActivo.setSelected(true);
+
+        if (usuario != null) {
+            txtNombre.setText(usuario.getNombre());
+            txtCorreo.setText(usuario.getCorreo());
+            cmbRol.setValue(ROLES_FRIENDLY.getOrDefault(usuario.getRolCodigo(), usuario.getRol()));
+            chkActivo.setSelected(usuario.isActivo());
+        } else {
+            cmbRol.setValue(ROLES_FRIENDLY.getOrDefault("USER", "Usuario"));
+        }
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10, 10, 0, 10));
+
+        grid.add(new Label("Nombre"), 0, 0);
+        grid.add(txtNombre, 1, 0);
+        grid.add(new Label("Correo"), 0, 1);
+        grid.add(txtCorreo, 1, 1);
+        grid.add(new Label("Rol"), 0, 2);
+        grid.add(cmbRol, 1, 2);
+        grid.add(chkActivo, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.setText("Guardar");
+
+        okButton.addEventFilter(ActionEvent.ACTION, action -> {
+            if (txtCorreo.getText().isBlank()) {
+                mostrarAdvertencia("El correo electrónico es obligatorio.");
+                action.consume();
+            } else if (cmbRol.getValue() == null) {
+                mostrarAdvertencia("Selecciona un rol para el usuario.");
+                action.consume();
+            }
+        });
+
+        dialog.setResultConverter(button -> {
+            if (button != ButtonType.OK) {
+                return null;
+            }
+            String rolCodigo = obtenerRolCodigoDesdeFriendly(cmbRol.getValue());
+            return new UserInputDTO(
+                    rolCodigo,
+                    txtNombre.getText().trim(),
+                    txtCorreo.getText().trim(),
+                    chkActivo.isSelected()
+            );
+        });
+
+        dialog.showAndWait().ifPresent(input -> guardarUsuario(usuario, input));
+    }
+
+    private void guardarUsuario(Usuario usuarioOriginal, UserInputDTO input) {
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+
+        if (usuarioOriginal == null || usuarioOriginal.getId() == null) {
+            ejecutarOperacionAsync(
+                    () -> userController.createUser(input, token),
+                    dto -> {
+                        Usuario creado = mapearUsuario(dto);
+                        listaUsuarios.add(creado);
+                        filtrarUsuarios();
+                        mostrarExito("Usuario agregado correctamente");
+                    },
+                    "Creando usuario...",
+                    "No se pudo crear el usuario");
+        } else {
+            ejecutarOperacionAsync(
+                    () -> userController.updateUser(usuarioOriginal.getId(), input, token),
+                    dto -> {
+                        Usuario actualizado = mapearUsuario(dto);
+                        actualizarUsuarioEnListas(actualizado);
+                        if (sessionManager != null && sessionManager.getUserId() != null
+                                && sessionManager.getUserId().equals(actualizado.getId())) {
+                            sessionManager.updateProfileInfo(actualizado.getNombre(), actualizado.getCorreo());
+                            cargarUsuarioActual();
+                            actualizarPanelPerfil();
+                        }
+                        mostrarExito("Usuario actualizado correctamente");
+                    },
+                    "Actualizando usuario...",
+                    "No se pudo actualizar el usuario");
+        }
+    }
+
+    private void actualizarEspacioEnListas(Espacio espacioActualizado) {
+        if (espacioActualizado == null || espacioActualizado.getId() == null) {
+            return;
+        }
+        reemplazarEspacio(listaEspacios, espacioActualizado);
+        reemplazarEspacio(listaEspaciosFiltrados, espacioActualizado);
+        filtrarEspacios();
+    }
+
+    private void reemplazarEspacio(ObservableList<Espacio> lista, Espacio actualizado) {
+        if (lista == null || actualizado == null || actualizado.getId() == null) {
+            return;
+        }
+        for (int i = 0; i < lista.size(); i++) {
+            Espacio existente = lista.get(i);
+            if (existente.getId() != null && existente.getId().equals(actualizado.getId())) {
+                lista.set(i, actualizado);
+                return;
+            }
+        }
+    }
+
+    private void actualizarUsuarioEnListas(Usuario usuarioActualizado) {
+        if (usuarioActualizado == null || usuarioActualizado.getId() == null) {
+            return;
+        }
+        reemplazarUsuario(listaUsuarios, usuarioActualizado);
+        reemplazarUsuario(listaUsuariosFiltrados, usuarioActualizado);
+        filtrarUsuarios();
+    }
+
+    private void reemplazarUsuario(ObservableList<Usuario> lista, Usuario actualizado) {
+        if (lista == null || actualizado == null || actualizado.getId() == null) {
+            return;
+        }
+        for (int i = 0; i < lista.size(); i++) {
+            Usuario existente = lista.get(i);
+            if (existente.getId() != null && existente.getId().equals(actualizado.getId())) {
+                lista.set(i, actualizado);
+                return;
+            }
+        }
+    }
+
+    private String obtenerRolCodigoDesdeFriendly(String friendly) {
+        if (friendly == null) {
+            return null;
+        }
+        return ROLES_FRIENDLY.entrySet().stream()
+                .filter(entry -> entry.getValue().equalsIgnoreCase(friendly))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(friendly.trim().toUpperCase(Locale.ROOT));
+    }
+
+    private String obtenerRolFriendly(String rolCodigo) {
+        if (rolCodigo == null || rolCodigo.isBlank()) {
+            return ROLES_FRIENDLY.getOrDefault("USER", "Usuario");
+        }
+        return ROLES_FRIENDLY.getOrDefault(rolCodigo.trim().toUpperCase(Locale.ROOT), rolCodigo);
     }
     
     // ==================== ACCIONES DE RESERVAS ====================
@@ -1907,25 +2517,220 @@ public class AdminDashboardController implements Initializable, SessionAware, Vi
     @FXML
     private void exportarPDF(ActionEvent event) {
         // TODO: Implementar exportación a PDF
-        mostrarInformacion("Exportando a PDF...", 
+        mostrarInformacion("Exportando a PDF...",
                           "Esta funcionalidad está en desarrollo.\n" +
                           "Pronto podrás exportar los reportes a formato PDF.");
     }
-    
+
     private void actualizarReportes() {
         cargarReportes();
     }
-    
-    private void mostrarNotificaciones() {
-        // TODO: Mostrar panel de notificaciones
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Notificaciones");
-        alert.setHeaderText("Centro de Notificaciones");
-        alert.setContentText("Tienes 3 notificaciones pendientes:\n\n" +
-                           "1. Nueva reserva en Salón Comunal\n" +
-                           "2. Alerta climática en Cancha Norte\n" +
-                           "3. Usuario pendiente de aprobación");
-        alert.showAndWait();
+
+    private <T> void ejecutarOperacionAsync(Supplier<T> supplier, Consumer<T> onSuccess,
+            String mensajeCarga, String mensajeError) {
+        Task<T> task = new Task<>() {
+            @Override
+            protected T call() {
+                return supplier.get();
+            }
+        };
+
+        if (mensajeCarga != null && !mensajeCarga.isBlank()) {
+            task.setOnRunning(event -> mostrarIndicadorCarga(mensajeCarga));
+        }
+
+        task.setOnSucceeded(event -> {
+            ocultarIndicadorCarga();
+            if (onSuccess != null) {
+                onSuccess.accept(task.getValue());
+            }
+        });
+
+        task.setOnFailed(event -> {
+            ocultarIndicadorCarga();
+            Throwable error = task.getException();
+            manejarErrorOperacion(error, mensajeError);
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void manejarErrorOperacion(Throwable error, String contexto) {
+        String mensaje = construirMensajeError(error);
+        if (contexto == null || contexto.isBlank()) {
+            mostrarError(mensaje);
+        } else {
+            mostrarError(contexto + ": " + mensaje);
+        }
+    }
+
+    private Usuario encontrarUsuarioActual() {
+        if (sessionManager == null) {
+            return null;
+        }
+        Long userId = sessionManager.getUserId();
+        if (userId == null) {
+            return null;
+        }
+        return listaUsuarios.stream()
+                .filter(usuario -> userId.equals(usuario.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String obtenerToken() {
+        if (sessionManager == null) {
+            mostrarAdvertencia("No hay sesión activa.");
+            return null;
+        }
+        String token = sessionManager.getAccessToken();
+        if (token == null || token.isBlank()) {
+            mostrarAdvertencia("No se encontró un token de acceso válido.");
+            return null;
+        }
+        return token;
+    }
+
+    @FXML
+    private void toggleNotificacionesPanel(ActionEvent event) {
+        if (panelNotificaciones == null) {
+            return;
+        }
+
+        if (panelNotificacionesVisible) {
+            ocultarPanel(panelNotificaciones);
+            panelNotificacionesVisible = false;
+            return;
+        }
+
+        List<Reserva> reservasConAlertas = obtenerReservasConAlertas();
+        actualizarPanelNotificaciones(reservasConAlertas);
+
+        ocultarPanel(panelPerfil);
+        panelPerfilVisible = false;
+
+        mostrarPanel(panelNotificaciones);
+        panelNotificacionesVisible = true;
+    }
+
+    private void actualizarPanelNotificaciones(List<Reserva> reservasConAlertas) {
+        if (panelNotificacionesContent == null) {
+            return;
+        }
+        panelNotificacionesContent.getChildren().clear();
+
+        if (reservasConAlertas == null || reservasConAlertas.isEmpty()) {
+            Label label = new Label("No hay notificaciones pendientes.");
+            label.getStyleClass().add("notification-empty");
+            label.setWrapText(true);
+            label.setAlignment(Pos.CENTER);
+            panelNotificacionesContent.getChildren().add(label);
+            return;
+        }
+
+        reservasConAlertas.stream()
+                .limit(8)
+                .map(this::crearNotificacionDesdeReserva)
+                .forEach(panelNotificacionesContent.getChildren()::add);
+    }
+
+    private Node crearNotificacionDesdeReserva(Reserva reserva) {
+        VBox contenedor = new VBox(4);
+        contenedor.getStyleClass().add("notification-item");
+
+        String titulo = reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "Reserva";
+        Label lblTitulo = new Label(titulo);
+        lblTitulo.getStyleClass().add("notification-title");
+
+        String detalle = switch (reserva.getEstado()) {
+            case "Cancelada" -> "Reserva cancelada por el usuario.";
+            case "Inasistencia" -> "El usuario no se presentó.";
+            case "Pendiente" -> "Pendiente de aprobación.";
+            default -> "Estado: " + reserva.getEstado();
+        };
+        Label lblDetalle = new Label(detalle);
+        lblDetalle.getStyleClass().add("notification-detail");
+
+        String fecha = reserva.getFecha() != null ? reserva.getFecha().format(DateTimeFormatter.ISO_LOCAL_DATE) : "Sin fecha";
+        Label lblFecha = new Label("Programada: " + fecha);
+        lblFecha.getStyleClass().add("notification-meta");
+
+        contenedor.getChildren().addAll(lblTitulo, lblDetalle, lblFecha);
+        return contenedor;
+    }
+
+    private List<Reserva> obtenerReservasConAlertas() {
+        return listaReservas.stream()
+                .filter(reserva -> {
+                    String estado = reserva.getEstado();
+                    return "Pendiente".equalsIgnoreCase(estado)
+                            || "Cancelada".equalsIgnoreCase(estado)
+                            || "Inasistencia".equalsIgnoreCase(estado);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @FXML
+    private void togglePerfilPanel(MouseEvent event) {
+        if (panelPerfil == null) {
+            return;
+        }
+
+        if (panelPerfilVisible) {
+            ocultarPanel(panelPerfil);
+            panelPerfilVisible = false;
+            return;
+        }
+
+        actualizarPanelPerfil();
+        ocultarPanel(panelNotificaciones);
+        panelNotificacionesVisible = false;
+
+        mostrarPanel(panelPerfil);
+        panelPerfilVisible = true;
+    }
+
+    private void actualizarPanelPerfil() {
+        if (sessionManager == null) {
+            return;
+        }
+
+        sessionManager.getAuthResponse().ifPresent(response -> {
+            String nombre = response.name();
+            if (nombre == null || nombre.isBlank()) {
+                nombre = response.email();
+            }
+            if (lblPerfilNombre != null) {
+                lblPerfilNombre.setText(nombre != null && !nombre.isBlank() ? nombre : "Usuario");
+            }
+            if (lblPerfilCorreo != null) {
+                lblPerfilCorreo.setText(response.email() != null ? response.email() : "Sin correo registrado");
+            }
+        });
+    }
+
+    @FXML
+    private void editarPerfil(ActionEvent event) {
+        cerrarPanelesDeslizables();
+        Usuario usuarioActual = encontrarUsuarioActual();
+        if (usuarioActual == null) {
+            mostrarAdvertencia("No se encontró la información del usuario en sesión.");
+            return;
+        }
+        mostrarFormularioUsuario(usuarioActual);
+    }
+
+    @FXML
+    private void cerrarSesion(ActionEvent event) {
+        cerrarPanelesDeslizables();
+        if (sessionManager != null) {
+            sessionManager.clear();
+        }
+        if (flowController != null) {
+            flowController.showView(LOGIN_VIEW_ID);
+        }
     }
     
     // ==================== CONFIGURACIÓN ====================
@@ -2060,9 +2865,14 @@ class Espacio {
     private String estado;
     private String descripcion;
     private boolean esExterior;
+    private String ubicacion;
+    private Integer maxDuracion;
+    private boolean requiereAprobacion;
+    private boolean activo;
 
     public Espacio(Long id, String nombre, String tipo, int capacidad, String estado,
-                   String descripcion, boolean esExterior) {
+                   String descripcion, boolean esExterior, String ubicacion,
+                   Integer maxDuracion, boolean requiereAprobacion, boolean activo) {
         this.id = id;
         this.nombre = nombre;
         this.tipo = tipo;
@@ -2070,6 +2880,10 @@ class Espacio {
         this.estado = estado;
         this.descripcion = descripcion;
         this.esExterior = esExterior;
+        this.ubicacion = ubicacion;
+        this.maxDuracion = maxDuracion;
+        this.requiereAprobacion = requiereAprobacion;
+        this.activo = activo;
     }
 
     // Getters y Setters
@@ -2090,9 +2904,24 @@ class Espacio {
     
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-    
+
     public boolean isEsExterior() { return esExterior; }
     public void setEsExterior(boolean esExterior) { this.esExterior = esExterior; }
+
+    public String getUbicacion() { return ubicacion; }
+    public void setUbicacion(String ubicacion) { this.ubicacion = ubicacion; }
+
+    public Integer getMaxDuracion() { return maxDuracion; }
+    public void setMaxDuracion(Integer maxDuracion) { this.maxDuracion = maxDuracion; }
+
+    public boolean isRequiereAprobacion() { return requiereAprobacion; }
+    public void setRequiereAprobacion(boolean requiereAprobacion) { this.requiereAprobacion = requiereAprobacion; }
+
+    public boolean isActivo() { return activo; }
+    public void setActivo(boolean activo) {
+        this.activo = activo;
+        this.estado = activo ? "Disponible" : "Inactivo";
+    }
 }
 
 /**
@@ -2106,9 +2935,14 @@ class Usuario {
     private String estado;
     private LocalDateTime ultimoAcceso;
     private String telefono;
+    private String rolCodigo;
+    private boolean activo;
+    private int totalReservas;
+    private int reservasAprobadas;
 
     public Usuario(Long id, String nombre, String correo, String rol, String estado,
-                   LocalDateTime ultimoAcceso, String telefono) {
+                   LocalDateTime ultimoAcceso, String telefono, String rolCodigo, boolean activo,
+                   int totalReservas, int reservasAprobadas) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
@@ -2116,6 +2950,10 @@ class Usuario {
         this.estado = estado;
         this.ultimoAcceso = ultimoAcceso;
         this.telefono = telefono;
+        this.rolCodigo = rolCodigo;
+        this.activo = activo;
+        this.totalReservas = totalReservas;
+        this.reservasAprobadas = reservasAprobadas;
     }
 
     // Getters y Setters
@@ -2139,6 +2977,21 @@ class Usuario {
     
     public String getTelefono() { return telefono; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
+
+    public String getRolCodigo() { return rolCodigo; }
+    public void setRolCodigo(String rolCodigo) { this.rolCodigo = rolCodigo; }
+
+    public boolean isActivo() { return activo; }
+    public void setActivo(boolean activo) {
+        this.activo = activo;
+        this.estado = activo ? "Activo" : "Inactivo";
+    }
+
+    public int getTotalReservas() { return totalReservas; }
+    public void setTotalReservas(int totalReservas) { this.totalReservas = totalReservas; }
+
+    public int getReservasAprobadas() { return reservasAprobadas; }
+    public void setReservasAprobadas(int reservasAprobadas) { this.reservasAprobadas = reservasAprobadas; }
 }
 
 /**
