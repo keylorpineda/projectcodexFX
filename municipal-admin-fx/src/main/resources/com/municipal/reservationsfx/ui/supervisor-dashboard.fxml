@@ -2,335 +2,425 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
-            stylesheets="@../styles/styles.css">
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
+      stylesheets="@supervisor-dashboard.css"
+      styleClass="supervisor-root"
+      spacing="0">
 
-    <top>
-        <HBox alignment="CENTER_LEFT" spacing="15" styleClass="header">
-            <padding>
-                <Insets top="15" right="20" bottom="15" left="20"/>
-            </padding>
+    <!-- Encabezado superior -->
+    <HBox styleClass="supervisor-header" alignment="CENTER_LEFT" spacing="0" VBox.vgrow="NEVER">
+        <padding>
+            <Insets top="16" right="24" bottom="16" left="24"/>
+        </padding>
 
-            <VBox spacing="3">
+        <HBox alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
+            <StackPane styleClass="logo-container" minWidth="40" minHeight="40">
+                <Circle radius="20" styleClass="logo-bg"/>
+                <Label text="🛡" styleClass="logo-icon"/>
+            </StackPane>
+            <VBox spacing="2">
                 <Label text="Panel del Supervisor" styleClass="header-title"/>
-                <Label text="Supervisión diaria de reservas y espacios" styleClass="header-subtitle"/>
+                <Label text="Monitoreo y control de reservas municipales" styleClass="header-subtitle"/>
             </VBox>
-
-            <Region HBox.hgrow="ALWAYS"/>
-
-            <HBox alignment="CENTER_RIGHT" spacing="10">
-                <Label text="👤" styleClass="menu-icon"/>
-                <Label fx:id="lblNombreSupervisor" text="Supervisor" styleClass="username"/>
-            </HBox>
         </HBox>
-    </top>
 
-    <left>
-        <VBox styleClass="sidebar" spacing="6" prefWidth="220">
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <HBox styleClass="supervisor-menu" spacing="8" alignment="CENTER">
+            <Circle radius="16" styleClass="supervisor-avatar"/>
+            <VBox spacing="0">
+                <Label fx:id="lblNombreSupervisor" text="Supervisor" styleClass="supervisor-name"/>
+                <Label text="Coordinador" styleClass="supervisor-role"/>
+            </VBox>
+        </HBox>
+    </HBox>
+
+    <!-- Contenido principal -->
+    <HBox spacing="0" VBox.vgrow="ALWAYS">
+
+        <!-- Navegación lateral -->
+        <VBox styleClass="sidebar" spacing="8" prefWidth="260" minWidth="240" HBox.hgrow="NEVER">
             <padding>
-                <Insets top="20" right="12" bottom="20" left="12"/>
+                <Insets top="16" right="0" bottom="16" left="0"/>
             </padding>
 
-            <Button fx:id="btnInicio" text="Inicio" styleClass="menu-item, active"
-                    maxWidth="Infinity" onAction="#mostrarInicio">
-                <graphic>
-                    <Label text="🏠" styleClass="menu-icon"/>
-                </graphic>
+            <Label text="MENÚ DEL SUPERVISOR" styleClass="sidebar-section-title">
+                <padding>
+                    <Insets left="16"/>
+                </padding>
+            </Label>
+
+            <Button fx:id="btnInicio" text="📊  Panel de control" styleClass="nav-item nav-item-active"
+                    onAction="#mostrarInicio" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
             </Button>
 
-            <Button fx:id="btnReservas" text="Reservas" styleClass="menu-item"
-                    maxWidth="Infinity" onAction="#mostrarReservas">
-                <graphic>
-                    <Label text="📅" styleClass="menu-icon"/>
-                </graphic>
+            <Button fx:id="btnReservas" text="📅  Gestión de reservas" styleClass="nav-item"
+                    onAction="#mostrarReservas" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
             </Button>
 
-            <Button fx:id="btnEspacios" text="Espacios" styleClass="menu-item"
-                    maxWidth="Infinity" onAction="#mostrarEspacios">
-                <graphic>
-                    <Label text="🏢" styleClass="menu-icon"/>
-                </graphic>
+            <Button fx:id="btnEspacios" text="🏢  Espacios municipales" styleClass="nav-item"
+                    onAction="#mostrarEspacios" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
             </Button>
 
-            <Button fx:id="btnNotificaciones" text="Notificaciones" styleClass="menu-item"
-                    maxWidth="Infinity" onAction="#mostrarNotificaciones">
-                <graphic>
-                    <Label text="🔔" styleClass="menu-icon"/>
-                </graphic>
+            <Button fx:id="btnNotificaciones" text="🔔  Notificaciones" styleClass="nav-item"
+                    onAction="#mostrarNotificaciones" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
             </Button>
 
-            <Button fx:id="btnUsuarios" text="Usuarios" styleClass="menu-item"
-                    maxWidth="Infinity" onAction="#mostrarUsuarios">
-                <graphic>
-                    <Label text="👥" styleClass="menu-icon"/>
-                </graphic>
+            <Button fx:id="btnUsuarios" text="👥  Directorio de usuarios" styleClass="nav-item"
+                    onAction="#mostrarUsuarios" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
             </Button>
 
-            <Button fx:id="btnAuditoria" text="Auditoría" styleClass="menu-item"
-                    maxWidth="Infinity" onAction="#mostrarAuditoria">
-                <graphic>
-                    <Label text="🕒" styleClass="menu-icon"/>
-                </graphic>
+            <Button fx:id="btnAuditoria" text="🕒  Auditoría" styleClass="nav-item"
+                    onAction="#mostrarAuditoria" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
             </Button>
         </VBox>
-    </left>
 
-    <center>
-        <StackPane fx:id="contenedorPrincipal" styleClass="main-content">
+        <!-- Contenedor de secciones -->
+        <StackPane fx:id="contenedorPrincipal" styleClass="main-content-wrapper" HBox.hgrow="ALWAYS">
 
-            <ScrollPane fx:id="vistaInicio" fitToWidth="true" styleClass="content-section">
+            <!-- Panel de inicio -->
+            <ScrollPane fx:id="vistaInicio" fitToWidth="true" fitToHeight="true" styleClass="content-scroll">
                 <content>
-                    <VBox spacing="24">
+                    <VBox styleClass="main-content" spacing="24">
                         <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <VBox spacing="6">
-                            <Label text="Resumen operativo" styleClass="section-title"/>
-                            <Label text="Monitorea métricas clave para priorizar acciones" styleClass="section-subtitle"/>
+                        <VBox spacing="8">
+                            <Label text="Resumen operativo" styleClass="page-title"/>
+                            <Label text="Supervisa indicadores clave y coordina acciones prioritarias" styleClass="page-subtitle"/>
                         </VBox>
 
-                        <FlowPane hgap="16" vgap="16">
-                            <VBox spacing="10" prefWidth="200" styleClass="stat-card">
+                        <HBox spacing="20">
+                            <VBox styleClass="metric-card" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="20" right="20" bottom="20" left="20"/>
                                 </padding>
-                                <Label text="Reservas pendientes" styleClass="card-title"/>
-                                <Label text="--" styleClass="card-value"/>
-                                <Label text="Requieren aprobación" styleClass="card-description"/>
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <Label text="📝" styleClass="metric-icon"/>
+                                    <Label text="Pendientes" styleClass="metric-label"/>
+                                </HBox>
+                                <Label text="--" styleClass="metric-value"/>
+                                <Label text="Reservas aguardando aprobación" styleClass="metric-description"/>
                             </VBox>
 
-                            <VBox spacing="10" prefWidth="200" styleClass="stat-card">
+                            <VBox styleClass="metric-card metric-success" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="20" right="20" bottom="20" left="20"/>
                                 </padding>
-                                <Label text="Check-ins del día" styleClass="card-title"/>
-                                <Label text="--" styleClass="card-value"/>
-                                <Label text="Registros confirmados" styleClass="card-description"/>
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <Label text="✅" styleClass="metric-icon"/>
+                                    <Label text="Check-ins" styleClass="metric-label"/>
+                                </HBox>
+                                <Label text="--" styleClass="metric-value"/>
+                                <Label text="Registros confirmados hoy" styleClass="metric-description"/>
                             </VBox>
 
-                            <VBox spacing="10" prefWidth="200" styleClass="stat-card">
+                            <VBox styleClass="metric-card metric-destructive" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="20" right="20" bottom="20" left="20"/>
                                 </padding>
-                                <Label text="Notificaciones pendientes" styleClass="card-title"/>
-                                <Label text="--" styleClass="card-value"/>
-                                <Label text="Listas para enviar" styleClass="card-description"/>
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <Label text="⚠" styleClass="metric-icon"/>
+                                    <Label text="Incidencias" styleClass="metric-label"/>
+                                </HBox>
+                                <Label text="--" styleClass="metric-value"/>
+                                <Label text="Reportes que requieren seguimiento" styleClass="metric-description"/>
                             </VBox>
+                        </HBox>
+
+                        <HBox spacing="20">
+                            <VBox styleClass="card" spacing="16" prefWidth="420">
+                                <padding>
+                                    <Insets top="24" right="24" bottom="24" left="24"/>
+                                </padding>
+                                <Label text="Agenda del día" styleClass="card-title"/>
+                                <Label text="Eventos próximos que requieren presencia del supervisor" styleClass="card-subtitle"/>
+
+                                <VBox spacing="12">
+                                    <Label text="08:00  |  Revisión de reservas pendientes" styleClass="timeline-item"/>
+                                    <Label text="11:00  |  Coordinación con Seguridad" styleClass="timeline-item"/>
+                                    <Label text="15:00  |  Actualización de espacios" styleClass="timeline-item"/>
+                                </VBox>
+                            </VBox>
+
+                            <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets top="24" right="24" bottom="24" left="24"/>
+                                </padding>
+                                <Label text="Acciones rápidas" styleClass="card-title"/>
+                                <Label text="Atajos para tareas frecuentes del supervisor" styleClass="card-subtitle"/>
+
+                                <VBox spacing="12">
+                                    <Button text="📄  Revisar reservas pendientes" styleClass="pill-button" maxWidth="Infinity"
+                                            onAction="#mostrarReservas"/>
+                                    <Button text="✅  Registrar check-in" styleClass="pill-button" maxWidth="Infinity"
+                                            onAction="#mostrarReservas"/>
+                                    <Button text="📢  Enviar notificación" styleClass="pill-button" maxWidth="Infinity"
+                                            onAction="#mostrarNotificaciones"/>
+                                </VBox>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+                </content>
+            </ScrollPane>
+
+            <!-- Gestión de reservas -->
+            <ScrollPane fx:id="vistaReservas" fitToWidth="true" fitToHeight="true" styleClass="content-scroll"
+                        visible="false" managed="false">
+                <content>
+                    <VBox styleClass="main-content" spacing="24">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <VBox spacing="8">
+                            <Label text="Gestión de reservas" styleClass="page-title"/>
+                            <Label text="Aprueba, reprograma o cancela reservas de cualquier usuario" styleClass="page-subtitle"/>
+                        </VBox>
+
+                        <HBox spacing="12">
+                            <TextField promptText="Buscar por usuario o espacio" HBox.hgrow="ALWAYS"/>
+                            <ChoiceBox prefWidth="160"/>
+                            <TextField promptText="Rango de fechas" prefWidth="200"/>
+                        </HBox>
+
+                        <FlowPane hgap="12" vgap="12">
+                            <Button text="Aprobar" styleClass="pill-button"/>
+                            <Button text="Cancelar" styleClass="pill-button"/>
+                            <Button text="Registrar check-in" styleClass="pill-button"/>
+                            <Button text="Marcar no-show" styleClass="pill-button"/>
+                            <Button text="Editar reserva" styleClass="pill-button"/>
                         </FlowPane>
 
-                        <VBox spacing="10" styleClass="stat-card">
+                        <VBox styleClass="card" spacing="16">
                             <padding>
                                 <Insets top="20" right="20" bottom="20" left="20"/>
                             </padding>
-                            <Label text="Acciones rápidas" styleClass="section-subtitle-bold"/>
-                            <FlowPane hgap="12" vgap="12">
-                                <Button text="Nueva reserva" styleClass="btn-primary"/>
-                                <Button text="Revisar pendientes" styleClass="btn-secondary"/>
-                                <Button text="Revisar clima" styleClass="btn-secondary"/>
-                            </FlowPane>
+                            <Label text="Reservas registradas" styleClass="card-title"/>
+                            <TableView prefHeight="360">
+                                <columns>
+                                    <TableColumn text="Código" prefWidth="120"/>
+                                    <TableColumn text="Usuario" prefWidth="180"/>
+                                    <TableColumn text="Espacio" prefWidth="180"/>
+                                    <TableColumn text="Fecha" prefWidth="140"/>
+                                    <TableColumn text="Estado" prefWidth="140"/>
+                                </columns>
+                            </TableView>
                         </VBox>
                     </VBox>
                 </content>
             </ScrollPane>
 
-            <ScrollPane fx:id="vistaReservas" fitToWidth="true" styleClass="content-section">
+            <!-- Catálogo de espacios -->
+            <ScrollPane fx:id="vistaEspacios" fitToWidth="true" fitToHeight="true" styleClass="content-scroll"
+                        visible="false" managed="false">
                 <content>
-                    <VBox spacing="20">
+                    <VBox styleClass="main-content" spacing="24">
                         <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <VBox spacing="6">
-                            <Label text="Gestión de reservas" styleClass="section-title"/>
-                            <Label text="Aprueba, cancela o actualiza reservas de cualquier usuario" styleClass="section-subtitle"/>
+                        <VBox spacing="8">
+                            <Label text="Espacios municipales" styleClass="page-title"/>
+                            <Label text="Activa, desactiva y ajusta información de los espacios disponibles" styleClass="page-subtitle"/>
                         </VBox>
 
                         <HBox spacing="12">
-                            <TextField promptText="Buscar por usuario o espacio"/>
-                            <TextField promptText="Filtrar por estado"/>
-                            <TextField promptText="Rango de fechas"/>
+                            <TextField promptText="Buscar espacio" HBox.hgrow="ALWAYS"/>
+                            <ChoiceBox prefWidth="180"/>
+                            <ChoiceBox prefWidth="160"/>
                         </HBox>
 
                         <FlowPane hgap="12" vgap="12">
-                            <Button text="Aprobar" styleClass="btn-primary"/>
-                            <Button text="Cancelar" styleClass="btn-secondary"/>
-                            <Button text="Registrar check-in" styleClass="btn-secondary"/>
-                            <Button text="Marcar no-show" styleClass="btn-secondary"/>
-                            <Button text="Editar reserva" styleClass="btn-secondary"/>
+                            <Button text="Nuevo espacio" styleClass="pill-button"/>
+                            <Button text="Editar seleccionado" styleClass="pill-button"/>
+                            <Button text="Activar / Desactivar" styleClass="pill-button"/>
+                            <Button text="Ver horarios" styleClass="pill-button"/>
+                            <Button text="Gestionar recursos" styleClass="pill-button"/>
                         </FlowPane>
 
-                        <TableView prefHeight="320">
-                            <columns>
-                                <TableColumn text="Código" prefWidth="90"/>
-                                <TableColumn text="Usuario" prefWidth="150"/>
-                                <TableColumn text="Espacio" prefWidth="150"/>
-                                <TableColumn text="Fecha" prefWidth="120"/>
-                                <TableColumn text="Estado" prefWidth="120"/>
-                            </columns>
-                        </TableView>
+                        <VBox styleClass="card" spacing="16">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Listado de espacios" styleClass="card-title"/>
+                            <TableView prefHeight="360">
+                                <columns>
+                                    <TableColumn text="Nombre" prefWidth="220"/>
+                                    <TableColumn text="Tipo" prefWidth="160"/>
+                                    <TableColumn text="Capacidad" prefWidth="140"/>
+                                    <TableColumn text="Estado" prefWidth="140"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
                     </VBox>
                 </content>
             </ScrollPane>
 
-            <ScrollPane fx:id="vistaEspacios" fitToWidth="true" styleClass="content-section">
+            <!-- Centro de notificaciones -->
+            <ScrollPane fx:id="vistaNotificaciones" fitToWidth="true" fitToHeight="true" styleClass="content-scroll"
+                        visible="false" managed="false">
                 <content>
-                    <VBox spacing="20">
+                    <VBox styleClass="main-content" spacing="24">
                         <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <VBox spacing="6">
-                            <Label text="Catálogo de espacios" styleClass="section-title"/>
-                            <Label text="Activa, desactiva y ajusta información de los espacios" styleClass="section-subtitle"/>
+                        <VBox spacing="8">
+                            <Label text="Centro de notificaciones" styleClass="page-title"/>
+                            <Label text="Gestiona comunicados automáticos y manuales para la comunidad" styleClass="page-subtitle"/>
                         </VBox>
 
                         <HBox spacing="12">
-                            <TextField promptText="Buscar espacio"/>
-                            <TextField promptText="Tipo"/>
-                            <TextField promptText="Estado"/>
+                            <TextField promptText="Buscar notificación" HBox.hgrow="ALWAYS"/>
+                            <ChoiceBox prefWidth="180"/>
+                            <ChoiceBox prefWidth="160"/>
                         </HBox>
 
                         <FlowPane hgap="12" vgap="12">
-                            <Button text="Nuevo espacio" styleClass="btn-primary"/>
-                            <Button text="Editar seleccionado" styleClass="btn-secondary"/>
-                            <Button text="Activar/Desactivar" styleClass="btn-secondary"/>
-                            <Button text="Ver horarios" styleClass="btn-secondary"/>
-                            <Button text="Ver imágenes" styleClass="btn-secondary"/>
+                            <Button text="Crear notificación" styleClass="pill-button"/>
+                            <Button text="Editar" styleClass="pill-button"/>
+                            <Button text="Enviar ahora" styleClass="pill-button"/>
+                            <Button text="Eliminar" styleClass="pill-button"/>
                         </FlowPane>
 
-                        <TableView prefHeight="320">
-                            <columns>
-                                <TableColumn text="Nombre" prefWidth="180"/>
-                                <TableColumn text="Tipo" prefWidth="120"/>
-                                <TableColumn text="Capacidad" prefWidth="100"/>
-                                <TableColumn text="Estado" prefWidth="120"/>
-                            </columns>
-                        </TableView>
+                        <VBox styleClass="card" spacing="16">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Historial de notificaciones" styleClass="card-title"/>
+                            <TableView prefHeight="360">
+                                <columns>
+                                    <TableColumn text="Título" prefWidth="220"/>
+                                    <TableColumn text="Destinatarios" prefWidth="200"/>
+                                    <TableColumn text="Estado" prefWidth="140"/>
+                                    <TableColumn text="Programada" prefWidth="140"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
                     </VBox>
                 </content>
             </ScrollPane>
 
-            <ScrollPane fx:id="vistaNotificaciones" fitToWidth="true" styleClass="content-section">
+            <!-- Directorio de usuarios -->
+            <ScrollPane fx:id="vistaUsuarios" fitToWidth="true" fitToHeight="true" styleClass="content-scroll"
+                        visible="false" managed="false">
                 <content>
-                    <VBox spacing="20">
+                    <VBox styleClass="main-content" spacing="24">
                         <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <VBox spacing="6">
-                            <Label text="Centro de notificaciones" styleClass="section-title"/>
-                            <Label text="Gestiona comunicados automáticos y manuales" styleClass="section-subtitle"/>
+                        <VBox spacing="8">
+                            <Label text="Directorio de usuarios" styleClass="page-title"/>
+                            <Label text="Consulta información de usuarios para dar seguimiento a casos" styleClass="page-subtitle"/>
                         </VBox>
 
                         <HBox spacing="12">
-                            <TextField promptText="Buscar notificación"/>
-                            <TextField promptText="Estado"/>
-                            <TextField promptText="Tipo"/>
+                            <TextField promptText="Buscar usuario" HBox.hgrow="ALWAYS"/>
+                            <ChoiceBox prefWidth="180"/>
+                            <ChoiceBox prefWidth="160"/>
                         </HBox>
 
                         <FlowPane hgap="12" vgap="12">
-                            <Button text="Crear notificación" styleClass="btn-primary"/>
-                            <Button text="Editar" styleClass="btn-secondary"/>
-                            <Button text="Enviar ahora" styleClass="btn-secondary"/>
-                            <Button text="Eliminar" styleClass="btn-secondary"/>
+                            <Button text="Ver detalle" styleClass="pill-button"/>
+                            <Button text="Exportar listado" styleClass="pill-button"/>
                         </FlowPane>
 
-                        <TableView prefHeight="320">
-                            <columns>
-                                <TableColumn text="Título" prefWidth="220"/>
-                                <TableColumn text="Destinatarios" prefWidth="180"/>
-                                <TableColumn text="Estado" prefWidth="120"/>
-                                <TableColumn text="Programada" prefWidth="120"/>
-                            </columns>
-                        </TableView>
+                        <VBox styleClass="card" spacing="16">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Usuarios registrados" styleClass="card-title"/>
+                            <TableView prefHeight="360">
+                                <columns>
+                                    <TableColumn text="Nombre" prefWidth="220"/>
+                                    <TableColumn text="Correo" prefWidth="220"/>
+                                    <TableColumn text="Rol" prefWidth="140"/>
+                                    <TableColumn text="Estado" prefWidth="140"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
                     </VBox>
                 </content>
             </ScrollPane>
 
-            <ScrollPane fx:id="vistaUsuarios" fitToWidth="true" styleClass="content-section">
+            <!-- Registro de auditoría -->
+            <ScrollPane fx:id="vistaAuditoria" fitToWidth="true" fitToHeight="true" styleClass="content-scroll"
+                        visible="false" managed="false">
                 <content>
-                    <VBox spacing="20">
+                    <VBox styleClass="main-content" spacing="24">
                         <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <VBox spacing="6">
-                            <Label text="Directorio de usuarios" styleClass="section-title"/>
-                            <Label text="Consulta información de usuarios sin permisos de edición" styleClass="section-subtitle"/>
+                        <VBox spacing="8">
+                            <Label text="Registro de auditoría" styleClass="page-title"/>
+                            <Label text="Revisa las acciones ejecutadas por todos los roles del sistema" styleClass="page-subtitle"/>
                         </VBox>
 
                         <HBox spacing="12">
-                            <TextField promptText="Buscar usuario"/>
-                            <TextField promptText="Rol"/>
-                            <TextField promptText="Estado"/>
+                            <TextField promptText="Buscar evento" HBox.hgrow="ALWAYS"/>
+                            <ChoiceBox prefWidth="180"/>
+                            <TextField promptText="Rango de fechas" prefWidth="200"/>
                         </HBox>
 
                         <FlowPane hgap="12" vgap="12">
-                            <Button text="Ver detalle" styleClass="btn-secondary"/>
-                            <Button text="Exportar listado" styleClass="btn-secondary"/>
+                            <Button text="Ver detalle" styleClass="pill-button"/>
+                            <Button text="Exportar auditoría" styleClass="pill-button"/>
                         </FlowPane>
 
-                        <TableView prefHeight="320">
-                            <columns>
-                                <TableColumn text="Nombre" prefWidth="200"/>
-                                <TableColumn text="Correo" prefWidth="220"/>
-                                <TableColumn text="Rol" prefWidth="120"/>
-                                <TableColumn text="Estado" prefWidth="120"/>
-                            </columns>
-                        </TableView>
-                    </VBox>
-                </content>
-            </ScrollPane>
-
-            <ScrollPane fx:id="vistaAuditoria" fitToWidth="true" styleClass="content-section">
-                <content>
-                    <VBox spacing="20">
-                        <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
-                        </padding>
-
-                        <VBox spacing="6">
-                            <Label text="Registro de auditoría" styleClass="section-title"/>
-                            <Label text="Revisa acciones realizadas por todos los roles" styleClass="section-subtitle"/>
+                        <VBox styleClass="card" spacing="16">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+                            <Label text="Eventos registrados" styleClass="card-title"/>
+                            <TableView prefHeight="360">
+                                <columns>
+                                    <TableColumn text="Fecha" prefWidth="160"/>
+                                    <TableColumn text="Usuario" prefWidth="200"/>
+                                    <TableColumn text="Acción" prefWidth="200"/>
+                                    <TableColumn text="Resultado" prefWidth="160"/>
+                                </columns>
+                            </TableView>
                         </VBox>
-
-                        <HBox spacing="12">
-                            <TextField promptText="Buscar evento"/>
-                            <TextField promptText="Tipo"/>
-                            <TextField promptText="Rango de fechas"/>
-                        </HBox>
-
-                        <FlowPane hgap="12" vgap="12">
-                            <Button text="Ver detalle" styleClass="btn-secondary"/>
-                            <Button text="Exportar auditoría" styleClass="btn-secondary"/>
-                        </FlowPane>
-
-                        <TableView prefHeight="320">
-                            <columns>
-                                <TableColumn text="Fecha" prefWidth="140"/>
-                                <TableColumn text="Usuario" prefWidth="160"/>
-                                <TableColumn text="Acción" prefWidth="200"/>
-                                <TableColumn text="Resultado" prefWidth="120"/>
-                            </columns>
-                        </TableView>
                     </VBox>
                 </content>
             </ScrollPane>
         </StackPane>
-    </center>
-</BorderPane>
+    </HBox>
+</VBox>

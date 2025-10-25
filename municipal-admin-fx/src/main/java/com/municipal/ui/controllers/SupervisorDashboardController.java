@@ -88,9 +88,12 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         objetivo.setVisible(true);
         objetivo.setManaged(true);
 
-        menuButtons.forEach(button -> button.getStyleClass().remove("active"));
-        if (!botonActivo.getStyleClass().contains("active")) {
-            botonActivo.getStyleClass().add("active");
+       menuButtons.forEach(button -> {
+            button.getStyleClass().remove("active");
+            button.getStyleClass().remove("nav-item-active");
+        });
+        if (!botonActivo.getStyleClass().contains("nav-item-active")) {
+            botonActivo.getStyleClass().add("nav-item-active");
         }
     }
 
