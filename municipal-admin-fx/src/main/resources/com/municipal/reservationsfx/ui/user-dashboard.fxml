@@ -35,8 +35,8 @@
         <!-- Spacer -->
         <Region HBox.hgrow="ALWAYS"/>
 
-        <!-- User Menu -->
-        <HBox styleClass="user-menu" spacing="8" alignment="CENTER">
+        <!-- User Menu (CLICKEABLE PARA LOGOUT) -->
+        <HBox fx:id="userMenuContainer" styleClass="user-menu" spacing="8" alignment="CENTER">
             <Circle radius="16" styleClass="user-avatar"/>
             <VBox spacing="0">
                 <Label fx:id="userNameLabel" text="Usuario" styleClass="user-name"/>
@@ -48,7 +48,7 @@
     <!-- Main Content Area -->
     <HBox spacing="0" VBox.vgrow="ALWAYS">
 
-        <!-- Left Sidebar -->
+        <!-- Left Sidebar (SIN LOGOUT BUTTON) -->
         <VBox styleClass="sidebar" spacing="8" prefWidth="260" minWidth="240" HBox.hgrow="NEVER">
             <padding>
                 <Insets top="16" right="0" bottom="16" left="0"/>
@@ -90,13 +90,6 @@
 
             <Region VBox.vgrow="ALWAYS"/>
 
-            <HBox fx:id="navLogoutButton" styleClass="nav-item nav-item-logout" onMouseClicked="#handleLogout" alignment="CENTER_LEFT" spacing="12">
-                <padding>
-                    <Insets top="12" right="20" bottom="12" left="20"/>
-                </padding>
-                <Label text="🚪" styleClass="nav-icon"/>
-                <Label text="Cerrar sesión"/>
-            </HBox>
         </VBox>
 
         <!-- Main Content Scroll -->
@@ -109,15 +102,12 @@
                             <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <!-- Page Header -->
                         <VBox spacing="8">
                             <Label text="Panel de inicio" styleClass="page-title"/>
                             <Label text="Bienvenido al sistema de reservas municipales" styleClass="page-subtitle"/>
                         </VBox>
 
-                        <!-- Metrics Cards -->
                         <HBox spacing="20">
-                            <!-- Active Reservations -->
                             <VBox styleClass="metric-card" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="20" right="20" bottom="20" left="20"/>
@@ -130,7 +120,6 @@
                                 <Label text="Próximas reservas confirmadas" styleClass="metric-description"/>
                             </VBox>
 
-                            <!-- No Shows -->
                             <VBox styleClass="metric-card metric-destructive" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="20" right="20" bottom="20" left="20"/>
@@ -143,7 +132,6 @@
                                 <Label text="Reservas no atendidas" styleClass="metric-description"/>
                             </VBox>
 
-                            <!-- Completed -->
                             <VBox styleClass="metric-card metric-success" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="20" right="20" bottom="20" left="20"/>
@@ -157,9 +145,7 @@
                             </VBox>
                         </HBox>
 
-                        <!-- Weather and Quick Actions -->
                         <HBox spacing="20">
-                            <!-- Weather Card -->
                             <VBox styleClass="card weather-card" spacing="16" prefWidth="400">
                                 <padding>
                                     <Insets top="24" right="24" bottom="24" left="24"/>
@@ -185,7 +171,6 @@
                                        styleClass="weather-message" wrapText="true"/>
                             </VBox>
 
-                            <!-- Quick Actions -->
                             <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="24" right="24" bottom="24" left="24"/>
@@ -200,8 +185,6 @@
                                             maxWidth="Infinity" onAction="#handleNavigateMyReservations"/>
                                     <Button text="📄  Ver reportes" styleClass="pill-button" 
                                             maxWidth="Infinity" onAction="#handleNavigateReports"/>
-                                    <Button text="🧪  Generar QR de prueba" styleClass="pill-button"
-                                            maxWidth="Infinity" onAction="#handleGenerateTestQr"/>
                                 </VBox>
                             </VBox>
                         </HBox>
@@ -213,7 +196,6 @@
                             <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <!-- Page Header -->
                         <HBox alignment="CENTER_LEFT">
                             <VBox spacing="8" HBox.hgrow="ALWAYS">
                                 <Label text="Espacios disponibles" styleClass="page-title"/>
@@ -222,7 +204,6 @@
                             <Label fx:id="spacesCountLabel" text="Espacios disponibles (0)" styleClass="card-subtitle"/>
                         </HBox>
 
-                        <!-- Filters -->
                         <VBox styleClass="card" spacing="16">
                             <padding>
                                 <Insets top="20" right="20" bottom="20" left="20"/>
@@ -253,11 +234,9 @@
                             <Button text="🔍 Aplicar filtros" styleClass="primary-button" onAction="#handleApplyFilters"/>
                         </VBox>
 
-                        <!-- Spaces Grid -->
                         <StackPane>
                             <FlowPane fx:id="spacesFlowPane" hgap="20" vgap="20"/>
                             
-                            <!-- Loading Overlay -->
                             <StackPane fx:id="spacesLoadingOverlay" styleClass="loading-overlay" visible="false" managed="false">
                                 <VBox alignment="CENTER" spacing="16">
                                     <ProgressIndicator/>
@@ -273,7 +252,6 @@
                             <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <!-- Page Header -->
                         <HBox alignment="CENTER_LEFT">
                             <VBox spacing="8" HBox.hgrow="ALWAYS">
                                 <Label text="Mis reservas" styleClass="page-title"/>
@@ -282,7 +260,6 @@
                             <Button text="+ Nueva reserva" styleClass="primary-button-raised" onAction="#handleNewReservation"/>
                         </HBox>
 
-                        <!-- Reservations Table -->
                         <VBox styleClass="card table-container" spacing="16">
                             <padding>
                                 <Insets top="20" right="20" bottom="20" left="20"/>
@@ -307,7 +284,6 @@
                                     </placeholder>
                                 </TableView>
                                 
-                                <!-- Loading Overlay -->
                                 <StackPane fx:id="reservationsLoadingOverlay" styleClass="loading-overlay" visible="false" managed="false">
                                     <VBox alignment="CENTER" spacing="16">
                                         <ProgressIndicator/>
@@ -324,13 +300,11 @@
                             <Insets top="32" right="32" bottom="32" left="32"/>
                         </padding>
 
-                        <!-- Page Header -->
                         <VBox spacing="8">
                             <Label text="Reportes personales" styleClass="page-title"/>
                             <Label text="Visualiza tus estadísticas y patrones de uso" styleClass="page-subtitle"/>
                         </VBox>
 
-                        <!-- Summary Cards -->
                         <HBox spacing="20">
                             <VBox styleClass="card metric-card" spacing="12" HBox.hgrow="ALWAYS">
                                 <padding>
@@ -357,9 +331,7 @@
                             </VBox>
                         </HBox>
 
-                        <!-- Charts -->
                         <HBox spacing="20">
-                            <!-- Spaces Distribution -->
                             <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="24" right="24" bottom="24" left="24"/>
@@ -369,7 +341,6 @@
                                 <PieChart fx:id="spacesDistributionChart" legendVisible="true" prefHeight="300"/>
                             </VBox>
 
-                            <!-- Attendance Chart -->
                             <VBox styleClass="card" spacing="16" HBox.hgrow="ALWAYS">
                                 <padding>
                                     <Insets top="24" right="24" bottom="24" left="24"/>

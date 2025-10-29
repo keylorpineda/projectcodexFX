@@ -1,6 +1,5 @@
 package com.municipal.ui.controllers;
 
-<<<<<<< HEAD
 import com.municipal.config.AppConfig;
 import com.municipal.controllers.ReservationController;
 import com.municipal.controllers.SpaceController;
@@ -10,20 +9,7 @@ import com.municipal.dtos.SpaceDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.session.SessionManager;
-import com.municipal.ui.navigation.SessionAware;
-=======
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.municipal.dtos.ReservationDTO;
-import com.municipal.ui.utils.NodeVisibilityUtils;
-import com.municipal.ui.utils.QRCodeGenerator;
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
-import javafx.animation.FadeTransition;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
+import com.municipal.ui.navigation.FlowController;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -31,96 +17,68 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
-import javafx.scene.image.ImageView;
-<<<<<<< HEAD
 import javafx.scene.input.MouseEvent;
-=======
-import javafx.scene.image.WritableImage;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 import javafx.scene.layout.*;
-import javafx.util.Duration;
-import com.google.zxing.WriterException;
+import javafx.stage.Stage;
 
-<<<<<<< HEAD
-=======
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-<<<<<<< HEAD
-/**
- * Controlador del Panel de Usuario
- * Gestiona reservas, espacios disponibles y reportes personales
- */
-public class UserDashboardController implements SessionAware {
-=======
-
 public class UserDashboardController {
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 
-    // ==================== CONTROLADORES ====================
-    private final ReservationController reservationController = new ReservationController();
-    private final SpaceController spaceController = new SpaceController();
-    private final WeatherController weatherController = new WeatherController();
-
+    // Session & Controllers
     private SessionManager sessionManager;
+    private ReservationController reservationController;
+    private SpaceController spaceController;
+    private WeatherController weatherController;
+    private String token;
 
-    // ==================== COMPONENTES FXML ====================
+    // FXML - Header
     @FXML private VBox mainContainer;
-    @FXML private ScrollPane contentScroll;
+    @FXML private HBox userMenuContainer;
+    @FXML private Label userNameLabel;
+    @FXML private Label userRoleLabel;
 
-    // Navegación
+    // FXML - Sidebar Navigation
     @FXML private HBox navDashboardButton;
     @FXML private HBox navSpacesButton;
     @FXML private HBox navMyReservationsButton;
     @FXML private HBox navReportsButton;
-    @FXML private HBox navLogoutButton;
 
-    // Header
-    @FXML private Label userNameLabel;
-    @FXML private Label userRoleLabel;
+    // FXML - Content Scroll
+    @FXML private ScrollPane contentScroll;
 
-    // Secciones
+    // FXML - Dashboard Section
     @FXML private VBox dashboardSection;
-    @FXML private VBox spacesSection;
-    @FXML private VBox myReservationsSection;
-    @FXML private VBox reportsSection;
-
-    // Dashboard
     @FXML private Label activeReservationsLabel;
     @FXML private Label noShowsLabel;
     @FXML private Label completedReservationsLabel;
+    @FXML private Label weatherIconLabel;
     @FXML private Label weatherTempLabel;
     @FXML private Label weatherConditionLabel;
     @FXML private Label weatherWindLabel;
     @FXML private Label weatherHumidityLabel;
-    @FXML private Label weatherIconLabel;
     @FXML private Label weatherMessageLabel;
 
-    // Espacios
+    // FXML - Spaces Section
+    @FXML private VBox spacesSection;
+    @FXML private Label spacesCountLabel;
     @FXML private TextField searchSpaceField;
     @FXML private ChoiceBox<String> spaceTypeChoice;
     @FXML private ChoiceBox<String> capacityChoice;
     @FXML private DatePicker datePicker;
     @FXML private FlowPane spacesFlowPane;
-    @FXML private Label spacesCountLabel;
     @FXML private StackPane spacesLoadingOverlay;
 
-    // Reservas
+    // FXML - My Reservations Section
+    @FXML private VBox myReservationsSection;
+    @FXML private Label reservationsCountLabel;
     @FXML private TableView<ReservationDTO> reservationsTable;
     @FXML private TableColumn<ReservationDTO, String> reservationSpaceColumn;
     @FXML private TableColumn<ReservationDTO, String> reservationDateColumn;
@@ -128,1077 +86,901 @@ public class UserDashboardController {
     @FXML private TableColumn<ReservationDTO, String> reservationEventColumn;
     @FXML private TableColumn<ReservationDTO, String> reservationStatusColumn;
     @FXML private TableColumn<ReservationDTO, Void> reservationActionsColumn;
-    @FXML private Label reservationsCountLabel;
     @FXML private StackPane reservationsLoadingOverlay;
 
-    // Reportes
+    // FXML - Reports Section
+    @FXML private VBox reportsSection;
     @FXML private Label totalReservationsReportLabel;
     @FXML private Label attendanceRateLabel;
-    @FXML private Label attendancePercentageLabel;
     @FXML private Label favoriteSpaceLabel;
     @FXML private PieChart spacesDistributionChart;
     @FXML private PieChart attendanceChart;
+    @FXML private Label attendancePercentageLabel;
 
-    // ==================== DATOS ====================
+    // Data
     private ObservableList<ReservationDTO> reservationsList = FXCollections.observableArrayList();
     private ObservableList<SpaceDTO> spacesList = FXCollections.observableArrayList();
-    private ObservableList<SpaceDTO> filteredSpacesList = FXCollections.observableArrayList();
-    private CurrentWeatherDTO currentWeather;
-    
-    private Timeline weatherTimeline;
-    private Timeline dataTimeline;
-    private boolean isLoadingData = false;
-    private boolean initialDataLoaded = false;
+    private List<SpaceDTO> allSpaces = new ArrayList<>();
 
-    // ==================== CONSTANTES ====================
-    private static final Duration WEATHER_REFRESH_INTERVAL = Duration.seconds(30);
-    private static final Duration DATA_REFRESH_INTERVAL = Duration.minutes(2);
-    
-    // Tipos de espacios según backend
-    private static final List<String> SPACE_TYPES = List.of("SALA", "CANCHA", "AUDITORIO");
-    
-    // Mapeo de estados de reserva
-    private static final Map<String, String> STATUS_MAP = Map.of(
-        "PENDING", "Pendiente",
-        "CONFIRMED", "Confirmada",
-        "CANCELED", "Cancelada",
-        "CHECKED_IN", "En sitio",
-        "COMPLETED", "Completada",
-        "NO_SHOW", "Inasistencia"
-    );
-    
+    // Navigation
     private enum Section {
         DASHBOARD, SPACES, MY_RESERVATIONS, REPORTS
     }
 
-    // ==================== INICIALIZACIÓN ====================
+    private Section currentSection = Section.DASHBOARD;
+
+    // Status mapping
+    private static final Map<String, String> STATUS_MAP = Map.of(
+        "PENDING", "Pendiente",
+        "CONFIRMED", "Confirmada",
+        "CANCELLED", "Cancelada",
+        "COMPLETED", "Completada",
+        "NO_SHOW", "Inasistencia"
+    );
 
     @FXML
     public void initialize() {
-        System.out.println("✅ Inicializando UserDashboardController...");
-        setupDefaultValues();
+        setupUserMenu();
+        setupNavigationHandlers();
+        setupFilters();
         setupTableColumns();
-        navigateToSection(Section.DASHBOARD);
     }
 
-    @Override
     public void setSessionManager(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
-        System.out.println("✅ SessionManager configurado");
-        loadUserInfo();
-        loadInitialData(false);
-        startWeatherUpdates();
-        startDataUpdates();
-    }
+        this.token = sessionManager.getAccessToken();
 
-    private void setupDefaultValues() {
-        // Tipos de espacio
-        if (spaceTypeChoice != null) {
-            ObservableList<String> types = FXCollections.observableArrayList();
-            types.add("Todos");
-            types.addAll(SPACE_TYPES);
-            spaceTypeChoice.setItems(types);
-            spaceTypeChoice.setValue("Todos");
-            spaceTypeChoice.valueProperty().addListener((obs, old, val) -> filterSpaces());
-        }
-        
-        // Capacidades
-        if (capacityChoice != null) {
-            capacityChoice.setItems(FXCollections.observableArrayList(
-                "Todas", "1-50", "51-100", "100+"
-            ));
-            capacityChoice.setValue("Todas");
-            capacityChoice.valueProperty().addListener((obs, old, val) -> filterSpaces());
-        }
-
-        // Búsqueda
-        if (searchSpaceField != null) {
-            searchSpaceField.textProperty().addListener((obs, old, val) -> filterSpaces());
+        if (sessionManager.getCurrentUser() != null) {
+            userNameLabel.setText(sessionManager.getCurrentUser().name());
+            userRoleLabel.setText("Ciudadano");
         }
     }
 
-    private void loadUserInfo() {
-        if (sessionManager == null || userNameLabel == null) return;
+    public void setControllers(ReservationController reservationController,
+                              SpaceController spaceController,
+                              WeatherController weatherController) {
+        this.reservationController = reservationController;
+        this.spaceController = spaceController;
+        this.weatherController = weatherController;
+    }
+
+    public void loadInitialData(boolean loadWeather) {
+        loadReservations();
+        loadSpaces();
+        if (loadWeather) {
+            loadWeather();
+        }
+        updateDashboardMetrics();
+    }
+
+    // ==================== USER MENU ====================
+
+    private void setupUserMenu() {
+        if (userMenuContainer != null) {
+            userMenuContainer.setOnMouseClicked(event -> showUserMenu(event));
+            userMenuContainer.setStyle("-fx-cursor: hand;");
+        }
+    }
+
+    private void showUserMenu(MouseEvent event) {
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem profileItem = new MenuItem("👤 Mi perfil");
+        profileItem.setOnAction(e -> showProfile());
+
+        MenuItem settingsItem = new MenuItem("⚙️ Configuración");
+        settingsItem.setOnAction(e -> showSettings());
+
+        SeparatorMenuItem separator = new SeparatorMenuItem();
+
+        MenuItem logoutItem = new MenuItem("🚪 Cerrar sesión");
+        logoutItem.setOnAction(e -> handleLogout());
+
+        contextMenu.getItems().addAll(profileItem, settingsItem, separator, logoutItem);
+        contextMenu.show(userMenuContainer, event.getScreenX(), event.getScreenY());
+    }
+
+    private void showProfile() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Mi Perfil");
+        alert.setHeaderText("Información del Usuario");
         
-        sessionManager.getAuthResponse().ifPresent(auth -> {
-            String name = auth.name() != null && !auth.name().isEmpty() ? auth.name() : auth.email();
-            userNameLabel.setText(name);
-            
-            if (userRoleLabel != null) {
-                String role = auth.role() != null ? auth.role() : "USER";
-                userRoleLabel.setText(role);
+        if (sessionManager.getCurrentUser() != null) {
+            String info = "Nombre: " + sessionManager.getCurrentUser().name() + "\n" +
+                         "Email: " + sessionManager.getCurrentUser().email() + "\n" +
+                         "Rol: Ciudadano";
+            alert.setContentText(info);
+        }
+        
+        alert.showAndWait();
+    }
+
+    private void showSettings() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Configuración");
+        alert.setHeaderText("Configuración de Usuario");
+        alert.setContentText("Funcionalidad en desarrollo");
+        alert.showAndWait();
+    }
+
+    private void handleLogout() {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Cerrar Sesión");
+        confirm.setHeaderText("¿Estás seguro que deseas cerrar sesión?");
+        confirm.setContentText("Tendrás que iniciar sesión nuevamente para acceder al sistema.");
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                sessionManager.clearSession();
+                FlowController flowController = (FlowController) mainContainer.getScene().getWindow().getUserData();
+                if (flowController != null) {
+                    try {
+                        flowController.navigateToLogin((Stage) mainContainer.getScene().getWindow());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        showError("Error al cerrar sesión: " + e.getMessage());
+                    }
+                }
             }
         });
     }
 
-    // ==================== CARGA DE DATOS ====================
+    // ==================== NAVIGATION ====================
 
-    private void loadInitialData(boolean notifySuccess) {
-        if (sessionManager == null) {
-            showWarning("No hay sesión activa");
+    private void setupNavigationHandlers() {
+        setNavigationStyle(navDashboardButton, true);
+    }
+
+    @FXML
+    private void handleNavigateDashboard() {
+        navigateToSection(Section.DASHBOARD);
+    }
+
+    @FXML
+    private void handleNavigateSpaces() {
+        navigateToSection(Section.SPACES);
+    }
+
+    @FXML
+    private void handleNavigateMyReservations() {
+        navigateToSection(Section.MY_RESERVATIONS);
+    }
+
+    @FXML
+    private void handleNavigateReports() {
+        navigateToSection(Section.REPORTS);
+    }
+
+    private void navigateToSection(Section section) {
+        currentSection = section;
+
+        dashboardSection.setVisible(section == Section.DASHBOARD);
+        dashboardSection.setManaged(section == Section.DASHBOARD);
+
+        spacesSection.setVisible(section == Section.SPACES);
+        spacesSection.setManaged(section == Section.SPACES);
+
+        myReservationsSection.setVisible(section == Section.MY_RESERVATIONS);
+        myReservationsSection.setManaged(section == Section.MY_RESERVATIONS);
+
+        reportsSection.setVisible(section == Section.REPORTS);
+        reportsSection.setManaged(section == Section.REPORTS);
+
+        setNavigationStyle(navDashboardButton, section == Section.DASHBOARD);
+        setNavigationStyle(navSpacesButton, section == Section.SPACES);
+        setNavigationStyle(navMyReservationsButton, section == Section.MY_RESERVATIONS);
+        setNavigationStyle(navReportsButton, section == Section.REPORTS);
+
+        if (section == Section.SPACES) {
+            loadSpaces();
+        } else if (section == Section.MY_RESERVATIONS) {
+            loadReservations();
+        } else if (section == Section.REPORTS) {
+            updateReportsData();
+        }
+
+        contentScroll.setVvalue(0);
+    }
+
+    private void setNavigationStyle(HBox navItem, boolean active) {
+        if (navItem != null) {
+            navItem.getStyleClass().removeAll("active");
+            if (active) {
+                navItem.getStyleClass().add("active");
+            }
+        }
+    }
+
+    // ==================== DATA LOADING ====================
+
+    private void loadReservations() {
+        if (sessionManager == null || reservationController == null) {
             return;
         }
 
-        String token = sessionManager.getAccessToken();
-        if (token == null || token.isBlank()) {
-            showWarning("Token de acceso no válido");
+        Long userId = sessionManager.getUserId();
+        if (userId == null) {
             return;
         }
 
-        if (isLoadingData) return;
+        if (reservationsLoadingOverlay != null) {
+            reservationsLoadingOverlay.setVisible(true);
+            reservationsLoadingOverlay.setManaged(true);
+        }
 
-        isLoadingData = true;
-        boolean showLoading = notifySuccess || !initialDataLoaded;
-
-        Task<DataResult> task = new Task<>() {
+        Task<List<ReservationDTO>> task = new Task<>() {
             @Override
-            protected DataResult call() {
-                List<String> warnings = new ArrayList<>();
-                
-                // Cargar espacios
-                List<SpaceDTO> spaces = loadSpacesFromApi(token, warnings);
-                
-                // Cargar reservas filtradas por usuario
-                List<ReservationDTO> reservations = loadUserReservationsFromApi(token, warnings);
-
-                // Cargar clima
-                CurrentWeatherDTO weather = loadWeatherFromApi(token, warnings);
-
-                return new DataResult(spaces, reservations, weather, warnings);
+            protected List<ReservationDTO> call() throws Exception {
+                return reservationController.getReservationsByUserId(userId, token);
             }
         };
 
-        if (showLoading) {
-            task.setOnRunning(e -> showLoadingIndicator("Cargando datos..."));
-        }
-
         task.setOnSucceeded(e -> {
-            isLoadingData = false;
-            DataResult result = task.getValue();
-            initialDataLoaded = true;
-
-            spacesList.setAll(result.spaces());
-            reservationsList.setAll(result.reservations());
-            currentWeather = result.weather();
-
-            filterSpaces();
+            List<ReservationDTO> data = task.getValue();
+            reservationsList.clear();
+            if (data != null) {
+                reservationsList.addAll(data);
+            }
+            reservationsTable.setItems(reservationsList);
+            updateReservationsCount();
             updateDashboardMetrics();
-            updateWeatherDisplay();
-
-            if (showLoading) hideLoadingIndicator();
-            if (notifySuccess) showSuccess("Datos actualizados");
-            if (!result.warnings().isEmpty()) {
-                showWarning(String.join("\n", result.warnings()));
+            if (reservationsLoadingOverlay != null) {
+                reservationsLoadingOverlay.setVisible(false);
+                reservationsLoadingOverlay.setManaged(false);
             }
         });
 
         task.setOnFailed(e -> {
-            isLoadingData = false;
-            if (showLoading) hideLoadingIndicator();
-            showError("Error al cargar datos: " + buildErrorMessage(task.getException()));
+            showError("Error al cargar reservas: " + task.getException().getMessage());
+            if (reservationsLoadingOverlay != null) {
+                reservationsLoadingOverlay.setVisible(false);
+                reservationsLoadingOverlay.setManaged(false);
+            }
         });
 
         new Thread(task).start();
     }
 
-    private List<SpaceDTO> loadSpacesFromApi(String token, List<String> warnings) {
-        try {
-            List<SpaceDTO> spaces = spaceController.loadSpaces(token);
-            return spaces != null ? spaces : Collections.emptyList();
-        } catch (Exception e) {
-            warnings.add("Espacios: " + buildErrorMessage(e));
-            return Collections.emptyList();
-        }
-    }
-
-    private List<ReservationDTO> loadUserReservationsFromApi(String token, List<String> warnings) {
-        try {
-            List<ReservationDTO> all = reservationController.loadReservations(token);
-            if (all == null) return Collections.emptyList();
-
-            Long userId = sessionManager != null ? sessionManager.getUserId() : null;
-            if (userId == null) {
-                warnings.add("No se pudo obtener el userId");
-                return Collections.emptyList();
-            }
-
-            return all.stream()
-                    .filter(r -> userId.equals(r.userId()))
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            warnings.add("Reservas: " + buildErrorMessage(e));
-            return Collections.emptyList();
-        }
-    }
-
-    private CurrentWeatherDTO loadWeatherFromApi(String token, List<String> warnings) {
-        String latStr = AppConfig.get("weather.default-lat");
-        String lonStr = AppConfig.get("weather.default-lon");
-
-        if (latStr == null || lonStr == null) {
-            warnings.add("Coordenadas climáticas no configuradas");
-            return null;
+    private void loadSpaces() {
+        if (spaceController == null) {
+            return;
         }
 
-        try {
-            double lat = Double.parseDouble(latStr);
-            double lon = Double.parseDouble(lonStr);
-            return weatherController.loadCurrentWeather(lat, lon, token);
-        } catch (NumberFormatException e) {
-            warnings.add("Coordenadas inválidas");
-            return null;
-        } catch (Exception e) {
-            warnings.add("Clima: " + buildErrorMessage(e));
-            return null;
+        if (spacesLoadingOverlay != null) {
+            spacesLoadingOverlay.setVisible(true);
+            spacesLoadingOverlay.setManaged(true);
         }
-    }
 
-    private String buildErrorMessage(Throwable error) {
-        if (error instanceof ApiClientException apiError) {
-            return "HTTP " + apiError.getStatusCode() + 
-                   (apiError.getResponseBody() != null ? ": " + apiError.getResponseBody() : "");
-        }
-        return error != null && error.getMessage() != null ? error.getMessage() : "Error desconocido";
-    }
-
-    // ==================== ACTUALIZACIONES AUTOMÁTICAS ====================
-
-    private void startWeatherUpdates() {
-        if (weatherTimeline != null) weatherTimeline.stop();
-        weatherTimeline = new Timeline(new KeyFrame(WEATHER_REFRESH_INTERVAL, e -> reloadWeather(false)));
-        weatherTimeline.setCycleCount(Timeline.INDEFINITE);
-        weatherTimeline.play();
-    }
-
-    private void startDataUpdates() {
-        if (dataTimeline != null) dataTimeline.stop();
-        dataTimeline = new Timeline(new KeyFrame(DATA_REFRESH_INTERVAL, e -> {
-            if (!isLoadingData) loadInitialData(false);
-        }));
-        dataTimeline.setCycleCount(Timeline.INDEFINITE);
-        dataTimeline.play();
-    }
-
-    private void stopUpdates() {
-        if (weatherTimeline != null) { weatherTimeline.stop(); weatherTimeline = null; }
-        if (dataTimeline != null) { dataTimeline.stop(); dataTimeline = null; }
-        initialDataLoaded = false;
-    }
-
-    private void reloadWeather(boolean notify) {
-        if (sessionManager == null) return;
-        String token = sessionManager.getAccessToken();
-        if (token == null) return;
-
-        Task<WeatherResult> task = new Task<>() {
+        Task<List<SpaceDTO>> task = new Task<>() {
             @Override
-            protected WeatherResult call() {
-                List<String> warnings = new ArrayList<>();
-                CurrentWeatherDTO weather = loadWeatherFromApi(token, warnings);
-                return new WeatherResult(weather, warnings);
+            protected List<SpaceDTO> call() throws Exception {
+                return spaceController.getAllSpaces(token);
             }
         };
 
         task.setOnSucceeded(e -> {
-            WeatherResult result = task.getValue();
-            currentWeather = result.weather();
-            updateWeatherDisplay();
-            if (notify) showSuccess("Clima actualizado");
+            List<SpaceDTO> data = task.getValue();
+            allSpaces.clear();
+            spacesList.clear();
+            if (data != null) {
+                allSpaces.addAll(data);
+                spacesList.addAll(data);
+            }
+            displaySpaces(spacesList);
+            updateSpacesCount();
+            if (spacesLoadingOverlay != null) {
+                spacesLoadingOverlay.setVisible(false);
+                spacesLoadingOverlay.setManaged(false);
+            }
+        });
+
+        task.setOnFailed(e -> {
+            showError("Error al cargar espacios: " + task.getException().getMessage());
+            if (spacesLoadingOverlay != null) {
+                spacesLoadingOverlay.setVisible(false);
+                spacesLoadingOverlay.setManaged(false);
+            }
         });
 
         new Thread(task).start();
     }
 
-    // ==================== CONFIGURACIÓN DE TABLA ====================
+    private void loadWeather() {
+        if (weatherController == null) {
+            return;
+        }
+
+        Task<CurrentWeatherDTO> task = new Task<>() {
+            @Override
+            protected CurrentWeatherDTO call() throws Exception {
+                return weatherController.getCurrentWeather();
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            CurrentWeatherDTO weather = task.getValue();
+            if (weather != null) {
+                updateWeatherUI(weather);
+            }
+        });
+
+        task.setOnFailed(e -> {
+            weatherMessageLabel.setText("No se pudo cargar la información del clima");
+        });
+
+        new Thread(task).start();
+    }
+
+    private void updateWeatherUI(CurrentWeatherDTO weather) {
+        weatherTempLabel.setText(String.format("%.1f°C", weather.main().temp()));
+        weatherConditionLabel.setText(capitalizeFirst(weather.weather().get(0).description()));
+        weatherWindLabel.setText(String.format("Viento: %.1f km/h", weather.wind().speed()));
+        weatherHumidityLabel.setText(String.format("Humedad: %d%%", weather.main().humidity()));
+
+        String icon = getWeatherIcon(weather.weather().get(0).main());
+        weatherIconLabel.setText(icon);
+
+        String message = getWeatherMessage(weather.weather().get(0).main(), weather.main().temp());
+        weatherMessageLabel.setText(message);
+    }
+
+    private String getWeatherIcon(String condition) {
+        return switch (condition.toLowerCase()) {
+            case "clear" -> "☀️";
+            case "clouds" -> "☁️";
+            case "rain" -> "🌧️";
+            case "drizzle" -> "🌦️";
+            case "thunderstorm" -> "⛈️";
+            case "snow" -> "❄️";
+            case "mist", "fog" -> "🌫️";
+            default -> "🌤️";
+        };
+    }
+
+    private String getWeatherMessage(String condition, double temp) {
+        if (condition.equalsIgnoreCase("rain") || condition.equalsIgnoreCase("thunderstorm")) {
+            return "⚠️ Considera reservar espacios cubiertos debido a la lluvia.";
+        } else if (temp > 30) {
+            return "☀️ Día caluroso. Recomendamos espacios con sombra o climatizados.";
+        } else if (temp < 18) {
+            return "🌡️ Clima fresco. Ideal para actividades al aire libre.";
+        } else {
+            return "✨ Excelente clima para cualquier actividad.";
+        }
+    }
+
+    private String capitalizeFirst(String text) {
+        if (text == null || text.isEmpty()) return text;
+        return text.substring(0, 1).toUpperCase() + text.substring(1);
+    }
+
+    // ==================== TABLE SETUP ====================
 
     private void setupTableColumns() {
-        if (reservationsTable == null) return;
-        
-        reservationsTable.setItems(reservationsList);
-        
-        // Espacio
-        if (reservationSpaceColumn != null) {
-            reservationSpaceColumn.setCellValueFactory(data -> {
-                Long spaceId = data.getValue().spaceId();
-                SpaceDTO space = spacesList.stream()
-                        .filter(s -> s.id() != null && s.id().equals(spaceId))
-                        .findFirst().orElse(null);
-                String name = space != null ? space.name() : "Espacio #" + spaceId;
-                return new javafx.beans.property.SimpleStringProperty(name);
-            });
-        }
-        
-        // Fecha
-        if (reservationDateColumn != null) {
-            reservationDateColumn.setCellValueFactory(data -> {
-                return new javafx.beans.property.SimpleStringProperty(
-                    data.getValue().startTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                );
-            });
-        }
-        
-        // Horario
-        if (reservationTimeColumn != null) {
-            reservationTimeColumn.setCellValueFactory(data -> {
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm");
-                String start = data.getValue().startTime().format(fmt);
-                String end = data.getValue().endTime().format(fmt);
-                return new javafx.beans.property.SimpleStringProperty(start + " - " + end);
-            });
-        }
-        
-        // Tipo de evento
-        if (reservationEventColumn != null) {
-            reservationEventColumn.setCellValueFactory(data -> {
-                String notes = data.getValue().notes();
-                return new javafx.beans.property.SimpleStringProperty(notes != null ? notes : "N/A");
-            });
-        }
-        
-        // Estado con badges
-        if (reservationStatusColumn != null) {
-            reservationStatusColumn.setCellValueFactory(data -> {
-                String status = data.getValue().status();
-                return new javafx.beans.property.SimpleStringProperty(STATUS_MAP.getOrDefault(status, status));
-            });
-            
-            reservationStatusColumn.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(String displayStatus, boolean empty) {
-                    super.updateItem(displayStatus, empty);
-                    if (empty || displayStatus == null) {
-                        setGraphic(null);
+        reservationSpaceColumn.setCellValueFactory(data -> {
+            Long spaceId = data.getValue().spaceId();
+            SpaceDTO space = spacesList.stream()
+                    .filter(s -> s.id() != null && s.id().equals(spaceId))
+                    .findFirst().orElse(null);
+            String name = space != null ? space.name() : "Espacio #" + spaceId;
+            return new javafx.beans.property.SimpleStringProperty(name);
+        });
+
+        reservationDateColumn.setCellValueFactory(data -> {
+            LocalDateTime dateTime = data.getValue().startTime();
+            String formatted = dateTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            return new javafx.beans.property.SimpleStringProperty(formatted);
+        });
+
+        reservationTimeColumn.setCellValueFactory(data -> {
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+            String start = data.getValue().startTime().format(timeFormatter);
+            String end = data.getValue().endTime().format(timeFormatter);
+            return new javafx.beans.property.SimpleStringProperty(start + " - " + end);
+        });
+
+        reservationEventColumn.setCellValueFactory(data -> {
+            String notes = data.getValue().notes();
+            return new javafx.beans.property.SimpleStringProperty(notes != null ? notes : "N/A");
+        });
+
+        reservationStatusColumn.setCellValueFactory(data -> {
+            String status = data.getValue().status();
+            String displayStatus = STATUS_MAP.getOrDefault(status, status);
+            return new javafx.beans.property.SimpleStringProperty(displayStatus);
+        });
+
+        reservationStatusColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String displayStatus, boolean empty) {
+                super.updateItem(displayStatus, empty);
+                if (empty || displayStatus == null) {
+                    setGraphic(null);
+                } else {
+                    Label badge = new Label(displayStatus);
+                    badge.getStyleClass().add("status-badge");
+
+                    if ("Confirmada".equals(displayStatus)) {
+                        badge.getStyleClass().add("status-confirmed");
+                    } else if ("Completada".equals(displayStatus)) {
+                        badge.getStyleClass().add("status-completed");
+                    } else if ("Cancelada".equals(displayStatus) || "Inasistencia".equals(displayStatus)) {
+                        badge.getStyleClass().add("status-cancelled");
                     } else {
-                        Label badge = new Label(displayStatus);
-                        badge.getStyleClass().add("status-badge");
-                        
-                        if ("Confirmada".equals(displayStatus)) {
-                            badge.getStyleClass().add("status-confirmed");
-                        } else if ("Completada".equals(displayStatus)) {
-                            badge.getStyleClass().add("status-completed");
-                        } else if ("Cancelada".equals(displayStatus) || "Inasistencia".equals(displayStatus)) {
-                            badge.getStyleClass().add("status-cancelled");
-                        } else if ("Pendiente".equals(displayStatus)) {
-                            badge.getStyleClass().add("status-pending");
-                        }
-                        
-                        setGraphic(badge);
-                        setAlignment(Pos.CENTER);
+                        badge.getStyleClass().add("status-pending");
                     }
+
+                    setGraphic(badge);
                 }
-            });
-        }
-        
-        // Acciones
-        if (reservationActionsColumn != null) {
-            reservationActionsColumn.setCellFactory(col -> new TableCell<>() {
-                private final Button viewBtn = new Button("👁");
-                private final Button cancelBtn = new Button("✖");
-                private final HBox box = new HBox(5, viewBtn, cancelBtn);
-                
-                {
-                    viewBtn.getStyleClass().add("action-button");
-                    cancelBtn.getStyleClass().add("action-button");
-                    box.setAlignment(Pos.CENTER);
-                    
-                    viewBtn.setOnAction(e -> {
-                        ReservationDTO res = getTableView().getItems().get(getIndex());
-                        handleViewReservation(res);
-                    });
-                    
-                    cancelBtn.setOnAction(e -> {
-                        ReservationDTO res = getTableView().getItems().get(getIndex());
-                        handleCancelReservation(res);
-                    });
-                }
-                
-                @Override
-                protected void updateItem(Void item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty) {
-                        setGraphic(null);
+            }
+        });
+
+        reservationActionsColumn.setCellFactory(col -> new TableCell<>() {
+            private final Button viewBtn = new Button("👁");
+            private final Button cancelBtn = new Button("✖");
+            private final HBox box = new HBox(5, viewBtn, cancelBtn);
+
+            {
+                viewBtn.getStyleClass().add("action-button");
+                cancelBtn.getStyleClass().add("action-button");
+                cancelBtn.getStyleClass().add("cancel-button");
+                box.setAlignment(Pos.CENTER);
+
+                viewBtn.setOnAction(e -> {
+                    ReservationDTO res = getTableView().getItems().get(getIndex());
+                    handleViewReservation(res);
+                });
+
+                cancelBtn.setOnAction(e -> {
+                    ReservationDTO res = getTableView().getItems().get(getIndex());
+                    handleCancelReservationConfirm(res);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    ReservationDTO res = getTableView().getItems().get(getIndex());
+                    if ("CONFIRMED".equals(res.status())) {
+                        box.getChildren().setAll(viewBtn, cancelBtn);
                     } else {
-                        ReservationDTO res = getTableView().getItems().get(getIndex());
-                        String status = res.status();
-                        
-                        // Solo mostrar cancelar si está confirmada
-                        if ("CONFIRMED".equals(status)) {
-                            box.getChildren().setAll(viewBtn, cancelBtn);
-                        } else {
-                            box.getChildren().setAll(viewBtn);
-                        }
-                        setGraphic(box);
+                        box.getChildren().setAll(viewBtn);
                     }
+                    setGraphic(box);
                 }
-            });
+            }
+        });
+    }
+
+    // ==================== FILTERS ====================
+
+    private void setupFilters() {
+        if (spaceTypeChoice != null) {
+            spaceTypeChoice.setItems(FXCollections.observableArrayList(
+                "Todos", "Auditorio", "Sala", "Cancha", "Parque", "Gimnasio"
+            ));
+            spaceTypeChoice.setValue("Todos");
+        }
+
+        if (capacityChoice != null) {
+            capacityChoice.setItems(FXCollections.observableArrayList(
+                "Todas", "< 50", "50-100", "100-200", "> 200"
+            ));
+            capacityChoice.setValue("Todas");
+        }
+
+        if (datePicker != null) {
+            datePicker.setValue(LocalDate.now());
         }
     }
 
-    // ==================== NAVEGACIÓN ====================
+    @FXML
+    private void handleApplyFilters() {
+        List<SpaceDTO> filtered = new ArrayList<>(allSpaces);
 
-    private void navigateToSection(Section section) {
-        // Ocultar todas
-        if (dashboardSection != null) { dashboardSection.setVisible(false); dashboardSection.setManaged(false); }
-        if (spacesSection != null) { spacesSection.setVisible(false); spacesSection.setManaged(false); }
-        if (myReservationsSection != null) { myReservationsSection.setVisible(false); myReservationsSection.setManaged(false); }
-        if (reportsSection != null) { reportsSection.setVisible(false); reportsSection.setManaged(false); }
-        
-        // Mostrar la seleccionada
-        switch (section) {
-            case DASHBOARD:
-                if (dashboardSection != null) {
-                    dashboardSection.setVisible(true);
-                    dashboardSection.setManaged(true);
-                    applyFadeTransition(dashboardSection);
-                    updateDashboardMetrics();
-                }
-                break;
-            case SPACES:
-                if (spacesSection != null) {
-                    spacesSection.setVisible(true);
-                    spacesSection.setManaged(true);
-                    applyFadeTransition(spacesSection);
-                    filterSpaces();
-                }
-                break;
-            case MY_RESERVATIONS:
-                if (myReservationsSection != null) {
-                    myReservationsSection.setVisible(true);
-                    myReservationsSection.setManaged(true);
-                    applyFadeTransition(myReservationsSection);
-                }
-                break;
-            case REPORTS:
-                if (reportsSection != null) {
-                    reportsSection.setVisible(true);
-                    reportsSection.setManaged(true);
-                    applyFadeTransition(reportsSection);
-                    generateReports();
-                }
-                break;
+        String searchText = searchSpaceField.getText().toLowerCase();
+        if (!searchText.isEmpty()) {
+            filtered = filtered.stream()
+                    .filter(s -> s.name().toLowerCase().contains(searchText))
+                    .collect(Collectors.toList());
         }
-        
-        updateNavigationStyles(section);
-    }
 
-    private void updateNavigationStyles(Section active) {
-        if (navDashboardButton != null) navDashboardButton.getStyleClass().remove("active");
-        if (navSpacesButton != null) navSpacesButton.getStyleClass().remove("active");
-        if (navMyReservationsButton != null) navMyReservationsButton.getStyleClass().remove("active");
-        if (navReportsButton != null) navReportsButton.getStyleClass().remove("active");
-        
-        switch (active) {
-            case DASHBOARD: if (navDashboardButton != null) navDashboardButton.getStyleClass().add("active"); break;
-            case SPACES: if (navSpacesButton != null) navSpacesButton.getStyleClass().add("active"); break;
-            case MY_RESERVATIONS: if (navMyReservationsButton != null) navMyReservationsButton.getStyleClass().add("active"); break;
-            case REPORTS: if (navReportsButton != null) navReportsButton.getStyleClass().add("active"); break;
+        String type = spaceTypeChoice.getValue();
+        if (type != null && !"Todos".equals(type)) {
+            filtered = filtered.stream()
+                    .filter(s -> type.equalsIgnoreCase(s.type()))
+                    .collect(Collectors.toList());
         }
-    }
 
-    private void applyFadeTransition(Node node) {
-        if (node == null) return;
-        FadeTransition fade = new FadeTransition(Duration.millis(300), node);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-        fade.play();
-    }
-
-    @FXML
-    private void handleNavigateDashboard(MouseEvent e) { navigateToSection(Section.DASHBOARD); }
-
-    @FXML
-    private void handleNavigateSpaces(MouseEvent e) { navigateToSection(Section.SPACES); }
-    @FXML
-    private void handleNavigateSpaces() { navigateToSection(Section.SPACES); }
-
-    @FXML
-    private void handleNavigateMyReservations(MouseEvent e) { navigateToSection(Section.MY_RESERVATIONS); }
-    @FXML
-    private void handleNavigateMyReservations() { navigateToSection(Section.MY_RESERVATIONS); }
-
-    @FXML
-    private void handleNavigateReports(MouseEvent e) { navigateToSection(Section.REPORTS); }
-    @FXML
-    private void handleNavigateReports() { navigateToSection(Section.REPORTS); }
-
-    @FXML
-    private void handleLogout(MouseEvent e) {
-        stopUpdates();
-        if (sessionManager != null) sessionManager.clear();
-        showAlert("Logout", "Sesión cerrada", Alert.AlertType.INFORMATION);
-    }
-
-    @FXML
-    private void handleApplyFilters() { filterSpaces(); }
-
-    @FXML
-    private void handleNewReservation() {
-        showAlert("Nueva Reserva", "Funcionalidad en desarrollo", Alert.AlertType.INFORMATION);
-    }
-
-<<<<<<< HEAD
-    // ==================== FILTROS Y VISUALIZACIÓN ====================
-=======
-      @FXML
-    private void handleGenerateTestQr() {
-        LocalDateTime start = LocalDate.now().plusDays(1).atTime(10, 0);
-        LocalDateTime end = start.plusHours(2);
-        Long demoSpaceId = 9999L;
-        String demoSpaceName = "Demostración - Espacio Municipal";
-
-        String qrValue = buildQrPayload(demoSpaceId, start, end);
-
-        try {
-            WritableImage qrImage = QRCodeGenerator.generate(qrValue);
-            showReservationQrDialog(demoSpaceName, start, end, qrValue, qrImage);
-        } catch (WriterException e) {
-            showAlert("Error", "No se pudo generar el QR de prueba: " + e.getMessage(), Alert.AlertType.ERROR);
+        String capacity = capacityChoice.getValue();
+        if (capacity != null && !"Todas".equals(capacity)) {
+            filtered = filtered.stream()
+                    .filter(s -> matchesCapacity(s.capacity(), capacity))
+                    .collect(Collectors.toList());
         }
+
+        spacesList.clear();
+        spacesList.addAll(filtered);
+        displaySpaces(spacesList);
+        updateSpacesCount();
     }
-    // API Methods
-    
-    private void loadDashboardData() {
-        if (currentUserId == null) return;
-        
-        loadUserReservations();
-        loadWeatherData();
+
+    private boolean matchesCapacity(int capacity, String range) {
+        return switch (range) {
+            case "< 50" -> capacity < 50;
+            case "50-100" -> capacity >= 50 && capacity <= 100;
+            case "100-200" -> capacity > 100 && capacity <= 200;
+            case "> 200" -> capacity > 200;
+            default -> true;
+        };
     }
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 
-    private void filterSpaces() {
-        String search = searchSpaceField != null ? searchSpaceField.getText().toLowerCase() : "";
-        String type = spaceTypeChoice != null ? spaceTypeChoice.getValue() : "Todos";
-        String capacity = capacityChoice != null ? capacityChoice.getValue() : "Todas";
+    // ==================== SPACES DISPLAY ====================
 
-        filteredSpacesList.clear();
-        filteredSpacesList.addAll(spacesList.stream()
-            .filter(s -> {
-                // Búsqueda
-                if (!search.isEmpty()) {
-                    String name = s.name() != null ? s.name().toLowerCase() : "";
-                    String desc = s.description() != null ? s.description().toLowerCase() : "";
-                    if (!name.contains(search) && !desc.contains(search)) return false;
-                }
-                
-                // Tipo
-                if (!"Todos".equals(type)) {
-                    if (!type.equals(s.type())) return false;
-                }
-                
-                // Capacidad
-                if (!"Todas".equals(capacity)) {
-                    int cap = s.capacity() != null ? s.capacity() : 0;
-                    switch (capacity) {
-                        case "1-50": if (cap < 1 || cap > 50) return false; break;
-                        case "51-100": if (cap < 51 || cap > 100) return false; break;
-                        case "100+": if (cap <= 100) return false; break;
-                    }
-                }
-                
-                return true;
-            })
-            .collect(Collectors.toList())
-        );
-
-        displaySpaces();
-        
-        if (spacesCountLabel != null) {
-            spacesCountLabel.setText("Espacios disponibles (" + filteredSpacesList.size() + ")");
+    private void displaySpaces(List<SpaceDTO> spaces) {
+        if (spacesFlowPane == null) {
+            return;
         }
-    }
 
-    private void displaySpaces() {
-        if (spacesFlowPane == null) return;
         spacesFlowPane.getChildren().clear();
-        
-        for (SpaceDTO space : filteredSpacesList) {
+
+        for (SpaceDTO space : spaces) {
             VBox card = createSpaceCard(space);
             spacesFlowPane.getChildren().add(card);
         }
     }
 
     private VBox createSpaceCard(SpaceDTO space) {
-        VBox card = new VBox(10);
+        VBox card = new VBox(12);
         card.getStyleClass().add("space-card");
+        card.setPadding(new Insets(20));
         card.setPrefWidth(280);
-        card.setPadding(new Insets(0));
-        
-        // Imagen
-        StackPane imgContainer = new StackPane();
-        imgContainer.getStyleClass().add("space-image-container");
-        imgContainer.setPrefHeight(180);
-        
-        ImageView img = new ImageView();
-        img.setFitWidth(280);
-        img.setFitHeight(180);
-        img.setPreserveRatio(false);
-        imgContainer.getChildren().add(img);
-        
-        // Badge
-        boolean active = space.active() != null && space.active();
-        Label badge = new Label(active ? "Disponible" : "No disponible");
-        badge.getStyleClass().addAll("space-status-badge", active ? "space-available" : "space-occupied");
-        StackPane.setAlignment(badge, Pos.TOP_RIGHT);
-        StackPane.setMargin(badge, new Insets(10));
-        imgContainer.getChildren().add(badge);
-        
-        // Contenido
-        VBox content = new VBox(8);
-        content.setPadding(new Insets(16));
-        
-        Label name = new Label(space.name() != null ? space.name() : "Sin nombre");
-        name.getStyleClass().add("space-name");
-        
-        Label desc = new Label(space.description() != null ? space.description() : "");
-        desc.getStyleClass().add("space-description");
-        desc.setWrapText(true);
-        desc.setMaxHeight(40);
-        
-        HBox info = new HBox(15);
-        Label capLabel = new Label("👥 " + (space.capacity() != null ? space.capacity() : 0));
-        Label typeLabel = new Label("📍 " + (space.type() != null ? space.type() : "N/A"));
-        info.getChildren().addAll(capLabel, typeLabel);
-        
-        Button reserveBtn = new Button("Reservar espacio");
+
+        Label nameLabel = new Label(space.name());
+        nameLabel.getStyleClass().add("space-card-title");
+
+        HBox typeBox = new HBox(8);
+        typeBox.setAlignment(Pos.CENTER_LEFT);
+        Label typeIcon = new Label(getSpaceIcon(space.type()));
+        typeIcon.getStyleClass().add("space-icon");
+        Label typeLabel = new Label(space.type());
+        typeLabel.getStyleClass().add("space-type");
+        typeBox.getChildren().addAll(typeIcon, typeLabel);
+
+        Label capacityLabel = new Label("👥 Capacidad: " + space.capacity() + " personas");
+        capacityLabel.getStyleClass().add("space-detail");
+
+        String status = space.available() ? "✓ Disponible" : "✖ No disponible";
+        Label availabilityLabel = new Label(status);
+        availabilityLabel.getStyleClass().add(space.available() ? "space-available" : "space-unavailable");
+
+        Button reserveBtn = new Button("📅 Reservar espacio");
         reserveBtn.getStyleClass().add("primary-button");
         reserveBtn.setMaxWidth(Double.MAX_VALUE);
+        reserveBtn.setDisable(!space.available());
         reserveBtn.setOnAction(e -> handleReserveSpace(space));
-        reserveBtn.setDisable(!active);
-        
-        content.getChildren().addAll(name, desc, info, reserveBtn);
-        card.getChildren().addAll(imgContainer, content);
-        
+
+        card.getChildren().addAll(nameLabel, typeBox, capacityLabel, availabilityLabel, reserveBtn);
         return card;
     }
 
-<<<<<<< HEAD
-    private void handleReserveSpace(SpaceDTO space) {
-        showAlert("Reservar", "Funcionalidad para: " + space.name(), Alert.AlertType.INFORMATION);
-=======
-    private void handleReserveSpace(Map<String, Object> space) {
-    if (authToken == null || currentUserId == null) {
-            showAlert("Iniciar sesión", "Debes iniciar sesión para crear una reserva", Alert.AlertType.WARNING);
-            return;
-        }
-
-        Dialog<ReservationRequest> dialog = new Dialog<>();
-        dialog.setTitle("Reservar " + Objects.toString(space.get("name"), "espacio"));
-        dialog.setHeaderText("Completa los datos de la reserva y generaremos el código QR por ti");
-        dialog.getDialogPane().getButtonTypes().addAll(new ButtonType("Generar QR", ButtonBar.ButtonData.OK_DONE),
-                ButtonType.CANCEL);
-
-        LocalDate defaultDate = LocalDate.now();
-        DatePicker reservationDatePicker = new DatePicker(defaultDate);
-
-        Spinner<Integer> hourSpinner = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(6, 22, 9));
-        Spinner<Integer> minuteSpinner = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 45, 0, 15));
-        Spinner<Integer> durationSpinner = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 8, 2));
-
-        int maxCapacity = Math.max(1, parseInteger(space.get("capacity"), 100));
-        Spinner<Integer> attendeesSpinner = new Spinner<>(
-                new SpinnerValueFactory.IntegerSpinnerValueFactory(1, maxCapacity, Math.min(10, maxCapacity)));
-
-        TextArea notesArea = new TextArea();
-        notesArea.setPromptText("Notas para el administrador del espacio");
-        notesArea.setPrefRowCount(3);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(10, 5, 0, 5));
-
-        grid.add(new Label("Fecha"), 0, 0);
-        grid.add(reservationDatePicker, 1, 0);
-
-        Label colonLabel = new Label(":");
-        colonLabel.setStyle("-fx-font-weight: bold;");
-        HBox startTimeBox = new HBox(6, hourSpinner, colonLabel, minuteSpinner);
-        startTimeBox.setAlignment(Pos.CENTER_LEFT);
-
-        grid.add(new Label("Hora de inicio"), 0, 1);
-        grid.add(startTimeBox, 1, 1);
-
-        grid.add(new Label("Duración (horas)"), 0, 2);
-        grid.add(durationSpinner, 1, 2);
-
-        grid.add(new Label("Asistentes"), 0, 3);
-        grid.add(attendeesSpinner, 1, 3);
-
-        Label capacityHint = new Label("Capacidad máxima: " + maxCapacity + " personas");
-        capacityHint.getStyleClass().add("form-hint");
-        grid.add(capacityHint, 1, 4);
-
-        grid.add(new Label("Notas"), 0, 5);
-        grid.add(notesArea, 1, 5);
-        GridPane.setColumnSpan(notesArea, 2);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.setResizable(true);
-
-        dialog.setResultConverter(button -> {
-            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) {
-                return null;
-            }
-            LocalDate date = reservationDatePicker.getValue();
-            if (date == null) {
-                showAlert("Datos incompletos", "Selecciona una fecha para la reserva", Alert.AlertType.WARNING);
-                return null;
-            }
-            int hour = hourSpinner.getValue();
-            int minute = minuteSpinner.getValue();
-            LocalTime startTime = LocalTime.of(hour, minute);
-            LocalDateTime start = LocalDateTime.of(date, startTime);
-            LocalDateTime end = start.plusHours(durationSpinner.getValue());
-            String notes = notesArea.getText() != null ? notesArea.getText().trim() : "";
-            return new ReservationRequest(start, end, attendeesSpinner.getValue(), notes);
-        });
-
-        dialog.showAndWait().ifPresent(request -> submitReservation(space, request));
-    }
-
-    private void submitReservation(Map<String, Object> space, ReservationRequest request) {
-        Long spaceId = parseLong(space.get("id"));
-        if (spaceId == null) {
-            showAlert("Error", "No se pudo identificar el espacio seleccionado", Alert.AlertType.ERROR);
-            return;
-        }
-
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("userId", currentUserId);
-        payload.put("spaceId", spaceId);
-        payload.put("startTime", request.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        payload.put("endTime", request.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        payload.put("status", "CONFIRMED");
-        payload.put("attendees", request.attendees());
-        if (!request.notes().isBlank()) {
-            payload.put("notes", request.notes());
-        }
-
-        String spaceName = Objects.toString(space.get("name"), "Espacio municipal");
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(API_BASE_URL + "/reservations"))
-                    .header("Authorization", "Bearer " + authToken)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-                    .build();
-
-                HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-
-                if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                    ReservationDTO created = objectMapper.readValue(response.body(), ReservationDTO.class);
-                    String qrValue = created.getQrCode();
-
-                    if (qrValue == null || qrValue.isBlank()) {
-                        Platform.runLater(() -> showAlert("Error",
-                            "La reserva se creó pero no se recibió un código QR válido del servidor.",
-                            Alert.AlertType.ERROR));
-                        return;
-                    }
-
-                    try {
-                        WritableImage qrImage = QRCodeGenerator.generate(qrValue);
-                        Platform.runLater(() -> {
-                            loadUserReservations();
-                            showReservationQrDialog(spaceName, created.startTime(), created.endTime(), qrValue, qrImage);
-                        });
-                    } catch (WriterException e) {
-                        Platform.runLater(() -> showAlert("Error",
-                            "La reserva se creó pero no se pudo generar el código QR: " + e.getMessage(),
-                            Alert.AlertType.ERROR));
-                    }
-                } else {
-                    String errorMessage = extractErrorMessage(response.body());
-                    Platform.runLater(() -> showAlert("Error", errorMessage, Alert.AlertType.ERROR));
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                Platform.runLater(() -> showAlert("Error", "No se pudo crear la reserva: " + e.getMessage(),
-                        Alert.AlertType.ERROR));
-            }
-        });
-    }
-
-    private String extractErrorMessage(String responseBody) {
-        if (responseBody == null || responseBody.isBlank()) {
-            return "No se pudo crear la reserva. Inténtalo nuevamente.";
-        }
-        try {
-            Map<String, Object> parsed = objectMapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
-            Object message = parsed.getOrDefault("message", parsed.get("error"));
-            return message != null ? message.toString() : "No se pudo crear la reserva. Inténtalo nuevamente.";
-        } catch (IOException e) {
-            return "No se pudo crear la reserva: " + responseBody;
-        }
-    }
-
-    private String buildQrPayload(Long spaceId, LocalDateTime start, LocalDateTime end) {
-        String token = UUID.randomUUID().toString();
-        return "RES|" + spaceId + "|" + start.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            + "|" + end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "|" + token;
-    }
-
-    private void showReservationQrDialog(String spaceName, LocalDateTime start, LocalDateTime end,
-            String qrValue, WritableImage qrImage) {
-        Dialog<Void> qrDialog = new Dialog<>();
-        qrDialog.setTitle("Reserva generada");
-        qrDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-
-        VBox content = new VBox(14);
-        content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(10, 10, 10, 10));
-
-        Label title = new Label("Reserva confirmada");
-        title.getStyleClass().add("dialog-title");
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        String schedule = formatter.format(start) + " - " + formatter.format(end);
-        Label details = new Label(spaceName + "\n" + schedule);
-        details.setStyle("-fx-font-size: 13px; -fx-text-alignment: center;");
-        details.setWrapText(true);
-        details.setAlignment(Pos.CENTER);
-
-        ImageView qrView = new ImageView(qrImage);
-        qrView.setFitWidth(220);
-        qrView.setFitHeight(220);
-        qrView.setPreserveRatio(true);
-
-        Label qrValueLabel = new Label(qrValue);
-        qrValueLabel.getStyleClass().add("qr-value-label");
-        qrValueLabel.setWrapText(true);
-        qrValueLabel.setAlignment(Pos.CENTER);
-
-        Button copyButton = new Button("Copiar código");
-        copyButton.getStyleClass().add("primary-button");
-        copyButton.setOnAction(event -> {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent contentData = new ClipboardContent();
-            contentData.putString(qrValue);
-            clipboard.setContent(contentData);
-        });
-
-        content.getChildren().addAll(title, details, qrView, qrValueLabel, copyButton);
-        qrDialog.getDialogPane().setContent(content);
-        qrDialog.setResizable(false);
-        qrDialog.showAndWait();
-    }
-
-    private Long parseLong(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        if (value instanceof String string && !string.isBlank()) {
-            try {
-                return Long.parseLong(string);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        return null;
-    }
-
-    private int parseInteger(Object value, int defaultValue) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof String string && !string.isBlank()) {
-            try {
-                return Integer.parseInt(string);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        return defaultValue;
-    
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
-    }
-
-    // ==================== MÉTRICAS ====================
-
-    private void updateDashboardMetrics() {
-        long active = reservationsList.stream().filter(r -> "CONFIRMED".equals(r.status())).count();
-        long completed = reservationsList.stream().filter(r -> "COMPLETED".equals(r.status())).count();
-        long noShows = reservationsList.stream().filter(r -> "NO_SHOW".equals(r.status())).count();
-        
-        if (activeReservationsLabel != null) activeReservationsLabel.setText(String.valueOf(active));
-        if (completedReservationsLabel != null) completedReservationsLabel.setText(String.valueOf(completed));
-        if (noShowsLabel != null) noShowsLabel.setText(String.valueOf(noShows));
-        if (reservationsCountLabel != null) reservationsCountLabel.setText("Reservas (" + reservationsList.size() + ")");
-    }
-
-    private void updateWeatherDisplay() {
-        if (currentWeather == null) {
-            if (weatherTempLabel != null) weatherTempLabel.setText("--°C");
-            if (weatherConditionLabel != null) weatherConditionLabel.setText("No disponible");
-            if (weatherWindLabel != null) weatherWindLabel.setText("Viento: -- km/h");
-            if (weatherHumidityLabel != null) weatherHumidityLabel.setText("Humedad: --%");
-            if (weatherIconLabel != null) weatherIconLabel.setText("☀");
-            if (weatherMessageLabel != null) weatherMessageLabel.setText("Información no disponible");
-            return;
-        }
-
-        if (weatherTempLabel != null) weatherTempLabel.setText(String.format("%.1f°C", currentWeather.temperature()));
-        if (weatherConditionLabel != null) weatherConditionLabel.setText(currentWeather.description());
-        if (weatherWindLabel != null) weatherWindLabel.setText(String.format("Viento: %.1f km/h", currentWeather.windSpeed() * 3.6));
-        if (weatherHumidityLabel != null) weatherHumidityLabel.setText("Humedad: " + currentWeather.humidity() + "%");
-        if (weatherIconLabel != null) weatherIconLabel.setText(getWeatherIcon(currentWeather.icon()));
-        if (weatherMessageLabel != null) weatherMessageLabel.setText(getWeatherMessage(currentWeather));
-    }
-
-    private String getWeatherIcon(String icon) {
-        if (icon == null) return "☀";
-        return switch (icon) {
-            case "01d" -> "☀";
-            case "01n" -> "🌙";
-            case "02d", "02n" -> "⛅";
-            case "03d", "03n", "04d", "04n" -> "☁";
-            case "09d", "09n" -> "🌧";
-            case "10d", "10n" -> "🌦";
-            case "11d", "11n" -> "⛈";
-            case "13d", "13n" -> "🌨";
-            case "50d", "50n" -> "🌫";
-            default -> "☀";
+    private String getSpaceIcon(String type) {
+        return switch (type.toLowerCase()) {
+            case "auditorio" -> "🎭";
+            case "sala" -> "🏛️";
+            case "cancha" -> "⚽";
+            case "parque" -> "🌳";
+            case "gimnasio" -> "💪";
+            default -> "🏢";
         };
     }
 
-    private String getWeatherMessage(CurrentWeatherDTO w) {
-        int h = w.humidity();
-        double t = w.temperature();
-        
-        if (h >= 80) return "Posible lluvia - Considera espacios interiores";
-        if (h >= 60) return "Clima húmedo - Precaución al aire libre";
-        if (t >= 25) return "Día cálido, perfecto para actividades al aire libre";
-        if (t >= 20) return "Excelente día para actividades al aire libre";
-        if (t >= 15) return "Clima agradable, lleva una chaqueta ligera";
-        return "Clima fresco, abrígate bien";
+    // ==================== RESERVATION ACTIONS ====================
+
+    @FXML
+    private void handleNewReservation() {
+        navigateToSection(Section.SPACES);
     }
 
-    // ==================== REPORTES ====================
+    private void handleReserveSpace(SpaceDTO space) {
+        Dialog<ReservationData> dialog = new Dialog<>();
+        dialog.setTitle("Nueva Reserva");
+        dialog.setHeaderText("Reservar: " + space.name());
 
-    private void generateReports() {
-        if (totalReservationsReportLabel != null) {
-            totalReservationsReportLabel.setText(String.valueOf(reservationsList.size()));
-        }
+        ButtonType confirmButtonType = new ButtonType("Confirmar", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(confirmButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+
+        DatePicker datePicker = new DatePicker(LocalDate.now());
         
-        long attended = reservationsList.stream().filter(r -> "COMPLETED".equals(r.status())).count();
-        double rate = reservationsList.isEmpty() ? 0 : (attended * 100.0 / reservationsList.size());
+        Spinner<Integer> startHour = new Spinner<>(8, 20, 9);
+        startHour.setEditable(true);
+        Spinner<Integer> startMinute = new Spinner<>(0, 59, 0, 15);
+        startMinute.setEditable(true);
         
-        if (attendanceRateLabel != null) attendanceRateLabel.setText(String.format("%.1f%%", rate));
-        if (attendancePercentageLabel != null) attendancePercentageLabel.setText(String.format("%.1f%%", rate));
+        Spinner<Integer> endHour = new Spinner<>(8, 20, 11);
+        endHour.setEditable(true);
+        Spinner<Integer> endMinute = new Spinner<>(0, 59, 0, 15);
+        endMinute.setEditable(true);
+
+        TextField notesField = new TextField();
+        notesField.setPromptText("Descripción del evento...");
+
+        grid.add(new Label("Fecha:"), 0, 0);
+        grid.add(datePicker, 1, 0);
         
-        // Espacio favorito
-        Map<Long, Long> spaceCount = reservationsList.stream()
-            .filter(r -> r.spaceId() != null)
-            .collect(Collectors.groupingBy(ReservationDTO::spaceId, Collectors.counting()));
+        grid.add(new Label("Hora inicio:"), 0, 1);
+        HBox startTimeBox = new HBox(5, startHour, new Label(":"), startMinute);
+        grid.add(startTimeBox, 1, 1);
         
-        if (!spaceCount.isEmpty() && favoriteSpaceLabel != null) {
-            Long favId = Collections.max(spaceCount.entrySet(), Map.Entry.comparingByValue()).getKey();
-            SpaceDTO fav = spacesList.stream().filter(s -> s.id() != null && s.id().equals(favId)).findFirst().orElse(null);
-            favoriteSpaceLabel.setText(fav != null ? fav.name() : "Espacio #" + favId);
-        }
+        grid.add(new Label("Hora fin:"), 0, 2);
+        HBox endTimeBox = new HBox(5, endHour, new Label(":"), endMinute);
+        grid.add(endTimeBox, 1, 2);
         
-        updateCharts(spaceCount);
+        grid.add(new Label("Notas:"), 0, 3);
+        grid.add(notesField, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == confirmButtonType) {
+                LocalTime start = LocalTime.of(startHour.getValue(), startMinute.getValue());
+                LocalTime end = LocalTime.of(endHour.getValue(), endMinute.getValue());
+                return new ReservationData(datePicker.getValue(), start, end, notesField.getText());
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(data -> {
+            if (data.start().isAfter(data.end()) || data.start().equals(data.end())) {
+                showError("La hora de inicio debe ser antes de la hora de fin");
+                return;
+            }
+            createReservation(space, data);
+        });
     }
 
-    private void updateCharts(Map<Long, Long> spaceCount) {
-        // Distribución por espacio
-        if (spacesDistributionChart != null && !spaceCount.isEmpty()) {
-            ObservableList<PieChart.Data> data = FXCollections.observableArrayList();
-            spaceCount.forEach((id, count) -> {
-                SpaceDTO s = spacesList.stream().filter(sp -> sp.id() != null && sp.id().equals(id)).findFirst().orElse(null);
-                String label = s != null ? s.name() : "Espacio #" + id;
-                data.add(new PieChart.Data(label, count));
-            });
-            spacesDistributionChart.setData(data);
+    private void createReservation(SpaceDTO space, ReservationData data) {
+        if (sessionManager == null) {
+            showError("No hay sesión activa");
+            return;
         }
-        
-        // Asistencias
-        if (attendanceChart != null) {
-            long attended = reservationsList.stream().filter(r -> "COMPLETED".equals(r.status())).count();
-            long noShows = reservationsList.stream().filter(r -> "NO_SHOW".equals(r.status())).count();
-            
-            ObservableList<PieChart.Data> data = FXCollections.observableArrayList(
-                new PieChart.Data("Asistidas", attended),
-                new PieChart.Data("Inasistencias", noShows)
-            );
-            attendanceChart.setData(data);
-        }
-    }
 
-    // ==================== ACCIONES ====================
+        Long userId = sessionManager.getUserId();
+        String token = sessionManager.getAccessToken();
+
+        if (userId == null || token == null) {
+            showError("Sesión inválida");
+            return;
+        }
+
+        LocalDateTime startDateTime = LocalDateTime.of(data.date(), data.startTime());
+        LocalDateTime endDateTime = LocalDateTime.of(data.date(), data.endTime());
+
+        Task<ReservationDTO> task = new Task<>() {
+            @Override
+            protected ReservationDTO call() throws Exception {
+                ReservationDTO newReservation = new ReservationDTO(
+                    null,
+                    userId,
+                    space.id(),
+                    startDateTime,
+                    endDateTime,
+                    "PENDING",
+                    null,
+                    data.notes(),
+                    null,
+                    null,
+                    null
+                );
+                
+                return reservationController.createReservation(newReservation, token);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            ReservationDTO created = task.getValue();
+            if (created != null) {
+                reservationsList.add(created);
+            }
+            showSuccess("Reserva creada exitosamente para: " + space.name());
+            loadInitialData(false);
+            navigateToSection(Section.MY_RESERVATIONS);
+        });
+
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            showError("Error al crear la reserva: " + (ex != null ? ex.getMessage() : "Error desconocido"));
+            if (ex != null) ex.printStackTrace();
+        });
+
+        new Thread(task).start();
+    }
 
     private void handleViewReservation(ReservationDTO res) {
-        SpaceDTO space = spacesList.stream().filter(s -> s.id() != null && s.id().equals(res.spaceId())).findFirst().orElse(null);
-        
+        SpaceDTO space = spacesList.stream()
+                .filter(s -> s.id() != null && s.id().equals(res.spaceId()))
+                .findFirst().orElse(null);
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Detalles de Reserva #" + res.id());
+        alert.setHeaderText("Información completa de la reserva");
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
         StringBuilder msg = new StringBuilder();
         msg.append("Espacio: ").append(space != null ? space.name() : "N/A").append("\n");
-        msg.append("Fecha: ").append(res.startTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append("\n");
-        msg.append("Hora: ").append(res.startTime().format(DateTimeFormatter.ofPattern("HH:mm")))
-           .append(" - ").append(res.endTime().format(DateTimeFormatter.ofPattern("HH:mm"))).append("\n");
+        msg.append("Fecha: ").append(res.startTime().format(dateFormatter)).append("\n");
+        msg.append("Hora: ").append(res.startTime().format(timeFormatter))
+           .append(" - ").append(res.endTime().format(timeFormatter)).append("\n");
         msg.append("Notas: ").append(res.notes() != null ? res.notes() : "N/A").append("\n");
         msg.append("Estado: ").append(STATUS_MAP.getOrDefault(res.status(), res.status()));
-        
-        showAlert("Detalles de Reserva #" + res.id(), msg.toString(), Alert.AlertType.INFORMATION);
+
+        alert.setContentText(msg.toString());
+        alert.showAndWait();
     }
 
-    private void handleCancelReservation(ReservationDTO res) {
+    private void handleCancelReservationConfirm(ReservationDTO res) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Cancelar Reserva");
-        confirm.setHeaderText("¿Seguro que deseas cancelar?");
-        
-        SpaceDTO space = spacesList.stream().filter(s -> s.id() != null && s.id().equals(res.spaceId())).findFirst().orElse(null);
-        confirm.setContentText((space != null ? space.name() : "Espacio") + " - " + 
-            res.startTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-        
+        confirm.setHeaderText("¿Seguro que deseas cancelar esta reserva?");
+        confirm.setContentText("Esta acción no se puede deshacer.");
+
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                showAlert("Cancelar", "Funcionalidad en desarrollo", Alert.AlertType.INFORMATION);
+                cancelReservation(res);
             }
         });
     }
 
-    // ==================== UTILIDADES ====================
+    private void cancelReservation(ReservationDTO reservation) {
+        if (sessionManager == null) {
+            showError("No hay sesión activa");
+            return;
+        }
 
-    private void showLoadingIndicator(String msg) {
-        Platform.runLater(() -> System.out.println("⏳ " + msg));
+        String token = sessionManager.getAccessToken();
+        if (token == null) {
+            showError("Token inválido");
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                reservationController.cancelReservation(reservation.id(), token);
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            reservationsList.remove(reservation);
+            showSuccess("Reserva cancelada exitosamente");
+            loadInitialData(false);
+            updateDashboardMetrics();
+        });
+
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            showError("Error al cancelar: " + (ex != null ? ex.getMessage() : "Error desconocido"));
+            if (ex != null) ex.printStackTrace();
+        });
+
+        new Thread(task).start();
     }
 
-    private void hideLoadingIndicator() {
-        Platform.runLater(() -> System.out.println("✅ Carga completada"));
+    // ==================== METRICS ====================
+
+    private void updateDashboardMetrics() {
+        LocalDateTime now = LocalDateTime.now();
+
+        long active = reservationsList.stream()
+                .filter(r -> "CONFIRMED".equals(r.status()) && r.startTime().isAfter(now))
+                .count();
+
+        long noShows = reservationsList.stream()
+                .filter(r -> "NO_SHOW".equals(r.status()))
+                .count();
+
+        long completed = reservationsList.stream()
+                .filter(r -> "COMPLETED".equals(r.status()))
+                .count();
+
+        activeReservationsLabel.setText(String.valueOf(active));
+        noShowsLabel.setText(String.valueOf(noShows));
+        completedReservationsLabel.setText(String.valueOf(completed));
     }
 
-    private void showAlert(String title, String content, Alert.AlertType type) {
+    private void updateReservationsCount() {
+        if (reservationsCountLabel != null) {
+            reservationsCountLabel.setText("Reservas (" + reservationsList.size() + ")");
+        }
+    }
+
+    private void updateSpacesCount() {
+        if (spacesCountLabel != null) {
+            spacesCountLabel.setText("Espacios disponibles (" + spacesList.size() + ")");
+        }
+    }
+
+    // ==================== REPORTS ====================
+
+    private void updateReportsData() {
+        totalReservationsReportLabel.setText(String.valueOf(reservationsList.size()));
+
+        long completed = reservationsList.stream().filter(r -> "COMPLETED".equals(r.status())).count();
+        long noShows = reservationsList.stream().filter(r -> "NO_SHOW".equals(r.status())).count();
+        long total = completed + noShows;
+        double rate = total > 0 ? (completed * 100.0 / total) : 0;
+        attendanceRateLabel.setText(String.format("%.1f%%", rate));
+
+        Map<Long, Long> spaceFreq = reservationsList.stream()
+                .collect(Collectors.groupingBy(ReservationDTO::spaceId, Collectors.counting()));
+
+        if (!spaceFreq.isEmpty()) {
+            Long favSpaceId = Collections.max(spaceFreq.entrySet(), Map.Entry.comparingByValue()).getKey();
+            SpaceDTO favSpace = spacesList.stream().filter(s -> s.id().equals(favSpaceId)).findFirst().orElse(null);
+            favoriteSpaceLabel.setText(favSpace != null ? favSpace.name() : "N/A");
+        } else {
+            favoriteSpaceLabel.setText("N/A");
+        }
+
+        updateSpacesDistributionChart(spaceFreq);
+        updateAttendanceChart(completed, noShows);
+        attendancePercentageLabel.setText(String.format("%.0f%%", rate));
+    }
+
+    private void updateSpacesDistributionChart(Map<Long, Long> spaceFreq) {
+        ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
+
+        spaceFreq.forEach((spaceId, count) -> {
+            SpaceDTO space = spacesList.stream().filter(s -> s.id().equals(spaceId)).findFirst().orElse(null);
+            String name = space != null ? space.name() : "Espacio #" + spaceId;
+            pieData.add(new PieChart.Data(name, count));
+        });
+
+        spacesDistributionChart.setData(pieData);
+    }
+
+    private void updateAttendanceChart(long completed, long noShows) {
+        ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList(
+            new PieChart.Data("Asistidas", completed),
+            new PieChart.Data("Inasistencias", noShows)
+        );
+        attendanceChart.setData(pieData);
+    }
+
+    // ==================== UTILITIES ====================
+
+    private void showError(String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(type);
-            alert.setTitle(title);
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
             alert.setHeaderText(null);
-            alert.setContentText(content);
+            alert.setContentText(message);
             alert.showAndWait();
         });
     }
 
-<<<<<<< HEAD
-    private void showError(String msg) { showAlert("Error", msg, Alert.AlertType.ERROR); }
-    private void showSuccess(String msg) { showAlert("Éxito", msg, Alert.AlertType.INFORMATION); }
-    private void showWarning(String msg) { showAlert("Advertencia", msg, Alert.AlertType.WARNING); }
-}
-=======
-     private record ReservationRequest(LocalDateTime startTime, LocalDateTime endTime, int attendees, String notes) {
+    private void showSuccess(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Éxito");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
     }
 
-    // Inner class for table data
-    public static class ReservationData {
-        private final Long id;
-        private final String spaceName;
-        private final String date;
-        private final String time;
-        private final String eventType;
-        private final String status;
->>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
+    // ==================== DATA CLASSES ====================
 
-// ==================== RECORDS ====================
-
-record DataResult(List<SpaceDTO> spaces, List<ReservationDTO> reservations, 
-                  CurrentWeatherDTO weather, List<String> warnings) {}
-
-record WeatherResult(CurrentWeatherDTO weather, List<String> warnings) {}
+    private record ReservationData(LocalDate date, LocalTime startTime, LocalTime endTime, String notes) {}
+}
