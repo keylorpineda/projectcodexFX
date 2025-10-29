@@ -78,39 +78,68 @@
     -fx-font-size: 11px;
     -fx-font-weight: 700;
     -fx-text-fill: #9ca3af;
-    -fx-padding: 8 0 12 4;
+    -fx-padding: 8 20 12 20;
     -fx-letter-spacing: 0.5px;
 }
 
+/* Navigation Items (HBox containers) */
 .nav-item {
-    -fx-background-color: transparent;
-    -fx-background-radius: 8px;
+    -fx-background-color: white;
+    -fx-background-radius: 0;
     -fx-border-color: transparent;
-    -fx-border-radius: 8px;
+    -fx-border-radius: 0;
+    -fx-border-width: 0;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+    -fx-spacing: 12;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-background-insets: 0;
+}
+
+/* Labels inside nav-item HBox */
+.nav-item Label {
     -fx-text-fill: #4b5563;
     -fx-font-size: 14px;
     -fx-font-weight: 500;
-    -fx-padding: 12 16;
-    -fx-cursor: hand;
-    -fx-alignment: CENTER_LEFT;
-    -fx-graphic-text-gap: 12;
 }
 
 .nav-item:hover {
-    -fx-background-color: #f3f4f6;
+    -fx-background-color: #f9fafb;
 }
 
-.nav-item-active {
-    -fx-background-color: #eff6ff;
+.nav-item:focused {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* Active navigation item */
+.nav-item.active {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.nav-item.active Label {
     -fx-text-fill: #2563eb;
     -fx-font-weight: 600;
 }
 
-.nav-item-active:hover {
-    -fx-background-color: #dbeafe;
+.nav-item.active:hover {
+    -fx-background-color: #f9fafb;
 }
 
-.nav-item-logout {
+.nav-item.active:focused {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* Logout button special styling */
+.nav-item-logout Label {
     -fx-text-fill: #dc2626;
 }
 
@@ -118,9 +147,11 @@
     -fx-background-color: #fee2e2;
 }
 
+/* Navigation icons */
 .nav-icon {
     -fx-font-size: 18px;
-    -fx-min-width: 24px;
+    -fx-min-width: 20px;
+    -fx-alignment: CENTER;
 }
 
 /* ============================
@@ -299,6 +330,7 @@
 .weather-message-success {
     -fx-background-color: #d1fae5;
     -fx-background-radius: 8px;
+    -fx-padding: 12 16;
 }
 
 .weather-message {
@@ -326,10 +358,19 @@
 }
 
 .primary-button-raised {
+    -fx-background-color: #2563eb;
+    -fx-background-radius: 8px;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 10 20;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
     -fx-effect: dropshadow(three-pass-box, rgba(37, 99, 235, 0.3), 8, 0, 0, 2);
 }
 
 .primary-button-raised:hover {
+    -fx-background-color: #1d4ed8;
     -fx-effect: dropshadow(three-pass-box, rgba(37, 99, 235, 0.4), 12, 0, 0, 4);
 }
 
@@ -354,13 +395,11 @@
     -fx-text-fill: #374151;
     -fx-font-size: 14px;
     -fx-font-weight: 500;
-    -fx-padding: 12 16;
+    -fx-padding: 8 12;
     -fx-cursor: hand;
     -fx-border-color: #e5e7eb;
     -fx-border-width: 1;
     -fx-border-radius: 8px;
-    -fx-alignment: CENTER_LEFT;
-    -fx-graphic-text-gap: 12;
 }
 
 .action-button:hover {
@@ -622,6 +661,16 @@
 
 .progress-indicator {
     -fx-progress-color: #2563eb;
+}
+
+.loading-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #6b7280;
+}
+
+.empty-state-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #9ca3af;
 }
 
 .status-label {

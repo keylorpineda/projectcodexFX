@@ -9,7 +9,7 @@
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:id="mainContainer"
-      fx:controller="com.municipal.reservationsfx.ui.controllers.UserDashboardController"
+      fx:controller="com.municipal.ui.controllers.UserDashboardController"
       stylesheets="@../styles/user-dashboard.css"
       styleClass="user-root"
       spacing="0">
@@ -54,48 +54,49 @@
                 <Insets top="16" right="0" bottom="16" left="0"/>
             </padding>
 
-            <Label text="MENÚ PRINCIPAL" styleClass="sidebar-section-title">
-                <padding>
-                    <Insets left="16"/>
-                </padding>
-            </Label>
+            <Label text="MENÚ PRINCIPAL" styleClass="sidebar-section-title"/>
 
-            <Button fx:id="navDashboardButton" text="📊  Panel de inicio" styleClass="nav-item nav-item-active"
-                    onAction="#handleNavigateDashboard" alignment="CENTER_LEFT">
+            <HBox fx:id="navDashboardButton" styleClass="nav-item active" onMouseClicked="#handleNavigateDashboard" alignment="CENTER_LEFT" spacing="12">
                 <padding>
-                    <Insets top="12" right="16" bottom="12" left="16"/>
+                    <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
-            </Button>
+                <Label text="📊" styleClass="nav-icon"/>
+                <Label text="Panel de inicio"/>
+            </HBox>
 
-            <Button fx:id="navSpacesButton" text="🏢  Espacios disponibles" styleClass="nav-item"
-                    onAction="#handleNavigateSpaces" alignment="CENTER_LEFT">
+            <HBox fx:id="navSpacesButton" styleClass="nav-item" onMouseClicked="#handleNavigateSpaces" alignment="CENTER_LEFT" spacing="12">
                 <padding>
-                    <Insets top="12" right="16" bottom="12" left="16"/>
+                    <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
-            </Button>
+                <Label text="🏢" styleClass="nav-icon"/>
+                <Label text="Espacios disponibles"/>
+            </HBox>
 
-            <Button fx:id="navMyReservationsButton" text="📅  Mis reservas" styleClass="nav-item"
-                    onAction="#handleNavigateMyReservations" alignment="CENTER_LEFT">
+            <HBox fx:id="navMyReservationsButton" styleClass="nav-item" onMouseClicked="#handleNavigateMyReservations" alignment="CENTER_LEFT" spacing="12">
                 <padding>
-                    <Insets top="12" right="16" bottom="12" left="16"/>
+                    <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
-            </Button>
+                <Label text="📅" styleClass="nav-icon"/>
+                <Label text="Mis reservas"/>
+            </HBox>
 
-            <Button fx:id="navReportsButton" text="📈  Reportes personales" styleClass="nav-item"
-                    onAction="#handleNavigateReports" alignment="CENTER_LEFT">
+            <HBox fx:id="navReportsButton" styleClass="nav-item" onMouseClicked="#handleNavigateReports" alignment="CENTER_LEFT" spacing="12">
                 <padding>
-                    <Insets top="12" right="16" bottom="12" left="16"/>
+                    <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
-            </Button>
+                <Label text="📈" styleClass="nav-icon"/>
+                <Label text="Reportes personales"/>
+            </HBox>
 
             <Region VBox.vgrow="ALWAYS"/>
 
-            <Button fx:id="navLogoutButton" text="🚪  Cerrar sesión" styleClass="nav-item nav-item-logout"
-                    onAction="#handleLogout" alignment="CENTER_LEFT">
+            <HBox fx:id="navLogoutButton" styleClass="nav-item nav-item-logout" onMouseClicked="#handleLogout" alignment="CENTER_LEFT" spacing="12">
                 <padding>
-                    <Insets top="12" right="16" bottom="12" left="16"/>
+                    <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
-            </Button>
+                <Label text="🚪" styleClass="nav-icon"/>
+                <Label text="Cerrar sesión"/>
+            </HBox>
         </VBox>
 
         <!-- Main Content Scroll -->
@@ -167,21 +168,21 @@
                                 
                                 <HBox spacing="20" alignment="CENTER_LEFT">
                                     <StackPane styleClass="weather-icon-container">
-                                        <Label fx:id="weatherIconLabel" text="☀" styleClass="weather-icon-large"/>
+                                        <Label fx:id="weatherIconLabel" text="☀️" styleClass="weather-icon-large"/>
                                     </StackPane>
                                     <VBox spacing="8">
-                                        <Label fx:id="weatherTempLabel" text="24°C" styleClass="weather-temp"/>
-                                        <Label fx:id="weatherConditionLabel" text="Sunny" styleClass="weather-condition"/>
+                                        <Label fx:id="weatherTempLabel" text="--°C" styleClass="weather-temp"/>
+                                        <Label fx:id="weatherConditionLabel" text="Cargando..." styleClass="weather-condition"/>
                                     </VBox>
                                 </HBox>
                                 
                                 <HBox spacing="20">
-                                    <Label fx:id="weatherWindLabel" text="Viento: 12 km/h" styleClass="weather-detail"/>
-                                    <Label fx:id="weatherHumidityLabel" text="Humedad: 65%" styleClass="weather-detail"/>
+                                    <Label fx:id="weatherWindLabel" text="Viento: -- km/h" styleClass="weather-detail"/>
+                                    <Label fx:id="weatherHumidityLabel" text="Humedad: --%%" styleClass="weather-detail"/>
                                 </HBox>
                                 
-                                <Label fx:id="weatherMessageLabel" text="Excelente día para actividades al aire libre" 
-                                       styleClass="weather-message-success" wrapText="true"/>
+                                <Label fx:id="weatherMessageLabel" text="Cargando información del clima..." 
+                                       styleClass="weather-message" wrapText="true"/>
                             </VBox>
 
                             <!-- Quick Actions -->
@@ -220,37 +221,35 @@
                         </HBox>
 
                         <!-- Filters -->
-                        <HBox styleClass="card" spacing="16" alignment="CENTER_LEFT">
+                        <VBox styleClass="card" spacing="16">
                             <padding>
                                 <Insets top="20" right="20" bottom="20" left="20"/>
                             </padding>
                             
-                            <VBox spacing="8" HBox.hgrow="ALWAYS">
-                                <Label text="Buscar espacio"/>
-                                <TextField fx:id="searchSpaceField" promptText="Nombre del espacio..." styleClass="search-field"/>
-                            </VBox>
+                            <HBox spacing="16" alignment="CENTER_LEFT">
+                                <VBox spacing="8" HBox.hgrow="ALWAYS">
+                                    <Label text="Buscar espacio"/>
+                                    <TextField fx:id="searchSpaceField" promptText="Nombre del espacio..." styleClass="search-field"/>
+                                </VBox>
+                                
+                                <VBox spacing="8">
+                                    <Label text="Tipo de espacio"/>
+                                    <ChoiceBox fx:id="spaceTypeChoice" prefWidth="150"/>
+                                </VBox>
+                                
+                                <VBox spacing="8">
+                                    <Label text="Capacidad"/>
+                                    <ChoiceBox fx:id="capacityChoice" prefWidth="150"/>
+                                </VBox>
+                                
+                                <VBox spacing="8">
+                                    <Label text="Fecha"/>
+                                    <DatePicker fx:id="datePicker" prefWidth="150"/>
+                                </VBox>
+                            </HBox>
                             
-                            <VBox spacing="8">
-                                <Label text="Tipo de espacio"/>
-                                <ChoiceBox fx:id="spaceTypeChoice" prefWidth="150"/>
-                            </VBox>
-                            
-                            <VBox spacing="8">
-                                <Label text="Capacidad"/>
-                                <ChoiceBox fx:id="capacityChoice" prefWidth="150"/>
-                            </VBox>
-                            
-                            <VBox spacing="8">
-                                <Label text="Fecha"/>
-                                <DatePicker fx:id="datePicker" prefWidth="150"/>
-                            </VBox>
-                            
-                            <Button text="🔍 Aplicar filtros" styleClass="primary-button" onAction="#handleApplyFilters">
-                                <VBox.margin>
-                                    <Insets top="20"/>
-                                </VBox.margin>
-                            </Button>
-                        </HBox>
+                            <Button text="🔍 Aplicar filtros" styleClass="primary-button" onAction="#handleApplyFilters"/>
+                        </VBox>
 
                         <!-- Spaces Grid -->
                         <StackPane>
@@ -260,12 +259,10 @@
                             <StackPane fx:id="spacesLoadingOverlay" styleClass="loading-overlay" visible="false" managed="false">
                                 <VBox alignment="CENTER" spacing="16">
                                     <ProgressIndicator/>
-                                    <Label fx:id="spacesLoadingLabel" text="Cargando espacios..." styleClass="loading-text"/>
+                                    <Label text="Cargando espacios..." styleClass="loading-text"/>
                                 </VBox>
                             </StackPane>
                         </StackPane>
-                        
-                        <Label fx:id="spacesStatusLabel" styleClass="status-message" visible="false" managed="false"/>
                     </VBox>
 
                     <!-- My Reservations Section -->
@@ -303,18 +300,19 @@
                                         <TableColumn fx:id="reservationStatusColumn" text="Estado" prefWidth="130"/>
                                         <TableColumn fx:id="reservationActionsColumn" text="Acciones" prefWidth="100"/>
                                     </columns>
+                                    <placeholder>
+                                        <Label text="No hay reservas para mostrar" styleClass="empty-state-text"/>
+                                    </placeholder>
                                 </TableView>
                                 
                                 <!-- Loading Overlay -->
                                 <StackPane fx:id="reservationsLoadingOverlay" styleClass="loading-overlay" visible="false" managed="false">
                                     <VBox alignment="CENTER" spacing="16">
                                         <ProgressIndicator/>
-                                        <Label fx:id="reservationsLoadingLabel" text="Cargando reservas..." styleClass="loading-text"/>
+                                        <Label text="Cargando reservas..." styleClass="loading-text"/>
                                     </VBox>
                                 </StackPane>
                             </StackPane>
-                            
-                            <Label fx:id="reservationsStatusLabel" styleClass="status-message" visible="false" managed="false"/>
                         </VBox>
                     </VBox>
 
@@ -378,7 +376,7 @@
                                 <Label text="Relación entre reservas asistidas e inasistencias" styleClass="card-subtitle"/>
                                 <StackPane>
                                     <PieChart fx:id="attendanceChart" legendVisible="true" prefHeight="300"/>
-                                    <VBox alignment="CENTER">
+                                    <VBox alignment="CENTER" mouseTransparent="true">
                                         <Label fx:id="attendancePercentageLabel" text="0%" styleClass="metric-value"/>
                                         <Label text="Tasa de asistencia" styleClass="metric-description"/>
                                     </VBox>
