@@ -26,6 +26,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
+import com.google.zxing.WriterException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -350,6 +351,22 @@ public class UserDashboardController {
         navigateToSection(Section.SPACES);
     }
 
+      @FXML
+    private void handleGenerateTestQr() {
+        LocalDateTime start = LocalDate.now().plusDays(1).atTime(10, 0);
+        LocalDateTime end = start.plusHours(2);
+        Long demoSpaceId = 9999L;
+        String demoSpaceName = "Demostración - Espacio Municipal";
+
+        String qrValue = buildQrPayload(demoSpaceId, start, end);
+
+        try {
+            WritableImage qrImage = QRCodeGenerator.generate(qrValue);
+            showReservationQrDialog(demoSpaceName, start, end, qrValue, qrImage);
+        } catch (WriterException e) {
+            showAlert("Error", "No se pudo generar el QR de prueba: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
     // API Methods
     
     private void loadDashboardData() {
@@ -590,14 +607,12 @@ public class UserDashboardController {
             return;
         }
 
-        String qrValue = buildQrPayload(spaceId, request.startTime(), request.endTime());
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("userId", currentUserId);
         payload.put("spaceId", spaceId);
         payload.put("startTime", request.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         payload.put("endTime", request.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         payload.put("status", "CONFIRMED");
-        payload.put("qrCode", qrValue);
         payload.put("attendees", request.attendees());
         if (!request.notes().isBlank()) {
             payload.put("notes", request.notes());
@@ -618,11 +633,26 @@ public class UserDashboardController {
 
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
                     ReservationDTO created = objectMapper.readValue(response.body(), ReservationDTO.class);
-                    WritableImage qrImage = QRCodeGenerator.generate(qrValue);
-                    Platform.runLater(() -> {
-                        loadUserReservations();
-                        showReservationQrDialog(spaceName, created.startTime(), created.endTime(), qrValue, qrImage);
-                    });
+                    String qrValue = created.getQrCode();
+
+                    if (qrValue == null || qrValue.isBlank()) {
+                        Platform.runLater(() -> showAlert("Error",
+                            "La reserva se creó pero no se recibió un código QR válido del servidor.",
+                            Alert.AlertType.ERROR));
+                        return;
+                    }
+
+                    try {
+                        WritableImage qrImage = QRCodeGenerator.generate(qrValue);
+                        Platform.runLater(() -> {
+                            loadUserReservations();
+                            showReservationQrDialog(spaceName, created.startTime(), created.endTime(), qrValue, qrImage);
+                        });
+                    } catch (WriterException e) {
+                        Platform.runLater(() -> showAlert("Error",
+                            "La reserva se creó pero no se pudo generar el código QR: " + e.getMessage(),
+                            Alert.AlertType.ERROR));
+                    }
                 } else {
                     String errorMessage = extractErrorMessage(response.body());
                     Platform.runLater(() -> showAlert("Error", errorMessage, Alert.AlertType.ERROR));

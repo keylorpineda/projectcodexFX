@@ -199,6 +199,8 @@
                                             maxWidth="Infinity" onAction="#handleNavigateMyReservations"/>
                                     <Button text="📄  Ver reportes" styleClass="pill-button" 
                                             maxWidth="Infinity" onAction="#handleNavigateReports"/>
+                                    <Button text="🧪  Generar QR de prueba" styleClass="pill-button"
+                                            maxWidth="Infinity" onAction="#handleGenerateTestQr"/>
                                 </VBox>
                             </VBox>
                         </HBox>
