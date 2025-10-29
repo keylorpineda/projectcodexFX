@@ -1,5 +1,6 @@
 package com.municipal.ui.controllers;
 
+<<<<<<< HEAD
 import com.municipal.config.AppConfig;
 import com.municipal.controllers.ReservationController;
 import com.municipal.controllers.SpaceController;
@@ -10,6 +11,16 @@ import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.session.SessionManager;
 import com.municipal.ui.navigation.SessionAware;
+=======
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.municipal.dtos.ReservationDTO;
+import com.municipal.ui.utils.NodeVisibilityUtils;
+import com.municipal.ui.utils.QRCodeGenerator;
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -24,19 +35,42 @@ import javafx.scene.Node;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+<<<<<<< HEAD
 import javafx.scene.input.MouseEvent;
+=======
+import javafx.scene.image.WritableImage;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 import javafx.scene.layout.*;
 import javafx.util.Duration;
+import com.google.zxing.WriterException;
 
+<<<<<<< HEAD
+=======
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+<<<<<<< HEAD
 /**
  * Controlador del Panel de Usuario
  * Gestiona reservas, espacios disponibles y reportes personales
  */
 public class UserDashboardController implements SessionAware {
+=======
+
+public class UserDashboardController {
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 
     // ==================== CONTROLADORES ====================
     private final ReservationController reservationController = new ReservationController();
@@ -602,7 +636,34 @@ public class UserDashboardController implements SessionAware {
         showAlert("Nueva Reserva", "Funcionalidad en desarrollo", Alert.AlertType.INFORMATION);
     }
 
+<<<<<<< HEAD
     // ==================== FILTROS Y VISUALIZACIÓN ====================
+=======
+      @FXML
+    private void handleGenerateTestQr() {
+        LocalDateTime start = LocalDate.now().plusDays(1).atTime(10, 0);
+        LocalDateTime end = start.plusHours(2);
+        Long demoSpaceId = 9999L;
+        String demoSpaceName = "Demostración - Espacio Municipal";
+
+        String qrValue = buildQrPayload(demoSpaceId, start, end);
+
+        try {
+            WritableImage qrImage = QRCodeGenerator.generate(qrValue);
+            showReservationQrDialog(demoSpaceName, start, end, qrValue, qrImage);
+        } catch (WriterException e) {
+            showAlert("Error", "No se pudo generar el QR de prueba: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+    // API Methods
+    
+    private void loadDashboardData() {
+        if (currentUserId == null) return;
+        
+        loadUserReservations();
+        loadWeatherData();
+    }
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 
     private void filterSpaces() {
         String search = searchSpaceField != null ? searchSpaceField.getText().toLowerCase() : "";
@@ -710,8 +771,246 @@ public class UserDashboardController implements SessionAware {
         return card;
     }
 
+<<<<<<< HEAD
     private void handleReserveSpace(SpaceDTO space) {
         showAlert("Reservar", "Funcionalidad para: " + space.name(), Alert.AlertType.INFORMATION);
+=======
+    private void handleReserveSpace(Map<String, Object> space) {
+    if (authToken == null || currentUserId == null) {
+            showAlert("Iniciar sesión", "Debes iniciar sesión para crear una reserva", Alert.AlertType.WARNING);
+            return;
+        }
+
+        Dialog<ReservationRequest> dialog = new Dialog<>();
+        dialog.setTitle("Reservar " + Objects.toString(space.get("name"), "espacio"));
+        dialog.setHeaderText("Completa los datos de la reserva y generaremos el código QR por ti");
+        dialog.getDialogPane().getButtonTypes().addAll(new ButtonType("Generar QR", ButtonBar.ButtonData.OK_DONE),
+                ButtonType.CANCEL);
+
+        LocalDate defaultDate = LocalDate.now();
+        DatePicker reservationDatePicker = new DatePicker(defaultDate);
+
+        Spinner<Integer> hourSpinner = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(6, 22, 9));
+        Spinner<Integer> minuteSpinner = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 45, 0, 15));
+        Spinner<Integer> durationSpinner = new Spinner<>(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 8, 2));
+
+        int maxCapacity = Math.max(1, parseInteger(space.get("capacity"), 100));
+        Spinner<Integer> attendeesSpinner = new Spinner<>(
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(1, maxCapacity, Math.min(10, maxCapacity)));
+
+        TextArea notesArea = new TextArea();
+        notesArea.setPromptText("Notas para el administrador del espacio");
+        notesArea.setPrefRowCount(3);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10, 5, 0, 5));
+
+        grid.add(new Label("Fecha"), 0, 0);
+        grid.add(reservationDatePicker, 1, 0);
+
+        Label colonLabel = new Label(":");
+        colonLabel.setStyle("-fx-font-weight: bold;");
+        HBox startTimeBox = new HBox(6, hourSpinner, colonLabel, minuteSpinner);
+        startTimeBox.setAlignment(Pos.CENTER_LEFT);
+
+        grid.add(new Label("Hora de inicio"), 0, 1);
+        grid.add(startTimeBox, 1, 1);
+
+        grid.add(new Label("Duración (horas)"), 0, 2);
+        grid.add(durationSpinner, 1, 2);
+
+        grid.add(new Label("Asistentes"), 0, 3);
+        grid.add(attendeesSpinner, 1, 3);
+
+        Label capacityHint = new Label("Capacidad máxima: " + maxCapacity + " personas");
+        capacityHint.getStyleClass().add("form-hint");
+        grid.add(capacityHint, 1, 4);
+
+        grid.add(new Label("Notas"), 0, 5);
+        grid.add(notesArea, 1, 5);
+        GridPane.setColumnSpan(notesArea, 2);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.setResizable(true);
+
+        dialog.setResultConverter(button -> {
+            if (button.getButtonData() != ButtonBar.ButtonData.OK_DONE) {
+                return null;
+            }
+            LocalDate date = reservationDatePicker.getValue();
+            if (date == null) {
+                showAlert("Datos incompletos", "Selecciona una fecha para la reserva", Alert.AlertType.WARNING);
+                return null;
+            }
+            int hour = hourSpinner.getValue();
+            int minute = minuteSpinner.getValue();
+            LocalTime startTime = LocalTime.of(hour, minute);
+            LocalDateTime start = LocalDateTime.of(date, startTime);
+            LocalDateTime end = start.plusHours(durationSpinner.getValue());
+            String notes = notesArea.getText() != null ? notesArea.getText().trim() : "";
+            return new ReservationRequest(start, end, attendeesSpinner.getValue(), notes);
+        });
+
+        dialog.showAndWait().ifPresent(request -> submitReservation(space, request));
+    }
+
+    private void submitReservation(Map<String, Object> space, ReservationRequest request) {
+        Long spaceId = parseLong(space.get("id"));
+        if (spaceId == null) {
+            showAlert("Error", "No se pudo identificar el espacio seleccionado", Alert.AlertType.ERROR);
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("userId", currentUserId);
+        payload.put("spaceId", spaceId);
+        payload.put("startTime", request.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        payload.put("endTime", request.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        payload.put("status", "CONFIRMED");
+        payload.put("attendees", request.attendees());
+        if (!request.notes().isBlank()) {
+            payload.put("notes", request.notes());
+        }
+
+        String spaceName = Objects.toString(space.get("name"), "Espacio municipal");
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(API_BASE_URL + "/reservations"))
+                    .header("Authorization", "Bearer " + authToken)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                    .build();
+
+                HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    ReservationDTO created = objectMapper.readValue(response.body(), ReservationDTO.class);
+                    String qrValue = created.getQrCode();
+
+                    if (qrValue == null || qrValue.isBlank()) {
+                        Platform.runLater(() -> showAlert("Error",
+                            "La reserva se creó pero no se recibió un código QR válido del servidor.",
+                            Alert.AlertType.ERROR));
+                        return;
+                    }
+
+                    try {
+                        WritableImage qrImage = QRCodeGenerator.generate(qrValue);
+                        Platform.runLater(() -> {
+                            loadUserReservations();
+                            showReservationQrDialog(spaceName, created.startTime(), created.endTime(), qrValue, qrImage);
+                        });
+                    } catch (WriterException e) {
+                        Platform.runLater(() -> showAlert("Error",
+                            "La reserva se creó pero no se pudo generar el código QR: " + e.getMessage(),
+                            Alert.AlertType.ERROR));
+                    }
+                } else {
+                    String errorMessage = extractErrorMessage(response.body());
+                    Platform.runLater(() -> showAlert("Error", errorMessage, Alert.AlertType.ERROR));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.runLater(() -> showAlert("Error", "No se pudo crear la reserva: " + e.getMessage(),
+                        Alert.AlertType.ERROR));
+            }
+        });
+    }
+
+    private String extractErrorMessage(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "No se pudo crear la reserva. Inténtalo nuevamente.";
+        }
+        try {
+            Map<String, Object> parsed = objectMapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+            Object message = parsed.getOrDefault("message", parsed.get("error"));
+            return message != null ? message.toString() : "No se pudo crear la reserva. Inténtalo nuevamente.";
+        } catch (IOException e) {
+            return "No se pudo crear la reserva: " + responseBody;
+        }
+    }
+
+    private String buildQrPayload(Long spaceId, LocalDateTime start, LocalDateTime end) {
+        String token = UUID.randomUUID().toString();
+        return "RES|" + spaceId + "|" + start.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            + "|" + end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "|" + token;
+    }
+
+    private void showReservationQrDialog(String spaceName, LocalDateTime start, LocalDateTime end,
+            String qrValue, WritableImage qrImage) {
+        Dialog<Void> qrDialog = new Dialog<>();
+        qrDialog.setTitle("Reserva generada");
+        qrDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        VBox content = new VBox(14);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(10, 10, 10, 10));
+
+        Label title = new Label("Reserva confirmada");
+        title.getStyleClass().add("dialog-title");
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String schedule = formatter.format(start) + " - " + formatter.format(end);
+        Label details = new Label(spaceName + "\n" + schedule);
+        details.setStyle("-fx-font-size: 13px; -fx-text-alignment: center;");
+        details.setWrapText(true);
+        details.setAlignment(Pos.CENTER);
+
+        ImageView qrView = new ImageView(qrImage);
+        qrView.setFitWidth(220);
+        qrView.setFitHeight(220);
+        qrView.setPreserveRatio(true);
+
+        Label qrValueLabel = new Label(qrValue);
+        qrValueLabel.getStyleClass().add("qr-value-label");
+        qrValueLabel.setWrapText(true);
+        qrValueLabel.setAlignment(Pos.CENTER);
+
+        Button copyButton = new Button("Copiar código");
+        copyButton.getStyleClass().add("primary-button");
+        copyButton.setOnAction(event -> {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent contentData = new ClipboardContent();
+            contentData.putString(qrValue);
+            clipboard.setContent(contentData);
+        });
+
+        content.getChildren().addAll(title, details, qrView, qrValueLabel, copyButton);
+        qrDialog.getDialogPane().setContent(content);
+        qrDialog.setResizable(false);
+        qrDialog.showAndWait();
+    }
+
+    private Long parseLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String string && !string.isBlank()) {
+            try {
+                return Long.parseLong(string);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private int parseInteger(Object value, int defaultValue) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof String string && !string.isBlank()) {
+            try {
+                return Integer.parseInt(string);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return defaultValue;
+    
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
     }
 
     // ==================== MÉTRICAS ====================
@@ -878,10 +1177,24 @@ public class UserDashboardController implements SessionAware {
         });
     }
 
+<<<<<<< HEAD
     private void showError(String msg) { showAlert("Error", msg, Alert.AlertType.ERROR); }
     private void showSuccess(String msg) { showAlert("Éxito", msg, Alert.AlertType.INFORMATION); }
     private void showWarning(String msg) { showAlert("Advertencia", msg, Alert.AlertType.WARNING); }
 }
+=======
+     private record ReservationRequest(LocalDateTime startTime, LocalDateTime endTime, int attendees, String notes) {
+    }
+
+    // Inner class for table data
+    public static class ReservationData {
+        private final Long id;
+        private final String spaceName;
+        private final String date;
+        private final String time;
+        private final String eventType;
+        private final String status;
+>>>>>>> 758a42a18f27a3c754dbf7fba71f22743a45a447
 
 // ==================== RECORDS ====================
 
