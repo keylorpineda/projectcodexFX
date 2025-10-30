@@ -14,6 +14,10 @@ import java.util.List;
 public class ReservationController {
     private final ApiClient apiClient;
 
+    public ReservationController() {
+        this(new ApiClient());
+    }
+    
     public ReservationController(ApiClient apiClient) {
         this.apiClient = apiClient;
     }
@@ -31,9 +35,8 @@ public class ReservationController {
 
         if (response.statusCode() == 200) {
             return JsonUtils.fromJson(response.body(), new TypeReference<List<ReservationDTO>>() {});
-        } else {
-            throw new ApiClientException("Error al obtener reservas: " + response.body(), response.statusCode());
         }
+          throw new ApiClientException(response.statusCode(), response.body());
     }
 
     public ReservationDTO getReservationById(Long id, String token) throws Exception {
@@ -49,9 +52,8 @@ public class ReservationController {
 
         if (response.statusCode() == 200) {
             return JsonUtils.fromJson(response.body(), ReservationDTO.class);
-        } else {
-            throw new ApiClientException("Error al obtener reserva: " + response.body(), response.statusCode());
         }
+          throw new ApiClientException(response.statusCode(), response.body());
     }
 
     public ReservationDTO createReservation(ReservationDTO reservation, String token) throws Exception {
@@ -69,9 +71,8 @@ public class ReservationController {
 
         if (response.statusCode() == 200 || response.statusCode() == 201) {
             return JsonUtils.fromJson(response.body(), ReservationDTO.class);
-        } else {
-            throw new ApiClientException("Error al crear reserva: " + response.body(), response.statusCode());
-        }
+       }
+        throw new ApiClientException(response.statusCode(), response.body());
     }
 
     public ReservationDTO updateReservation(Long id, ReservationDTO reservation, String token) throws Exception {
@@ -89,9 +90,8 @@ public class ReservationController {
 
         if (response.statusCode() == 200) {
             return JsonUtils.fromJson(response.body(), ReservationDTO.class);
-        } else {
-            throw new ApiClientException("Error al actualizar reserva: " + response.body(), response.statusCode());
-        }
+        } 
+        throw new ApiClientException(response.statusCode(), response.body());
     }
 
     public void deleteReservation(Long id, String token) throws Exception {
@@ -106,7 +106,7 @@ public class ReservationController {
         HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200 && response.statusCode() != 204) {
-            throw new ApiClientException("Error al eliminar reserva: " + response.body(), response.statusCode());
+        throw new ApiClientException(response.statusCode(), response.body());   
         }
     }
 
@@ -118,14 +118,14 @@ public class ReservationController {
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.noBody())
+            .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
         HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200 && response.statusCode() != 204) {
-            throw new ApiClientException("Error al cancelar reserva: " + response.body(), response.statusCode());
-        }
+            throw new ApiClientException(response.statusCode(), response.body());
+         }
     }
 
     public List<ReservationDTO> getReservationsByUserId(Long userId, String token) throws Exception {
@@ -141,9 +141,8 @@ public class ReservationController {
 
         if (response.statusCode() == 200) {
             return JsonUtils.fromJson(response.body(), new TypeReference<List<ReservationDTO>>() {});
-        } else {
-            throw new ApiClientException("Error al obtener reservas del usuario: " + response.body(), response.statusCode());
         }
+         throw new ApiClientException(response.statusCode(), response.body());
     }
 
     public List<ReservationDTO> getReservationsBySpaceId(Long spaceId, String token) throws Exception {
@@ -159,8 +158,10 @@ public class ReservationController {
 
         if (response.statusCode() == 200) {
             return JsonUtils.fromJson(response.body(), new TypeReference<List<ReservationDTO>>() {});
-        } else {
-            throw new ApiClientException("Error al obtener reservas del espacio: " + response.body(), response.statusCode());
-        }
+         }
+         throw new ApiClientException(response.statusCode(), response.body());
+    }
+    public List<ReservationDTO> loadReservations(String token) throws Exception {
+        return getAllReservations(token);
     }
 }

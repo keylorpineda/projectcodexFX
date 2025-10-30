@@ -9,7 +9,9 @@ import com.municipal.dtos.SpaceDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.session.SessionManager;
+import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
+import com.municipal.ui.navigation.SessionAware;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -30,14 +32,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class UserDashboardController {
+public class UserDashboardController implements SessionAware, FlowAware {
 
     // Session & Controllers
+    private static final String LOGIN_VIEW_ID = "login";
     private SessionManager sessionManager;
     private ReservationController reservationController;
     private SpaceController spaceController;
     private WeatherController weatherController;
     private String token;
+    private FlowController flowController;
 
     // FXML - Header
     @FXML private VBox mainContainer;
@@ -126,14 +130,24 @@ public class UserDashboardController {
         setupTableColumns();
     }
 
+     @Override
     public void setSessionManager(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
         this.token = sessionManager.getAccessToken();
 
-        if (sessionManager.getCurrentUser() != null) {
-            userNameLabel.setText(sessionManager.getCurrentUser().name());
+      String displayName = sessionManager.getUserDisplayName();
+        if (displayName != null && !displayName.isBlank()) {
+            userNameLabel.setText(displayName);
+        }
+        String role = sessionManager.getUserRole();
+        if (role != null && !role.isBlank()) {
             userRoleLabel.setText("Ciudadano");
         }
+    }
+
+    @Override
+    public void setFlowController(FlowController flowController) {
+        this.flowController = flowController;
     }
 
     public void setControllers(ReservationController reservationController,
@@ -184,12 +198,19 @@ public class UserDashboardController {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Mi Perfil");
         alert.setHeaderText("Información del Usuario");
-        
-        if (sessionManager.getCurrentUser() != null) {
-            String info = "Nombre: " + sessionManager.getCurrentUser().name() + "\n" +
-                         "Email: " + sessionManager.getCurrentUser().email() + "\n" +
-                         "Rol: Ciudadano";
-            alert.setContentText(info);
+       
+        String name = sessionManager != null ? sessionManager.getUserDisplayName() : null;
+        String email = sessionManager != null ? sessionManager.getUserEmail() : null;
+        if (name != null || email != null) {
+            StringBuilder info = new StringBuilder();
+            if (name != null) {
+                info.append("Nombre: ").append(name).append("\n");
+            }
+            if (email != null) {
+                info.append("Email: ").append(email).append("\n");
+            }
+            info.append("Rol: Ciudadano");
+            alert.setContentText(info.toString());
         }
         
         alert.showAndWait();
@@ -211,15 +232,17 @@ public class UserDashboardController {
 
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                sessionManager.clearSession();
-                FlowController flowController = (FlowController) mainContainer.getScene().getWindow().getUserData();
-                if (flowController != null) {
-                    try {
-                        flowController.navigateToLogin((Stage) mainContainer.getScene().getWindow());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        showError("Error al cerrar sesión: " + e.getMessage());
+               sessionManager.clear();
+                FlowController controller = flowController;
+                if (controller == null && mainContainer != null && mainContainer.getScene() != null
+                        && mainContainer.getScene().getWindow() != null) {
+                    Object data = mainContainer.getScene().getWindow().getUserData();
+                    if (data instanceof FlowController storedController) {
+                        controller = storedController;
                     }
+                }
+                 if (controller != null) {
+                    controller.showView(LOGIN_VIEW_ID);
                 }
             }
         });
@@ -354,7 +377,7 @@ public class UserDashboardController {
         Task<List<SpaceDTO>> task = new Task<>() {
             @Override
             protected List<SpaceDTO> call() throws Exception {
-                return spaceController.getAllSpaces(token);
+                return spaceController.loadSpaces(token);
             }
         };
 
@@ -389,11 +412,20 @@ public class UserDashboardController {
         if (weatherController == null) {
             return;
         }
+double latitude;
+        double longitude;
+        try {
+            latitude = Double.parseDouble(AppConfig.require("weather.default-lat"));
+            longitude = Double.parseDouble(AppConfig.require("weather.default-lon"));
+        } catch (IllegalStateException | NumberFormatException exception) {
+            weatherMessageLabel.setText("No se pudo determinar la ubicación para el clima");
+            return;
+        }
 
         Task<CurrentWeatherDTO> task = new Task<>() {
             @Override
             protected CurrentWeatherDTO call() throws Exception {
-                return weatherController.getCurrentWeather();
+                return weatherController.loadCurrentWeather(latitude, longitude, token);
             }
         };
 
@@ -412,19 +444,29 @@ public class UserDashboardController {
     }
 
     private void updateWeatherUI(CurrentWeatherDTO weather) {
-        weatherTempLabel.setText(String.format("%.1f°C", weather.main().temp()));
-        weatherConditionLabel.setText(capitalizeFirst(weather.weather().get(0).description()));
-        weatherWindLabel.setText(String.format("Viento: %.1f km/h", weather.wind().speed()));
-        weatherHumidityLabel.setText(String.format("Humedad: %d%%", weather.main().humidity()));
+        Double temperature = weather.temperature();
+        weatherTempLabel.setText(temperature != null ? String.format("%.1f°C", temperature) : "N/D");
 
-        String icon = getWeatherIcon(weather.weather().get(0).main());
-        weatherIconLabel.setText(icon);
+        String description = weather.description();
+        weatherConditionLabel.setText(description != null ? capitalizeFirst(description) : "-");
 
-        String message = getWeatherMessage(weather.weather().get(0).main(), weather.main().temp());
+        Double windSpeed = weather.windSpeed();
+        weatherWindLabel.setText(windSpeed != null ? String.format("Viento: %.1f km/h", windSpeed) : "Viento: N/D");
+
+        Integer humidity = weather.humidity();
+        weatherHumidityLabel.setText(humidity != null ? String.format("Humedad: %d%%", humidity) : "Humedad: N/D");
+
+        String iconReference = weather.icon() != null ? weather.icon() : description;
+        weatherIconLabel.setText(getWeatherIcon(iconReference));
+
+       String message = getWeatherMessage(description, temperature);
         weatherMessageLabel.setText(message);
     }
 
     private String getWeatherIcon(String condition) {
+        if (condition == null) {
+            return "🌤️";
+        }
         return switch (condition.toLowerCase()) {
             case "clear" -> "☀️";
             case "clouds" -> "☁️";
@@ -437,9 +479,9 @@ public class UserDashboardController {
         };
     }
 
-    private String getWeatherMessage(String condition, double temp) {
-        if (condition.equalsIgnoreCase("rain") || condition.equalsIgnoreCase("thunderstorm")) {
-            return "⚠️ Considera reservar espacios cubiertos debido a la lluvia.";
+  private String getWeatherMessage(String condition, Double temp) {
+        if (condition != null && (condition.equalsIgnoreCase("rain") || condition.equalsIgnoreCase("thunderstorm"))) {
+    return "⚠️ Considera reservar espacios cubiertos debido a la lluvia.";
         } else if (temp > 30) {
             return "☀️ Día caluroso. Recomendamos espacios con sombra o climatizados.";
         } else if (temp < 18) {
@@ -653,14 +695,15 @@ public class UserDashboardController {
         Label capacityLabel = new Label("👥 Capacidad: " + space.capacity() + " personas");
         capacityLabel.getStyleClass().add("space-detail");
 
-        String status = space.available() ? "✓ Disponible" : "✖ No disponible";
+        boolean available = space.active() == null || Boolean.TRUE.equals(space.active());
+        String status = available ? "✓ Disponible" : "✖ No disponible";
         Label availabilityLabel = new Label(status);
-        availabilityLabel.getStyleClass().add(space.available() ? "space-available" : "space-unavailable");
+        availabilityLabel.getStyleClass().add(available ? "space-available" : "space-unavailable");
 
         Button reserveBtn = new Button("📅 Reservar espacio");
         reserveBtn.getStyleClass().add("primary-button");
         reserveBtn.setMaxWidth(Double.MAX_VALUE);
-        reserveBtn.setDisable(!space.available());
+        reserveBtn.setDisable(!available);
         reserveBtn.setOnAction(e -> handleReserveSpace(space));
 
         card.getChildren().addAll(nameLabel, typeBox, capacityLabel, availabilityLabel, reserveBtn);
@@ -739,7 +782,7 @@ public class UserDashboardController {
         });
 
         dialog.showAndWait().ifPresent(data -> {
-            if (data.start().isAfter(data.end()) || data.start().equals(data.end())) {
+           if (data.startTime().isAfter(data.endTime()) || data.startTime().equals(data.endTime())) {
                 showError("La hora de inicio debe ser antes de la hora de fin");
                 return;
             }
@@ -769,16 +812,23 @@ public class UserDashboardController {
             protected ReservationDTO call() throws Exception {
                 ReservationDTO newReservation = new ReservationDTO(
                     null,
-                    userId,
-                    space.id(),
-                    startDateTime,
-                    endDateTime,
-                    "PENDING",
-                    null,
-                    data.notes(),
-                    null,
-                    null,
-                    null
+                        userId,
+                        space.id(),
+                        startDateTime,
+                        endDateTime,
+                        "PENDING",
+                        UUID.randomUUID().toString(),
+                        null,
+                        null,
+                        data.notes(),
+                        1,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of()
                 );
                 
                 return reservationController.createReservation(newReservation, token);

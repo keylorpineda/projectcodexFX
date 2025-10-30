@@ -109,6 +109,14 @@ public class ApiClient {
         return JsonUtils.fromJson(response.body(), responseType);
     }
 
+    public HttpClient getHttpClient() {
+        return httpClient;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
     private HttpResponse<String> execute(HttpRequest request) {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
