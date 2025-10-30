@@ -17,7 +17,7 @@ public class ReservationController {
     public ReservationController() {
         this(new ApiClient());
     }
-    
+
     public ReservationController(ApiClient apiClient) {
         this.apiClient = apiClient;
     }
@@ -163,5 +163,26 @@ public class ReservationController {
     }
     public List<ReservationDTO> loadReservations(String token) throws Exception {
         return getAllReservations(token);
+    }
+
+    public ReservationDTO markCheckIn(Long reservationId, String token) throws Exception {
+        String url = apiClient.getBaseUrl() + "/api/reservations/" + reservationId + "/check-in";
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+
+        HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200 || response.statusCode() == 201) {
+            return JsonUtils.fromJson(response.body(), ReservationDTO.class);
+        }
+        if (response.statusCode() == 204) {
+            return getReservationById(reservationId, token);
+        }
+        throw new ApiClientException(response.statusCode(), response.body());
     }
 }

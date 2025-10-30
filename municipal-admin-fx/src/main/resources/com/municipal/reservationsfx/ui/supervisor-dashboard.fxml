@@ -1,811 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.image.Image?>
 
-<HBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
-      stylesheets="@../styles/supervisor-dashboard-new.css"
-      styleClass="root-container">
+<BorderPane fx:id="rootPane"
+            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
+            stylesheets="@../styles/supervisor-dashboard.css"
+            styleClass="root-container">
+    <left>
+        <VBox styleClass="sidebar" prefWidth="230" spacing="0">
+            <VBox styleClass="sidebar-header" spacing="12">
+                <padding>
+                    <Insets top="24" right="20" bottom="24" left="20"/>
+                </padding>
+                <HBox spacing="12" alignment="CENTER_LEFT">
+                    <StackPane styleClass="app-logo">
+                        <ImageView fitHeight="58" fitWidth="58" pickOnBounds="true" preserveRatio="true"
+                                  styleClass="logo-image">
+                            <image>
+                                <Image url="@../../../../images/EscudoMunicipalidadPérezZeledon.png" />
+                            </image>
+                        </ImageView>
+                    </StackPane>
+                    <VBox spacing="2">
+                        <Label text="Sistema de Reservas" styleClass="app-title"/>
+                        <Label text="Municipalidad de Pérez Zeledón" wrapText="true" styleClass="app-subtitle"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-    <!-- ==================== SIDEBAR ==================== -->
-    <VBox styleClass="sidebar" minWidth="220" maxWidth="220">
-        
-        <!-- Logo y título -->
-        <VBox styleClass="sidebar-header">
-            <padding>
-                <Insets top="24" right="20" bottom="20" left="20"/>
-            </padding>
-            <HBox alignment="CENTER_LEFT" spacing="12">
-                <StackPane styleClass="app-logo">
-                   <ImageView fitHeight="56" fitWidth="56" pickOnBounds="true" preserveRatio="true"
-                               styleClass="logo-image">
-                        <image>
-                            <Image url="@../../../../images/EscudoMunicipalidadPérezZeledon.png" />
-                        </image>
-                    </ImageView>
-                </StackPane>
-                <VBox spacing="2">
-                    <Label text="Sistema de Reservas" styleClass="app-title"/>
-                    <Label text="Municipalidad de Pérez Zeledón" styleClass="app-subtitle"/>
-                </VBox>
-            </HBox>
+            <VBox styleClass="nav-container" spacing="6" VBox.vgrow="ALWAYS">
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+                <Button text="⌂  Inicio" styleClass="nav-btn" disable="true" />
+                <Button text="📋  Reservas" styleClass="nav-btn nav-btn-active" disable="true" />
+                <Button text="📍  Espacios" styleClass="nav-btn" disable="true" />
+                <Button text="🔔  Notificaciones" styleClass="nav-btn" disable="true" />
+                <Button text="👤  Usuarios" styleClass="nav-btn" disable="true" />
+                <Button text="📄  Auditoría" styleClass="nav-btn" disable="true" />
+                <Region VBox.vgrow="ALWAYS" />
+            </VBox>
+
+            <VBox styleClass="sidebar-footer">
+                <padding>
+                    <Insets top="16" right="16" bottom="24" left="16"/>
+                </padding>
+                <Button fx:id="btnCerrarSesion" text="⎋  Cerrar sesión" styleClass="logout-button"
+                        onAction="#cerrarSesion" maxWidth="Infinity">
+                    <cursor><Cursor fx:constant="HAND"/></cursor>
+                </Button>
+            </VBox>
         </VBox>
+    </left>
 
-        <!-- Navegación -->
-        <VBox styleClass="nav-container" spacing="4" VBox.vgrow="ALWAYS">
-            <padding>
-                <Insets top="12" right="12" bottom="16" left="12"/>
-            </padding>
+    <center>
+        <VBox styleClass="main-container" spacing="0">
+            <VBox styleClass="header" spacing="12">
+                <padding>
+                    <Insets top="28" right="36" bottom="28" left="36"/>
+                </padding>
+                <HBox alignment="CENTER_LEFT" spacing="16">
+                    <VBox spacing="6" HBox.hgrow="ALWAYS">
+                        <Label text="Panel de Supervisor" styleClass="header-title"/>
+                        <Label text="Control exclusivo de reservas confirmadas" styleClass="header-subtitle"/>
+                        <Label text="Revisa, filtra y valida accesos con apoyo del código QR" wrapText="true"
+                               styleClass="header-description"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <VBox spacing="2" styleClass="supervisor-box">
+                        <Label fx:id="lblSupervisorName" text="Supervisor" styleClass="supervisor-name"/>
+                        <Label fx:id="lblSupervisorEmail" text="supervisor@perezzeledon.go.cr"
+                               styleClass="supervisor-email"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-            <Button fx:id="btnInicio" text="⌂  Inicio" styleClass="nav-btn,nav-btn-active"
-                    onAction="#mostrarInicio" maxWidth="Infinity"/>
+            <VBox styleClass="content" spacing="24">
+                <padding>
+                    <Insets top="0" right="36" bottom="36" left="36"/>
+                </padding>
 
-            <Button fx:id="btnReservas" text="📋  Reservas" styleClass="nav-btn"
-                    onAction="#mostrarReservas" maxWidth="Infinity"/>
+                <HBox spacing="12" alignment="CENTER_LEFT">
+                    <TextField fx:id="txtBuscar" promptText="Buscar por espacio o ubicación" styleClass="search-field"/>
+                    <Button fx:id="btnLimpiarFiltro" text="Limpiar" styleClass="ghost-button"
+                            onAction="#limpiarFiltro"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="btnRefrescar" text="Actualizar" styleClass="primary-button"
+                            onAction="#recargarReservas"/>
+                </HBox>
 
-            <Button fx:id="btnEspacios" text="📍  Espacios" styleClass="nav-btn"
-                    onAction="#mostrarEspacios" maxWidth="Infinity"/>
+                <HBox spacing="20" alignment="TOP_LEFT" styleClass="workspace">
+                    <VBox spacing="14" styleClass="list-container">
+                        <Label text="Reservas confirmadas" styleClass="section-title"/>
+                        <StackPane VBox.vgrow="ALWAYS" styleClass="list-wrapper">
+                            <ListView fx:id="lvReservas" styleClass="reservation-list" />
+                            <Label fx:id="lblEmptyState" text="Cargando reservas confirmadas…" wrapText="true"
+                                   styleClass="empty-state" visible="false" StackPane.alignment="CENTER"/>
+                        </StackPane>
+                    </VBox>
 
-            <Button fx:id="btnNotificaciones" text="🔔  Notificaciones" styleClass="nav-btn"
-                    onAction="#mostrarNotificaciones" maxWidth="Infinity"/>
-
-            <Button fx:id="btnUsuarios" text="👤  Usuarios" styleClass="nav-btn"
-                    onAction="#mostrarUsuarios" maxWidth="Infinity"/>
-
-            <Button fx:id="btnAuditoria" text="📄  Auditoría" styleClass="nav-btn"
-                    onAction="#mostrarAuditoria" maxWidth="Infinity"/>
-
-            <Region VBox.vgrow="ALWAYS"/>
+                    <VBox spacing="12" styleClass="detail-container" HBox.hgrow="ALWAYS">
+                        <Label text="Detalle de la reserva" styleClass="section-title"/>
+                        <Label fx:id="lblDetalleTitulo" text="Selecciona una reserva confirmada" wrapText="true"
+                               styleClass="detail-title"/>
+                        <Label fx:id="lblDetalleUbicacion" text="Ubicación: -" wrapText="true" styleClass="detail-text"/>
+                        <Label fx:id="lblDetalleHorario" text="Horario: -" wrapText="true" styleClass="detail-text"/>
+                        <Label fx:id="lblDetalleEstado" text="Estado: -" styleClass="detail-chip"/>
+                        <Label fx:id="lblDetalleNotas" text="Notas: -" wrapText="true" styleClass="detail-text"/>
+                        <Label fx:id="lblDetalleAsistentes" text="Capacidad confirmada: -" styleClass="detail-text"/>
+                        <Label fx:id="lblDetalleIngresos" text="Ingresos registrados en esta sesión: -" wrapText="true"
+                               styleClass="detail-text"/>
+                        <Label fx:id="lblDetalleCheckIn" text="Último check-in registrado en el sistema: -"
+                               wrapText="true" styleClass="detail-meta"/>
+                        <Label fx:id="lblDetalleCreada" text="Creada: -" styleClass="detail-meta"/>
+                        <Label fx:id="lblDetalleActualizada" text="Actualizada: -" styleClass="detail-meta"/>
+                        <Region VBox.vgrow="ALWAYS"/>
+                        <Button fx:id="btnValidarQr" text="Validar QR" styleClass="accent-button"
+                                onAction="#iniciarValidacionQr" disable="true"/>
+                    </VBox>
+                </HBox>
+            </VBox>
         </VBox>
-
-        <!-- Usuario info -->
-        <VBox styleClass="sidebar-footer">
-            <padding>
-                <Insets top="16" right="16" bottom="24" left="16"/>
-            </padding>
-           <Button fx:id="btnCerrarSesion" text="⎋  Cerrar sesión" styleClass="logout-button"
-                    maxWidth="Infinity" onAction="#cerrarSesion">
-                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-            </Button>
-        </VBox>
-    </VBox>
-
-    <!-- ==================== CONTENIDO PRINCIPAL ==================== -->
-    <VBox styleClass="main-container" HBox.hgrow="ALWAYS">
-
-        <StackPane fx:id="contenedorPrincipal" VBox.vgrow="ALWAYS">
-
-            <!-- ==================== VISTA INICIO ==================== -->
-            <ScrollPane fx:id="vistaInicio" fitToWidth="true" styleClass="content-scroll">
-                <VBox styleClass="content-wrapper" spacing="24">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-
-                    <!-- Header -->
-                     <HBox alignment="CENTER_LEFT" spacing="12">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Panel de Supervisor" styleClass="page-title"/>
-                            <Label text="Gestión de reservas y espacios municipales" styleClass="page-subtitle"/>
-                        </VBox>
-                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="✚  Nueva Reserva" styleClass="btn-primary">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="user-header-container">
-                            <Circle radius="18" styleClass="user-header-avatar"/>
-                            <VBox spacing="2">
-                                <Label fx:id="lblNombreSupervisor" text="Supervisor" styleClass="user-header-name"/>
-                                <Label fx:id="lblCorreoSupervisor" text="supervisor@perezzeledón.go.cr"
-                                       styleClass="user-header-email"/>
-                            </VBox>
-                        </HBox>
-                    </HBox>
-
-                    <!-- Métricas -->
-                    <HBox spacing="16">
-                        <VBox styleClass="metric-card" spacing="8" HBox.hgrow="ALWAYS">
-                            <Label text="Reservas Pendientes" styleClass="metric-label"/>
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="⏱" styleClass="metric-icon-warning"/>
-                                <Label fx:id="lblPendientes" text="12" styleClass="metric-value"/>
-                            </HBox>
-                            <Label text="+3 hoy" styleClass="metric-trend"/>
-                        </VBox>
-
-                        <VBox styleClass="metric-card" spacing="8" HBox.hgrow="ALWAYS">
-                            <Label text="Reservas Activas" styleClass="metric-label"/>
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="✓" styleClass="metric-icon-success"/>
-                                <Label fx:id="lblActivas" text="45" styleClass="metric-value"/>
-                            </HBox>
-                            <Label text="8 hoy" styleClass="metric-trend"/>
-                        </VBox>
-
-                        <VBox styleClass="metric-card" spacing="8" HBox.hgrow="ALWAYS">
-                            <Label text="Espacios Disponibles" styleClass="metric-label"/>
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="📍" styleClass="metric-icon-info"/>
-                                <Label fx:id="lblEspaciosDisp" text="18" styleClass="metric-value"/>
-                            </HBox>
-                            <Label text="de 25 total" styleClass="metric-trend"/>
-                        </VBox>
-
-                        <VBox styleClass="metric-card" spacing="8" HBox.hgrow="ALWAYS">
-                            <Label text="Check-ins Hoy" styleClass="metric-label"/>
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="👥" styleClass="metric-icon-info"/>
-                                <Label fx:id="lblCheckins" text="23" styleClass="metric-value"/>
-                            </HBox>
-                            <Label text="5 pendientes" styleClass="metric-trend"/>
-                        </VBox>
-                    </HBox>
-
-                    <!-- Alertas Climáticas -->
-                    <VBox styleClass="section-card" spacing="16">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <Label text="🌤" styleClass="section-icon"/>
-                            <Label text="Alertas Climáticas" styleClass="section-title"/>
-                        </HBox>
-                        <Label text="Recomendaciones basadas en el clima" styleClass="section-subtitle"/>
-
-                        <HBox styleClass="alert-item,alert-success" spacing="12" alignment="CENTER_LEFT">
-                            <VBox spacing="4" HBox.hgrow="ALWAYS">
-                                <HBox spacing="8" alignment="CENTER_LEFT">
-                                    <Label text="Condiciones Óptimas" styleClass="alert-title"/>
-                                    <Label text="✓" styleClass="badge-success"/>
-                                </HBox>
-                                <Label text="Clima favorable para actividades al aire libre" styleClass="alert-description"/>
-                                <HBox spacing="12">
-                                    <Label text="• Cancha Deportiva Norte" styleClass="alert-location"/>
-                                    <Label text="• Parque Central" styleClass="alert-location"/>
-                                </HBox>
-                            </VBox>
-                        </HBox>
-
-                        <HBox styleClass="alert-item,alert-warning" spacing="12" alignment="CENTER_LEFT">
-                            <VBox spacing="4" HBox.hgrow="ALWAYS">
-                                <HBox spacing="8" alignment="CENTER_LEFT">
-                                    <Label text="Alerta Moderada" styleClass="alert-title"/>
-                                    <Label text="⚠" styleClass="badge-warning"/>
-                                </HBox>
-                                <Label text="Posibles lluvias en la tarde" styleClass="alert-description"/>
-                                <HBox spacing="12">
-                                    <Label text="• Cancha Deportiva Sur" styleClass="alert-location"/>
-                                </HBox>
-                            </VBox>
-                        </HBox>
-                    </VBox>
-
-                    <!-- Reservas Recientes -->
-                    <VBox styleClass="section-card" spacing="16">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <Label text="📅" styleClass="section-icon"/>
-                            <Label text="Reservas Recientes" styleClass="section-title"/>
-                        </HBox>
-                        <Label text="Solicitudes que requieren atención" styleClass="section-subtitle"/>
-
-                        <HBox styleClass="reservation-item" spacing="16" alignment="CENTER_LEFT">
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="8">
-                                    <Label text="Salón Comunal Central" styleClass="reservation-title"/>
-                                    <Label text="Pendiente" styleClass="badge-warning"/>
-                                </HBox>
-                                <Label text="María González • 2024-10-25 • 14:00 - 18:00" styleClass="reservation-details"/>
-                                <Label text="Capacidad: 150 personas" styleClass="reservation-meta"/>
-                            </VBox>
-                            <HBox spacing="8">
-                                <Button text="✓" styleClass="btn-icon-success">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                                <Button text="✕" styleClass="btn-icon-danger">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                            </HBox>
-                        </HBox>
-
-                        <HBox styleClass="reservation-item" spacing="16" alignment="CENTER_LEFT">
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="8">
-                                    <Label text="Cancha Deportiva Norte" styleClass="reservation-title"/>
-                                    <Label text="Aprobada" styleClass="badge-success"/>
-                                </HBox>
-                                <Label text="Carlos Ramírez • 2024-10-24 • 09:00 - 12:00" styleClass="reservation-details"/>
-                                <Label text="Capacidad: 50 personas" styleClass="reservation-meta"/>
-                            </VBox>
-                            <Button text="Ver detalles" styleClass="btn-secondary-sm">
-                                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
-
-                        <HBox styleClass="reservation-item" spacing="16" alignment="CENTER_LEFT">
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="8">
-                                    <Label text="Auditorio Municipal" styleClass="reservation-title"/>
-                                    <Label text="Pendiente" styleClass="badge-warning"/>
-                                </HBox>
-                                <Label text="Ana Martínez • 2024-10-26 • 16:00 - 20:00" styleClass="reservation-details"/>
-                                <Label text="Capacidad: 200 personas" styleClass="reservation-meta"/>
-                            </VBox>
-                            <HBox spacing="8">
-                                <Button text="✓" styleClass="btn-icon-success">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                                <Button text="✕" styleClass="btn-icon-danger">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                            </HBox>
-                        </HBox>
-                    </VBox>
-                </VBox>
-            </ScrollPane>
-
-            <!-- ==================== VISTA RESERVAS ==================== -->
-            <ScrollPane fx:id="vistaReservas" fitToWidth="true" styleClass="content-scroll" visible="false" managed="false">
-                <VBox styleClass="content-wrapper" spacing="24">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Gestión de Reservas" styleClass="page-title"/>
-                            <Label text="Administra y supervisa todas las solicitudes de reserva" styleClass="page-subtitle"/>
-                        </VBox>
-                        <Button text="↓ Exportar" styleClass="btn-secondary">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-
-                    <HBox spacing="16">
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Total Reservas" styleClass="metric-label-sm"/>
-                            <Label fx:id="lblTotalReservas" text="5" styleClass="metric-value-lg"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Pendientes" styleClass="metric-label-sm"/>
-                            <Label fx:id="lblReservasPendientes" text="2" styleClass="metric-value-lg,metric-warning"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Aprobadas" styleClass="metric-label-sm"/>
-                            <Label fx:id="lblReservasAprobadas" text="2" styleClass="metric-value-lg,metric-success"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Rechazadas" styleClass="metric-label-sm"/>
-                            <Label fx:id="lblReservasRechazadas" text="1" styleClass="metric-value-lg,metric-danger"/>
-                        </VBox>
-                    </HBox>
-
-                    <VBox styleClass="filters-section" spacing="12">
-                        <Label text="Filtros" styleClass="filters-title"/>
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <TextField fx:id="txtBuscarReserva" promptText="🔍  Buscar por ID, usuario o espacio..." 
-                                      styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                            <ComboBox fx:id="cmbEstadoReserva" promptText="Todos los estados" 
-                                     styleClass="filter-combo" prefWidth="200"/>
-                        </HBox>
-                    </VBox>
-
-                    <HBox spacing="8" styleClass="tab-filters">
-                        <Button text="Todas" styleClass="tab-btn,tab-btn-active">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <Button text="Pendientes" styleClass="tab-btn">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <Button text="Aprobadas" styleClass="tab-btn">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <Button text="Rechazadas" styleClass="tab-btn">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-
-                    <VBox styleClass="list-container" spacing="12">
-                        <HBox styleClass="list-item" spacing="16" alignment="CENTER_LEFT">
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Salón Comunal Central" styleClass="list-item-title"/>
-                                    <Label text="Pendiente" styleClass="badge-warning"/>
-                                </HBox>
-                                <Label text="ID: RES-2024-001" styleClass="list-item-id"/>
-                                <HBox spacing="20" styleClass="list-item-details">
-                                    <Label text="👤  María González" styleClass="detail-text"/>
-                                    <Label text="📅  2024-10-25" styleClass="detail-text"/>
-                                    <Label text="⏰  14:00 - 18:00" styleClass="detail-text"/>
-                                    <Label text="👥  120 / 150 personas" styleClass="detail-text"/>
-                                </HBox>
-                                <Label text="📌  Reunión comunitaria" styleClass="list-item-note"/>
-                            </VBox>
-                            <HBox spacing="8">
-                                <Button text="👁  Ver detalles" styleClass="btn-secondary-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                                <Button text="✓  Aprobar" styleClass="btn-success-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                                <Button text="✕  Rechazar" styleClass="btn-danger-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                            </HBox>
-                        </HBox>
-                    </VBox>
-                </VBox>
-            </ScrollPane>
-
-            <!-- ==================== VISTA ESPACIOS ==================== -->
-            <ScrollPane fx:id="vistaEspacios" fitToWidth="true" styleClass="content-scroll" visible="false" managed="false">
-                <VBox styleClass="content-wrapper" spacing="24">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Catálogo de Espacios" styleClass="page-title"/>
-                            <Label text="Administra los espacios disponibles para reserva" styleClass="page-subtitle"/>
-                        </VBox>
-                        <Button text="✚  Nuevo Espacio" styleClass="btn-primary">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-
-                    <HBox spacing="16">
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Total Espacios" styleClass="metric-label-sm"/>
-                            <Label text="6" styleClass="metric-value-lg"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Disponibles" styleClass="metric-label-sm"/>
-                            <Label text="4" styleClass="metric-value-lg,metric-success"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="En Mantenimiento" styleClass="metric-label-sm"/>
-                            <Label text="1" styleClass="metric-value-lg,metric-warning"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Reservas Totales" styleClass="metric-label-sm"/>
-                            <Label text="314" styleClass="metric-value-lg"/>
-                        </VBox>
-                    </HBox>
-
-                    <VBox styleClass="filters-section" spacing="12">
-                        <Label text="Filtros" styleClass="filters-title"/>
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <TextField promptText="🔍  Buscar por nombre, ubicación o categoría..." 
-                                      styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                            <ComboBox promptText="Todos los tipos" styleClass="filter-combo" prefWidth="180"/>
-                            <ComboBox promptText="Todos los estados" styleClass="filter-combo" prefWidth="180"/>
-                        </HBox>
-                    </VBox>
-
-                    <HBox spacing="16" style="-fx-wrap-width: 100%;">
-                        <VBox styleClass="space-card" spacing="12" prefWidth="350">
-                            <StackPane styleClass="space-image">
-                                <Label text="📍" styleClass="space-placeholder-icon"/>
-                                <Label text="Disponible" styleClass="space-status-badge,badge-success" StackPane.alignment="TOP_RIGHT">
-                                    <StackPane.margin>
-                                        <Insets top="12" right="12"/>
-                                    </StackPane.margin>
-                                </Label>
-                            </StackPane>
-                            <VBox spacing="8">
-                                <Label text="Salón Comunal Central" styleClass="space-title"/>
-                                <HBox spacing="12">
-                                    <Label text="🏢  Interior" styleClass="space-meta"/>
-                                    <Label text="☁  Clima" styleClass="space-meta"/>
-                                </HBox>
-                                <Label text="Capacidad: 150 personas" styleClass="space-capacity"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT">
-                                    <Button text="Ver detalles" styleClass="btn-secondary-sm" maxWidth="Infinity" HBox.hgrow="ALWAYS">
-                                        <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                    </Button>
-                                    <Button text="✏" styleClass="btn-icon">
-                                        <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                    </Button>
-                                </HBox>
-                            </VBox>
-                        </VBox>
-
-                        <VBox styleClass="space-card" spacing="12" prefWidth="350">
-                            <StackPane styleClass="space-image">
-                                <Label text="📍" styleClass="space-placeholder-icon"/>
-                                <Label text="Disponible" styleClass="space-status-badge,badge-success" StackPane.alignment="TOP_RIGHT">
-                                    <StackPane.margin>
-                                        <Insets top="12" right="12"/>
-                                    </StackPane.margin>
-                                </Label>
-                            </StackPane>
-                            <VBox spacing="8">
-                                <Label text="Cancha Deportiva Norte" styleClass="space-title"/>
-                                <HBox spacing="12">
-                                    <Label text="🌳  Exterior" styleClass="space-meta"/>
-                                    <Label text="☀  Clima" styleClass="space-meta"/>
-                                </HBox>
-                                <Label text="Capacidad: 50 personas" styleClass="space-capacity"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT">
-                                    <Button text="Ver detalles" styleClass="btn-secondary-sm" maxWidth="Infinity" HBox.hgrow="ALWAYS">
-                                        <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                    </Button>
-                                    <Button text="✏" styleClass="btn-icon">
-                                        <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                    </Button>
-                                </HBox>
-                            </VBox>
-                        </VBox>
-
-                        <VBox styleClass="space-card" spacing="12" prefWidth="350">
-                            <StackPane styleClass="space-image">
-                                <Label text="📍" styleClass="space-placeholder-icon"/>
-                                <Label text="Mantenimiento" styleClass="space-status-badge,badge-warning" StackPane.alignment="TOP_RIGHT">
-                                    <StackPane.margin>
-                                        <Insets top="12" right="12"/>
-                                    </StackPane.margin>
-                                </Label>
-                            </StackPane>
-                            <VBox spacing="8">
-                                <Label text="Auditorio Municipal" styleClass="space-title"/>
-                                <HBox spacing="12">
-                                    <Label text="🏢  Interior" styleClass="space-meta"/>
-                                    <Label text="☁  Clima" styleClass="space-meta"/>
-                                </HBox>
-                                <Label text="Capacidad: 200 personas" styleClass="space-capacity"/>
-                                <HBox spacing="8" alignment="CENTER_LEFT">
-                                    <Button text="Ver detalles" styleClass="btn-secondary-sm" maxWidth="Infinity" HBox.hgrow="ALWAYS">
-                                        <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                    </Button>
-                                    <Button text="✏" styleClass="btn-icon">
-                                        <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                    </Button>
-                                </HBox>
-                            </VBox>
-                        </VBox>
-                    </HBox>
-                </VBox>
-            </ScrollPane>
-
-            <!-- ==================== VISTA NOTIFICACIONES ==================== -->
-            <ScrollPane fx:id="vistaNotificaciones" fitToWidth="true" styleClass="content-scroll" visible="false" managed="false">
-                <VBox styleClass="content-wrapper" spacing="24">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Centro de Notificaciones" styleClass="page-title"/>
-                            <Label text="Gestiona y envía notificaciones a usuarios" styleClass="page-subtitle"/>
-                        </VBox>
-                        <Button text="✚  Nueva Notificación" styleClass="btn-primary">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-
-                    <HBox spacing="16">
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Total Enviadas" styleClass="metric-label-sm"/>
-                            <Label text="4" styleClass="metric-value-lg"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Programadas" styleClass="metric-label-sm"/>
-                            <Label text="1" styleClass="metric-value-lg,metric-info"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Borradores" styleClass="metric-label-sm"/>
-                            <Label text="1" styleClass="metric-value-lg,metric-warning"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Tasa de Lectura" styleClass="metric-label-sm"/>
-                            <Label text="78%" styleClass="metric-value-lg,metric-success"/>
-                        </VBox>
-                    </HBox>
-
-                    <VBox styleClass="filters-section" spacing="12">
-                        <HBox alignment="CENTER_LEFT" spacing="8">
-                            <Label text="⚙  Filtros" styleClass="filters-title"/>
-                        </HBox>
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <ComboBox promptText="Todos los estados" styleClass="filter-combo" prefWidth="200"/>
-                            <ComboBox promptText="Todos los tipos" styleClass="filter-combo" prefWidth="200"/>
-                        </HBox>
-                    </VBox>
-
-                    <HBox spacing="8" styleClass="tab-filters">
-                        <Button text="Todas" styleClass="tab-btn,tab-btn-active">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <Button text="Enviadas" styleClass="tab-btn">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <Button text="Programadas" styleClass="tab-btn">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        <Button text="Borradores" styleClass="tab-btn">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-
-                    <VBox styleClass="list-container" spacing="12">
-                        <HBox styleClass="notification-item" spacing="16" alignment="CENTER_LEFT">
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Nueva Reserva Pendiente" styleClass="notification-title"/>
-                                    <Label text="Reserva" styleClass="badge-info"/>
-                                    <Label text="Alta" styleClass="badge-danger"/>
-                                    <Label text="Enviada" styleClass="badge-success"/>
-                                </HBox>
-                                <Label text="María González ha solicitado el Salón Comunal Central para el 25 de octubre." 
-                                      styleClass="notification-description" wrapText="true"/>
-                                <HBox spacing="20" styleClass="notification-meta">
-                                    <Label text="⏰  2024-10-23 14:30" styleClass="meta-text"/>
-                                    <Label text="👥  2 / 3 leídas" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <Button text="Ver detalles" styleClass="btn-secondary-sm">
-                                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
-                    </VBox>
-                </VBox>
-            </ScrollPane>
-
-            <!-- ==================== VISTA USUARIOS ==================== -->
-            <ScrollPane fx:id="vistaUsuarios" fitToWidth="true" styleClass="content-scroll" visible="false" managed="false">
-                <VBox styleClass="content-wrapper" spacing="24">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Directorio de Usuarios" styleClass="page-title"/>
-                            <Label text="Gestiona los usuarios del sistema" styleClass="page-subtitle"/>
-                        </VBox>
-                    </HBox>
-
-                    <HBox spacing="16">
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Total Usuarios" styleClass="metric-label-sm"/>
-                            <Label text="6" styleClass="metric-value-lg"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Activos" styleClass="metric-label-sm"/>
-                            <Label text="5" styleClass="metric-value-lg,metric-success"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Supervisores" styleClass="metric-label-sm"/>
-                            <Label text="1" styleClass="metric-value-lg,metric-info"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Verificados" styleClass="metric-label-sm"/>
-                            <Label text="5" styleClass="metric-value-lg,metric-success"/>
-                        </VBox>
-                    </HBox>
-
-                    <VBox styleClass="filters-section" spacing="12">
-                        <Label text="Filtros" styleClass="filters-title"/>
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <TextField promptText="🔍  Buscar por nombre, email o ID..." 
-                                      styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                            <ComboBox promptText="Todos los roles" styleClass="filter-combo" prefWidth="180"/>
-                            <ComboBox promptText="Todos los estados" styleClass="filter-combo" prefWidth="180"/>
-                        </HBox>
-                    </VBox>
-
-                    <VBox styleClass="list-container" spacing="12">
-                        <HBox styleClass="user-item" spacing="16" alignment="CENTER_LEFT">
-                            <Circle radius="28" styleClass="user-avatar-large"/>
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="María González" styleClass="user-item-name"/>
-                                    <Label text="Usuario" styleClass="badge-neutral"/>
-                                    <Label text="Activo" styleClass="badge-success"/>
-                                    <Label text="✓ Verificado" styleClass="badge-info"/>
-                                </HBox>
-                                <HBox spacing="20" styleClass="user-item-details">
-                                    <Label text="✉  maria.gonzalez@email.com" styleClass="detail-text"/>
-                                    <Label text="📞  +506 8888-8888" styleClass="detail-text"/>
-                                    <Label text="📍  San Isidro" styleClass="detail-text"/>
-                                </HBox>
-                                <HBox spacing="20" styleClass="user-item-stats">
-                                    <Label text="📅  Miembro desde 2023-05-15" styleClass="meta-text"/>
-                                    <Label text="📋  12 reservas totales" styleClass="meta-text"/>
-                                    <Label text="✓  1 reservas activas" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <HBox spacing="8">
-                                <Button text="👁  Ver perfil" styleClass="btn-secondary-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                                <Button text="🚫  Suspender" styleClass="btn-danger-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                            </HBox>
-                        </HBox>
-
-                        <HBox styleClass="user-item" spacing="16" alignment="CENTER_LEFT">
-                            <Circle radius="28" styleClass="user-avatar-large"/>
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Carlos Ramírez" styleClass="user-item-name"/>
-                                    <Label text="Usuario" styleClass="badge-neutral"/>
-                                    <Label text="Activo" styleClass="badge-success"/>
-                                    <Label text="✓ Verificado" styleClass="badge-info"/>
-                                </HBox>
-                                <HBox spacing="20" styleClass="user-item-details">
-                                    <Label text="✉  carlos.ramirez@email.com" styleClass="detail-text"/>
-                                    <Label text="📞  +506 8777-7777" styleClass="detail-text"/>
-                                    <Label text="📍  San Isidro" styleClass="detail-text"/>
-                                </HBox>
-                                <HBox spacing="20" styleClass="user-item-stats">
-                                    <Label text="📅  Miembro desde 2023-08-10" styleClass="meta-text"/>
-                                    <Label text="📋  8 reservas totales" styleClass="meta-text"/>
-                                    <Label text="✓  0 reservas activas" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <HBox spacing="8">
-                                <Button text="👁  Ver perfil" styleClass="btn-secondary-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                                <Button text="🚫  Suspender" styleClass="btn-danger-sm">
-                                    <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                                </Button>
-                            </HBox>
-                        </HBox>
-                    </VBox>
-                </VBox>
-            </ScrollPane>
-
-            <!-- ==================== VISTA AUDITORÍA ==================== -->
-            <ScrollPane fx:id="vistaAuditoria" fitToWidth="true" styleClass="content-scroll" visible="false" managed="false">
-                <VBox styleClass="content-wrapper" spacing="24">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-
-                    <HBox alignment="CENTER_LEFT">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Registro de Auditoría" styleClass="page-title"/>
-                            <Label text="Historial completo de actividades del sistema" styleClass="page-subtitle"/>
-                        </VBox>
-                        <Button text="↓ Exportar Logs" styleClass="btn-secondary">
-                            <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-
-                    <HBox spacing="16">
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Total de Eventos" styleClass="metric-label-sm"/>
-                            <Label text="8" styleClass="metric-value-lg"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Exitosos" styleClass="metric-label-sm"/>
-                            <Label text="7" styleClass="metric-value-lg,metric-success"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Fallidos" styleClass="metric-label-sm"/>
-                            <Label text="1" styleClass="metric-value-lg,metric-danger"/>
-                        </VBox>
-                        <VBox styleClass="metric-card-compact" spacing="6" HBox.hgrow="ALWAYS">
-                            <Label text="Usuarios Activos" styleClass="metric-label-sm"/>
-                            <Label text="5" styleClass="metric-value-lg,metric-info"/>
-                        </VBox>
-                    </HBox>
-
-                    <VBox styleClass="filters-section" spacing="12">
-                        <Label text="Filtros" styleClass="filters-title"/>
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <TextField promptText="🔍  Buscar por usuario, acción o recurso..." 
-                                      styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                            <ComboBox promptText="Todas las acciones" styleClass="filter-combo" prefWidth="200"/>
-                            <ComboBox promptText="Todos los estados" styleClass="filter-combo" prefWidth="180"/>
-                        </HBox>
-                    </VBox>
-
-                    <VBox styleClass="list-container" spacing="12">
-                        <HBox styleClass="audit-item" spacing="16" alignment="CENTER_LEFT">
-                            <StackPane styleClass="audit-icon-container,audit-icon-success">
-                                <Label text="✓" styleClass="audit-icon"/>
-                            </StackPane>
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Aprobar Reserva" styleClass="audit-action"/>
-                                    <Label text="👤  Supervisor Principal" styleClass="audit-user"/>
-                                    <Label text="📋  RES-2024-002" styleClass="audit-resource"/>
-                                </HBox>
-                                <Label text="Aprobó la reserva de Cancha Deportiva Norte" styleClass="audit-description"/>
-                                <HBox spacing="20" styleClass="audit-meta">
-                                    <Label text="⏰  2024-10-23 14:30:25" styleClass="meta-text"/>
-                                    <Label text="🆔  ID: AUD-001" styleClass="meta-text"/>
-                                    <Label text="🌐  IP: 192.168.1.100" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <Button text="Ver detalles" styleClass="btn-secondary-sm">
-                                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
-
-                        <HBox styleClass="audit-item" spacing="16" alignment="CENTER_LEFT">
-                            <StackPane styleClass="audit-icon-container,audit-icon-info">
-                                <Label text="+" styleClass="audit-icon"/>
-                            </StackPane>
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Crear Reserva" styleClass="audit-action"/>
-                                    <Label text="👤  María González" styleClass="audit-user"/>
-                                    <Label text="📋  RES-2024-001" styleClass="audit-resource"/>
-                                </HBox>
-                                <Label text="Creó una nueva reserva para Salón Comunal Central" styleClass="audit-description"/>
-                                <HBox spacing="20" styleClass="audit-meta">
-                                    <Label text="⏰  2024-10-23 10:15:00" styleClass="meta-text"/>
-                                    <Label text="🆔  ID: AUD-002" styleClass="meta-text"/>
-                                    <Label text="🌐  IP: 192.168.1.150" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <Button text="Ver detalles" styleClass="btn-secondary-sm">
-                                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
-
-                        <HBox styleClass="audit-item" spacing="16" alignment="CENTER_LEFT">
-                            <StackPane styleClass="audit-icon-container,audit-icon-warning">
-                                <Label text="⚠" styleClass="audit-icon"/>
-                            </StackPane>
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Modificar Espacio" styleClass="audit-action"/>
-                                    <Label text="👤  Supervisor Principal" styleClass="audit-user"/>
-                                    <Label text="📍  ESP-2024-003" styleClass="audit-resource"/>
-                                </HBox>
-                                <Label text="Cambió el estado del Auditorio Municipal a 'Mantenimiento'" styleClass="audit-description"/>
-                                <HBox spacing="20" styleClass="audit-meta">
-                                    <Label text="⏰  2024-10-22 16:45:12" styleClass="meta-text"/>
-                                    <Label text="🆔  ID: AUD-003" styleClass="meta-text"/>
-                                    <Label text="🌐  IP: 192.168.1.100" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <Button text="Ver detalles" styleClass="btn-secondary-sm">
-                                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
-
-                        <HBox styleClass="audit-item" spacing="16" alignment="CENTER_LEFT">
-                            <StackPane styleClass="audit-icon-container,audit-icon-danger">
-                                <Label text="✕" styleClass="audit-icon"/>
-                            </StackPane>
-                            <VBox spacing="6" HBox.hgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="Login Fallido" styleClass="audit-action"/>
-                                    <Label text="👤  usuario@desconocido.com" styleClass="audit-user"/>
-                                    <Label text="⚠  Credenciales incorrectas" styleClass="badge-danger"/>
-                                </HBox>
-                                <Label text="Intento de acceso fallido al sistema" styleClass="audit-description"/>
-                                <HBox spacing="20" styleClass="audit-meta">
-                                    <Label text="⏰  2024-10-22 08:20:33" styleClass="meta-text"/>
-                                    <Label text="🆔  ID: AUD-004" styleClass="meta-text"/>
-                                    <Label text="🌐  IP: 203.45.67.89" styleClass="meta-text"/>
-                                </HBox>
-                            </VBox>
-                            <Button text="Ver detalles" styleClass="btn-secondary-sm">
-                                <cursor><javafx.scene.Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
-                    </VBox>
-                </VBox>
-            </ScrollPane>
-
-        </StackPane>
-    </VBox>
-</HBox>
+    </center>
+</BorderPane>
