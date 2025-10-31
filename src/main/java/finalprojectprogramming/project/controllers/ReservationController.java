@@ -1,5 +1,7 @@
 package finalprojectprogramming.project.controllers;
 
+import finalprojectprogramming.project.dtos.ReservationCheckInRequest;
+import finalprojectprogramming.project.dtos.ReservationCheckInRequest;
 import finalprojectprogramming.project.dtos.ReservationDTO;
 import finalprojectprogramming.project.services.reservation.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -96,9 +98,10 @@ public class ReservationController {
     @PostMapping("/{id}/check-in")
     @Operation(summary = "Register reservation check-in")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
-    public ResponseEntity<ReservationDTO> markCheckIn(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.markCheckIn(id));
-    }
+public ResponseEntity<ReservationDTO> markCheckIn(@PathVariable Long id,
+            @Valid @RequestBody ReservationCheckInRequest request) {
+        return ResponseEntity.ok(reservationService.markCheckIn(id, request));    
+}
 
     @PostMapping("/{id}/no-show")
     @Operation(summary = "Mark reservation as no-show")

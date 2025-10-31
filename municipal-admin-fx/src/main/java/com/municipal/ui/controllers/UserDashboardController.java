@@ -811,24 +811,25 @@ double latitude;
             @Override
             protected ReservationDTO call() throws Exception {
                 ReservationDTO newReservation = new ReservationDTO(
-                    null,
-                        userId,
-                        space.id(),
-                        startDateTime,
-                        endDateTime,
-                        "PENDING",
-                        UUID.randomUUID().toString(),
-                        null,
-                        null,
-                        data.notes(),
-                        1,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        List.of()
+                    null, // id
+                    userId, // userId
+                    space.id(), // spaceId
+                    startDateTime, // startTime
+                    endDateTime, // endTime
+                    "PENDING", // status
+                    UUID.randomUUID().toString(), // qrCode
+                    null, // canceledAt
+                    null, // checkinAt
+                    data.notes(), // notes
+                    1, // attendees
+                    null, // approvedByUserId
+                    null, // weatherCheck
+                    null, // cancellationReason
+                    null, // createdAt
+                    null, // updatedAt
+                    null, // ratingId
+                    List.of(), // notificationIds
+                    List.of() // attendeeRecords
                 );
                 
                 return reservationController.createReservation(newReservation, token);

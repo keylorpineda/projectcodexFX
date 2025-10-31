@@ -3,6 +3,7 @@ package com.municipal.controllers;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.municipal.ApiClient;
 import com.municipal.dtos.ReservationDTO;
+import com.municipal.dtos.ReservationCheckInRequest;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.utils.JsonUtils;
 
@@ -60,14 +61,15 @@ public class ReservationController {
         String url = apiClient.getBaseUrl() + "/api/reservations";
         String jsonBody = JsonUtils.toJson(reservation);
 
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build();
 
-        HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = apiClient.getHttpClient().send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 200 || response.statusCode() == 201) {
             return JsonUtils.fromJson(response.body(), ReservationDTO.class);
@@ -165,17 +167,17 @@ public class ReservationController {
         return getAllReservations(token);
     }
 
-    public ReservationDTO markCheckIn(Long reservationId, String token) throws Exception {
-        String url = apiClient.getBaseUrl() + "/api/reservations/" + reservationId + "/check-in";
+     public ReservationDTO markCheckIn(Long reservationId, String token, ReservationCheckInRequest request) throws Exception {   String url = apiClient.getBaseUrl() + "/api/reservations/" + reservationId + "/check-in";
 
-        HttpRequest request = HttpRequest.newBuilder()
+        String jsonBody = JsonUtils.toJson(request);
+      HttpRequest httpRequest = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.noBody())
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build();
 
-        HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = apiClient.getHttpClient().send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 200 || response.statusCode() == 201) {
             return JsonUtils.fromJson(response.body(), ReservationDTO.class);

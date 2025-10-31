@@ -55,6 +55,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
+import com.municipal.dtos.ReservationAttendeeDTO;
+import com.municipal.dtos.ReservationCheckInRequest;
 
 /**
  * Segunda versión del panel de supervisor centrado en reservas confirmadas.
@@ -94,8 +96,6 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
 
     private final ObservableList<ReservationCard> reservationEntries = FXCollections.observableArrayList();
     private FilteredList<ReservationCard> filteredReservations;
-
-    private final Map<Long, List<AttendeeRecord>> sessionCheckIns = new HashMap<>();
 
     private SessionManager sessionManager;
     private FlowController flowController;
@@ -178,10 +178,16 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             btnValidarQr.setDisable(true);
         }
 
+  ReservationCheckInRequest payload = new ReservationCheckInRequest(
+                selected.qrCode(),
+                attendee.idNumber(),
+                attendee.firstName(),
+                attendee.lastName());
+
         Task<ReservationCard> task = new Task<>() {
             @Override
             protected ReservationCard call() throws Exception {
-                ReservationDTO updated = reservationController.markCheckIn(selected.id(), token);
+                ReservationDTO updated = reservationController.markCheckIn(selected.id(), token, payload);
                 return mergeReservation(selected, updated);
             }
         };
@@ -189,12 +195,13 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         task.setOnSucceeded(event -> {
             ReservationCard updated = task.getValue();
             replaceReservationEntry(updated);
-            registerLocalCheckIn(updated.id(), attendee);
             updateDetail(updated);
             showSuccess(String.format(LOCALE_ES_CR,
-                    "Ingreso registrado para %s (%s).",
+                     "Ingreso registrado para %s (%s). Total ingresados: %d de %d.",
                     attendee.fullName(),
-                    attendee.idNumber()));
+                    attendee.idNumber(),
+                    updated.attendeeRecords().size(),
+                    updated.attendees() != null ? updated.attendees() : 0));
             if (btnValidarQr != null) {
                 btnValidarQr.setDisable(false);
             }
@@ -226,7 +233,8 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
                 dto.createdAt(),
                 dto.updatedAt(),
                 dto.qrCode(),
-                dto.checkinAt());
+               dto.checkinAt(),
+                mapAttendees(dto));
     }
 
     private void replaceReservationEntry(ReservationCard updated) {
@@ -240,22 +248,6 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
                 return;
             }
         }
-    }
-
-    private void registerLocalCheckIn(Long reservationId, AttendeeRecord attendee) {
-        sessionCheckIns.computeIfAbsent(reservationId, key -> new ArrayList<>()).add(attendee);
-    }
-
-    private int getSessionCheckInCount(Long reservationId) {
-        return sessionCheckIns.getOrDefault(reservationId, List.of()).size();
-    }
-
-    private AttendeeRecord getLastSessionCheckIn(Long reservationId) {
-        List<AttendeeRecord> records = sessionCheckIns.get(reservationId);
-        if (records == null || records.isEmpty()) {
-            return null;
-        }
-        return records.get(records.size() - 1);
     }
 
     private void configureListView() {
@@ -380,10 +372,6 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             loadingProperty.set(false);
             List<ReservationCard> result = task.getValue();
             reservationEntries.setAll(result);
-            sessionCheckIns.keySet().retainAll(result.stream()
-                    .map(ReservationCard::id)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet()));
             updateEmptyStateMessage();
             if (lvReservas != null) {
                 if (selectedId != null) {
@@ -436,7 +424,32 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
                 dto.createdAt(),
                 dto.updatedAt(),
                 dto.qrCode(),
-                dto.checkinAt());
+              dto.checkinAt(),
+                mapAttendees(dto));
+    }
+
+    private List<AttendeeRecord> mapAttendees(ReservationDTO dto) {
+        if (dto == null || dto.attendeeRecords() == null) {
+            return List.of();
+        }
+        return dto.attendeeRecords().stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(ReservationAttendeeDTO::checkInAt,
+                        Comparator.nullsLast(LocalDateTime::compareTo)))
+                .map(this::toAttendeeRecord)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private AttendeeRecord toAttendeeRecord(ReservationAttendeeDTO attendee) {
+        if (attendee == null) {
+            return null;
+        }
+        return new AttendeeRecord(
+                attendee.idNumber(),
+                attendee.firstName(),
+                attendee.lastName(),
+                attendee.checkInAt());
     }
 
     private boolean matchesQuery(ReservationCard entry, String query) {
@@ -481,18 +494,7 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             lblDetalleAsistentes.setText(card.capacityLabel());
         }
         if (lblDetalleIngresos != null) {
-            AttendeeRecord last = getLastSessionCheckIn(card.id());
-            int count = getSessionCheckInCount(card.id());
-            if (last == null) {
-                lblDetalleIngresos.setText("Ingresos registrados en esta sesión: Ninguno.");
-            } else {
-                lblDetalleIngresos.setText(String.format(LOCALE_ES_CR,
-                        "Ingresos registrados en esta sesión: %d · Último: %s (%s) a las %s",
-                        count,
-                        last.fullName(),
-                        last.idNumber(),
-                        formatTime(last.timestamp())));
-            }
+           lblDetalleIngresos.setText(buildAttendeeSummary(card));
         }
         if (lblDetalleCheckIn != null) {
             lblDetalleCheckIn.setText(card.checkInSummary());
@@ -504,7 +506,8 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             lblDetalleActualizada.setText("Actualizada: " + formatDate(card.updatedAt()));
         }
         if (btnValidarQr != null) {
-            btnValidarQr.setDisable(card.qrCode() == null || card.qrCode().isBlank());
+        boolean hasQr = card.qrCode() != null && !card.qrCode().isBlank();
+            btnValidarQr.setDisable(!hasQr || !card.hasRemainingCapacity());   
         }
     }
 
@@ -528,7 +531,7 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             lblDetalleAsistentes.setText("Capacidad confirmada: -");
         }
         if (lblDetalleIngresos != null) {
-            lblDetalleIngresos.setText("Ingresos registrados en esta sesión: -");
+         lblDetalleIngresos.setText("Ingresos registrados: -");   
         }
         if (lblDetalleCheckIn != null) {
             lblDetalleCheckIn.setText("Último check-in registrado en el sistema: -");
@@ -542,6 +545,45 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         if (btnValidarQr != null) {
             btnValidarQr.setDisable(true);
         }
+    }
+
+     private String buildAttendeeSummary(ReservationCard card) {
+        if (card == null) {
+            return "Ingresos registrados: -";
+        }
+        List<AttendeeRecord> attendees = card.attendeeRecords() != null ? card.attendeeRecords() : List.of();
+        int totalAllowed = card.attendees() != null ? card.attendees() : 0;
+        if (attendees.isEmpty()) {
+            return String.format(LOCALE_ES_CR,
+                    "Ingresos registrados: 0 de %d personas. Sin registros previos.",
+                    totalAllowed);
+        }
+        AttendeeRecord last = attendees.get(attendees.size() - 1);
+        StringBuilder builder = new StringBuilder();
+        builder.append(String.format(LOCALE_ES_CR,
+                "Ingresos registrados: %d de %d personas.",
+                attendees.size(),
+                totalAllowed));
+        builder.append(System.lineSeparator());
+        builder.append(String.format(LOCALE_ES_CR,
+                "Último ingreso: %s (%s) a las %s.",
+                last.fullName(),
+                last.idNumber(),
+                formatTime(last.timestamp())));
+        builder.append(System.lineSeparator());
+        builder.append("Listado secuencial:");
+        for (int i = 0; i < attendees.size(); i++) {
+            AttendeeRecord record = attendees.get(i);
+            builder.append(System.lineSeparator())
+                    .append(i + 1)
+                    .append(". ")
+                    .append(record.fullName())
+                    .append(" (")
+                    .append(record.idNumber())
+                    .append(") · ")
+                    .append(formatTime(record.timestamp()));
+        }
+        return builder.toString();
     }
 
     private void updateSupervisorLabels() {
@@ -684,7 +726,8 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             String qrCode,
-            LocalDateTime checkinAt) {
+           LocalDateTime checkinAt,
+            List<AttendeeRecord> attendeeRecords) {
 
         private String scheduleSummary() {
             if (startTime == null && endTime == null) {
@@ -725,6 +768,20 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             }
             return "Último check-in registrado en el sistema: " + FULL_DATE_FORMAT.format(checkinAt);
         }
+
+        private int attendeeCount() {
+            return attendeeRecords == null ? 0 : attendeeRecords.size();
+        }
+
+        private boolean hasRemainingCapacity() {
+            if (attendees == null) {
+                return true;
+            }
+            if (attendees <= 0) {
+                return false;
+            }
+            return attendeeCount() < attendees;
+        }
     }
 
     private record AttendeeRecord(String idNumber, String firstName, String lastName, LocalDateTime timestamp) {
@@ -757,6 +814,8 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
                 }
             });
             okButton.disableProperty().bind(Bindings.createBooleanBinding(() ->
+                        !reservation.hasRemainingCapacity()
+                                    ||
                             isBlank(qrField.getText())
                                     || isBlank(idField.getText())
                                     || isBlank(firstNameField.getText())
@@ -816,6 +875,10 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
                 }
                 return null;
             });
+
+            if (!reservation.hasRemainingCapacity()) {
+                showValidationError("La reserva ya alcanzó el máximo de asistentes registrados.");
+            }
         }
 
         private boolean validateInputs() {
@@ -829,8 +892,13 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
                 showValidationError("El código QR no coincide con la reserva seleccionada.");
                 return false;
             }
+             if (!reservation.hasRemainingCapacity()) {
+                showValidationError("La reserva ya alcanzó el máximo de asistentes registrados.");
+                return false;
+            }
             return true;
         }
+        
 
         private void showValidationError(String message) {
             errorLabel.setText(message);

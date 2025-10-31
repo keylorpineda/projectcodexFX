@@ -1,6 +1,10 @@
 package finalprojectprogramming.project.services.reservation;
 
+
+import finalprojectprogramming.project.dtos.ReservationAttendeeDTO;
+import finalprojectprogramming.project.dtos.ReservationCheckInRequest;
 import finalprojectprogramming.project.dtos.ReservationDTO;
+import finalprojectprogramming.project.models.ReservationAttendee;
 import finalprojectprogramming.project.exceptions.BusinessRuleException;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Notification;
@@ -77,6 +81,9 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setDeletedAt(null);
         if (reservation.getNotifications() == null) {
             reservation.setNotifications(new ArrayList<>());
+        }
+         if (reservation.getAttendeeRecords() == null) {
+            reservation.setAttendeeRecords(new ArrayList<>());
         }
         Reservation saved = reservationRepository.save(reservation);
         reservationNotificationService.notifyReservationCreated(saved);
@@ -203,14 +210,64 @@ public class ReservationServiceImplementation implements ReservationService {
     }
 
     @Override
-    public ReservationDTO markCheckIn(Long id) {
-        SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
+     public ReservationDTO markCheckIn(Long id, ReservationCheckInRequest request) {
+         SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
         Reservation reservation = getActiveReservation(id);
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new BusinessRuleException("Only confirmed reservations can be checked in");
+        if (request == null) {
+            throw new BusinessRuleException("Check-in data is required");
         }
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED
+                && reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+             throw new BusinessRuleException("Only confirmed reservations can be checked in");
+        }
+                if (reservation.getQrCode() == null || !reservation.getQrCode().equalsIgnoreCase(request.getQrCode())) {
+            throw new BusinessRuleException("Provided QR code does not match reservation");
+        }
+        List<ReservationAttendee> attendeeRecords = reservation.getAttendeeRecords();
+        if (attendeeRecords == null) {
+            attendeeRecords = new ArrayList<>();
+            reservation.setAttendeeRecords(attendeeRecords);
+        }
+
+        if (reservation.getAttendees() != null && attendeeRecords.size() >= reservation.getAttendees()) {
+            throw new BusinessRuleException("Reservation already reached the maximum number of attendees");
+        }
+
+        String requestedIdNumber = request.getAttendeeIdNumber() != null ? request.getAttendeeIdNumber().trim() : "";
+        if (requestedIdNumber.isBlank()) {
+            throw new BusinessRuleException("Attendee identification number is required");
+        }
+
+        boolean duplicatedAttendee = attendeeRecords.stream()
+                .filter(Objects::nonNull)
+                .map(ReservationAttendee::getIdNumber)
+                .filter(Objects::nonNull)
+                .anyMatch(existing -> existing.equalsIgnoreCase(requestedIdNumber));
+        if (duplicatedAttendee) {
+            throw new BusinessRuleException("This attendee has already been registered for the reservation");
+        }
+
+        String firstName = request.getAttendeeFirstName() != null ? request.getAttendeeFirstName().trim() : "";
+        if (firstName.isBlank()) {
+            throw new BusinessRuleException("Attendee first name is required");
+        }
+
+        String lastName = request.getAttendeeLastName() != null ? request.getAttendeeLastName().trim() : "";
+        if (lastName.isBlank()) {
+            throw new BusinessRuleException("Attendee last name is required");
+        }
+
+        LocalDateTime checkInTimestamp = LocalDateTime.now();
+        ReservationAttendee attendee = ReservationAttendee.builder()
+                .reservation(reservation)
+                .idNumber(requestedIdNumber)
+                .firstName(firstName)
+                .lastName(lastName)
+                .checkInAt(checkInTimestamp)
+                .build();
+        attendeeRecords.add(attendee);
         reservation.setStatus(ReservationStatus.CHECKED_IN);
-        reservation.setCheckinAt(LocalDateTime.now());
+        reservation.setCheckinAt(checkInTimestamp);
         reservation.setUpdatedAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
         return toDto(saved);
@@ -283,6 +340,32 @@ public class ReservationServiceImplementation implements ReservationService {
                 : reservation.getNotifications().stream()
                         .map(Notification::getId)
                         .filter(Objects::nonNull)
+                        .collect(Collectors.toList()));
+                         dto.setAttendeeRecords(reservation.getAttendeeRecords() == null ? new ArrayList<>()
+                : reservation.getAttendeeRecords().stream()
+                        .filter(Objects::nonNull)
+                        .sorted((left, right) -> {
+                            LocalDateTime leftTime = left.getCheckInAt();
+                            LocalDateTime rightTime = right.getCheckInAt();
+                            if (leftTime == null && rightTime == null) {
+                                return 0;
+                            }
+                            if (leftTime == null) {
+                                return -1;
+                            }
+                            if (rightTime == null) {
+                                return 1;
+                            }
+                            return leftTime.compareTo(rightTime);
+                        })
+                        .map(attendee -> ReservationAttendeeDTO.builder()
+                                .id(attendee.getId())
+                                .reservationId(reservation.getId())
+                                .idNumber(attendee.getIdNumber())
+                                .firstName(attendee.getFirstName())
+                                .lastName(attendee.getLastName())
+                                .checkInAt(attendee.getCheckInAt())
+                                .build())
                         .collect(Collectors.toList()));
         return dto;
     }

@@ -47,10 +47,8 @@
                 </padding>
                 <Button text="⌂  Inicio" styleClass="nav-btn" disable="true" />
                 <Button text="📋  Reservas" styleClass="nav-btn nav-btn-active" disable="true" />
-                <Button text="📍  Espacios" styleClass="nav-btn" disable="true" />
                 <Button text="🔔  Notificaciones" styleClass="nav-btn" disable="true" />
                 <Button text="👤  Usuarios" styleClass="nav-btn" disable="true" />
-                <Button text="📄  Auditoría" styleClass="nav-btn" disable="true" />
                 <Region VBox.vgrow="ALWAYS" />
             </VBox>
 

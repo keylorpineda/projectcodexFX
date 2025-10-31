@@ -80,4 +80,8 @@ public class ReservationDTO {
     @NotNull
     @Builder.Default
     private List<Long> notificationIds = new ArrayList<>();
+
+    @NotNull
+    @Builder.Default
+    private List<ReservationAttendeeDTO> attendeeRecords = new ArrayList<>();
 }

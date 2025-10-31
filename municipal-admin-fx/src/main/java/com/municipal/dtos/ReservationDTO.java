@@ -49,5 +49,6 @@ public record ReservationDTO(
         @JsonSerialize(using = LocalDateTimeSerializer.class)
         LocalDateTime updatedAt,
         @JsonProperty("ratingId") Long ratingId,
-        @JsonProperty("notificationIds") List<Long> notificationIds) {
+      @JsonProperty("notificationIds") List<Long> notificationIds,
+        @JsonProperty("attendeeRecords") List<ReservationAttendeeDTO> attendeeRecords) {
 }

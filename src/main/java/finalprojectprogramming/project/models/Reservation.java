@@ -1,6 +1,7 @@
 package finalprojectprogramming.project.models;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import finalprojectprogramming.project.models.ReservationAttendee;
 import finalprojectprogramming.project.models.enums.ReservationStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -100,4 +101,8 @@ public class Reservation {
     @Builder.Default
     @OneToMany(mappedBy = "reservation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Notification> notifications = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "reservation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReservationAttendee> attendeeRecords = new ArrayList<>();
 }
