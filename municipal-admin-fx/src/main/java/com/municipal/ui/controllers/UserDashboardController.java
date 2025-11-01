@@ -11,11 +11,14 @@ import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
 import com.municipal.ui.navigation.ViewLifecycle;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.util.Duration;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.chart.PieChart;
@@ -141,6 +144,12 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         "NO_SHOW", "Inasistencia"
     );
 
+    // ==================== AUTO-REFRESH ====================
+    
+    private static final Duration DATA_REFRESH_INTERVAL = Duration.seconds(30);
+    private Timeline refreshTimeline;
+    private boolean isLoading = false;
+
     // ==================== INITIALIZATION ====================
 
     @FXML
@@ -194,6 +203,15 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     public void onViewActivated() {
         System.out.println("👁️ Vista UserDashboard activada - Cargando datos iniciales");
         loadInitialData(true);
+        startAutoRefresh();
+    }
+
+    /**
+     * Método llamado cuando la vista se desactiva
+     */
+    public void onViewDeactivated() {
+        System.out.println("🛑 Vista UserDashboard desactivada - Deteniendo actualización automática");
+        stopAutoRefresh();
     }
 
     /**
@@ -225,14 +243,25 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             return;
         }
         
-        loadReservations();
-        loadSpaces();
-        
-        if (includeWeather) {
-            loadWeather();
+        if (isLoading) {
+            System.out.println("⏳ Ya hay una carga en progreso, omitiendo...");
+            return;
         }
         
-        updateDashboardMetrics();
+        isLoading = true;
+        
+        try {
+            loadReservations();
+            loadSpaces();
+            
+            if (includeWeather) {
+                loadWeather();
+            }
+            
+            updateDashboardMetrics();
+        } finally {
+            isLoading = false;
+        }
     }
 
     // ==================== USER MENU ====================
@@ -455,6 +484,18 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                 });
                 reservationsList.addAll(data);
                 System.out.println("✅ Cargadas " + data.size() + " reservas (ordenadas por estado)");
+                
+                // 🔍 DEBUG: Mostrar detalles de todas las reservas
+                System.out.println("═══════════════════════════════════════════════════════");
+                System.out.println("📋 DETALLE DE RESERVAS CARGADAS:");
+                for (int i = 0; i < data.size(); i++) {
+                    ReservationDTO r = data.get(i);
+                    System.out.println("  [" + (i+1) + "] ID: " + r.id() + 
+                                     " | SpaceID: " + r.spaceId() + 
+                                     " | Estado: " + r.status() +
+                                     " | Fecha: " + r.startTime() + " - " + r.endTime());
+                }
+                System.out.println("═══════════════════════════════════════════════════════");
             }
             reservationsTable.setItems(reservationsList);
             updateReservationsCount();
@@ -1079,14 +1120,16 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         // 🔍 DEBUG: Verificar las fechas que se están enviando
         System.out.println("═══════════════════════════════════════════");
         System.out.println("🕐 DEBUG - Creación de Reserva:");
-        System.out.println("   Fecha seleccionada: " + data.date());
-        System.out.println("   Hora inicio: " + data.startTime());
-        System.out.println("   Hora fin: " + data.endTime());
-        System.out.println("   LocalDateTime inicio: " + startDateTime);
-        System.out.println("   LocalDateTime fin: " + endDateTime);
-        System.out.println("   Fecha/hora actual: " + LocalDateTime.now());
-        System.out.println("   ¿Inicio es futuro?: " + startDateTime.isAfter(LocalDateTime.now()));
-        System.out.println("   ¿Fin es futuro?: " + endDateTime.isAfter(LocalDateTime.now()));
+        System.out.println("   🏢 Espacio: " + space.name() + " (ID: " + space.id() + ")");
+        System.out.println("   👤 Usuario ID: " + userId);
+        System.out.println("   📅 Fecha seleccionada: " + data.date());
+        System.out.println("   ⏰ Hora inicio: " + data.startTime());
+        System.out.println("   ⏰ Hora fin: " + data.endTime());
+        System.out.println("   📅 LocalDateTime inicio: " + startDateTime);
+        System.out.println("   📅 LocalDateTime fin: " + endDateTime);
+        System.out.println("   🕐 Fecha/hora actual: " + LocalDateTime.now());
+        System.out.println("   ✅ ¿Inicio es futuro?: " + startDateTime.isAfter(LocalDateTime.now()));
+        System.out.println("   ✅ ¿Fin es futuro?: " + endDateTime.isAfter(LocalDateTime.now()));
         System.out.println("═══════════════════════════════════════════");
 
         Task<ReservationDTO> task = new Task<>() {
@@ -1516,6 +1559,39 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         }
 
         return card;
+    }
+
+    // ==================== AUTO-REFRESH METHODS ====================
+
+    /**
+     * Inicia la actualización automática de datos cada 30 segundos
+     */
+    private void startAutoRefresh() {
+        if (refreshTimeline != null) {
+            refreshTimeline.stop();
+        }
+        
+        refreshTimeline = new Timeline(new KeyFrame(DATA_REFRESH_INTERVAL, event -> {
+            if (!isLoading) {
+                System.out.println("🔄 Actualización automática - Recargando datos del usuario");
+                loadInitialData(false); // false = sin mostrar indicador de carga
+            }
+        }));
+        
+        refreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        refreshTimeline.play();
+        System.out.println("✅ Actualización automática iniciada (cada 30 segundos)");
+    }
+
+    /**
+     * Detiene la actualización automática de datos
+     */
+    private void stopAutoRefresh() {
+        if (refreshTimeline != null) {
+            refreshTimeline.stop();
+            refreshTimeline = null;
+            System.out.println("🛑 Actualización automática detenida");
+        }
     }
 
     // ==================== DATA CLASSES ====================

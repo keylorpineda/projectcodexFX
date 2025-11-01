@@ -88,7 +88,9 @@ public class SpaceAvailabilityValidator {
                 .filter(reservation -> reservation.getDeletedAt() == null)
                 .filter(reservation -> reservationIdToIgnore == null
                         || !Objects.equals(reservation.getId(), reservationIdToIgnore))
-                .filter(reservation -> reservation.getStatus() != ReservationStatus.CANCELED)
+                // ✅ Ignorar reservas CANCELED y NO_SHOW (no ocupan el espacio)
+                .filter(reservation -> reservation.getStatus() != ReservationStatus.CANCELED 
+                        && reservation.getStatus() != ReservationStatus.NO_SHOW)
                 .anyMatch(reservation -> overlaps(reservation.getStartTime(), reservation.getEndTime(), startTime, endTime));
     }
 

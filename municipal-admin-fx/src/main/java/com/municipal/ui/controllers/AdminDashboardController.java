@@ -22,6 +22,8 @@ import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -221,7 +223,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private static final double PANEL_SLIDE_OFFSET = 360;
     private static final Duration PANEL_ANIMATION_DURATION = Duration.millis(260);
     private static final Duration CLIMA_REFRESH_INTERVAL = Duration.seconds(30);
-    private static final Duration DATA_REFRESH_INTERVAL = Duration.minutes(2);
+    private static final Duration DATA_REFRESH_INTERVAL = Duration.seconds(30); // Actualización cada 30 segundos
     private static final List<String> TIPOS_ESPACIO = List.of("SALA", "CANCHA", "AUDITORIO");
     private static final Map<String, String> ROLES_FRIENDLY = Map.of(
             "ADMIN", "Administrador",
@@ -519,11 +521,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private void configurarTablaEspacios() {
         if (tablaEspacios == null) return;
         
-        // Configurar columnas
-        colNombreEspacio.setCellValueFactory(new PropertyValueFactory<>("nombre"));
-        colTipoEspacio.setCellValueFactory(new PropertyValueFactory<>("tipo"));
-        colCapacidadEspacio.setCellValueFactory(new PropertyValueFactory<>("capacidad"));
-        colEstadoEspacio.setCellValueFactory(new PropertyValueFactory<>("estado"));
+        // Configurar columnas con lambdas en lugar de PropertyValueFactory
+        colNombreEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNombre()));
+        colTipoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTipo()));
+        colCapacidadEspacio.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getCapacidad()).asObject());
+        colEstadoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getEstado()));
         
         // Personalizar columna de estado con estilos
         colEstadoEspacio.setCellFactory(column -> new TableCell<Espacio, String>() {
@@ -652,21 +654,27 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         tablaUsuarios.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         if (colUsuario != null) {
-            colUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.21));
+            colUsuario.setMinWidth(180);
+            colUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.18));
         }
         if (colCorreo != null) {
-            colCorreo.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.24));
+            colCorreo.setMinWidth(200);
+            colCorreo.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.22));
         }
         if (colRol != null) {
-            colRol.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.12));
+            colRol.setMinWidth(140);
+            colRol.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.18));
         }
         if (colEstadoUsuario != null) {
+            colEstadoUsuario.setMinWidth(90);
             colEstadoUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.10));
         }
         if (colUltimoAcceso != null) {
-            colUltimoAcceso.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.15));
+            colUltimoAcceso.setMinWidth(150);
+            colUltimoAcceso.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.14));
         }
         if (colReservasUsuario != null) {
+            colReservasUsuario.setMinWidth(100);
             colReservasUsuario.prefWidthProperty().bind(tablaUsuarios.widthProperty().multiply(0.09));
         }
         // No vincular la columna de acciones porque usaremos ancho fijo
@@ -856,7 +864,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private void configurarTablaReservas() {
         if (tablaReservas == null) return;
         
-        colIdReserva.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colIdReserva.setCellValueFactory(cellData -> {
+            Long id = cellData.getValue().getId();
+            return new SimpleObjectProperty<>(id);
+        });
         
         colUsuarioReserva.setCellValueFactory(cellData ->
                 new SimpleStringProperty(formatearNombreUsuario(cellData.getValue().getUsuario())));
@@ -880,9 +891,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return new SimpleStringProperty(hora);
         });
         
-        colEstadoReservaTabla.setCellValueFactory(new PropertyValueFactory<>("estado"));
+        colEstadoReservaTabla.setCellValueFactory(cellData -> {
+            String estado = cellData.getValue().getEstado();
+            return new SimpleStringProperty(estado != null ? estado : "N/A");
+        });
         
-        colQRReserva.setCellValueFactory(new PropertyValueFactory<>("codigoQR"));
+        colQRReserva.setCellValueFactory(cellData -> {
+            String codigoQR = cellData.getValue().getCodigoQR();
+            return new SimpleStringProperty(codigoQR != null ? codigoQR : "N/A");
+        });
         
         colClimaReserva.setCellValueFactory(cellData -> {
             DatosClimaticos clima = cellData.getValue().getClima();
@@ -2135,7 +2152,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
      * Filtra los espacios según los criterios seleccionados
      */
     private void filtrarEspacios() {
-        if (tablaEspacios == null) return;
+        if (tablaEspacios == null) {
+            System.out.println("⚠️ tablaEspacios es null");
+            return;
+        }
+        
+        System.out.println("📊 Filtrando espacios. Total en listaEspacios: " + listaEspacios.size());
         
         String busqueda = txtBuscarEspacio != null ? txtBuscarEspacio.getText().toLowerCase() : "";
         String tipoSeleccionado = cmbTipoEspacio != null ? cmbTipoEspacio.getValue() : "Todos los tipos";
@@ -2177,7 +2199,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 .collect(Collectors.toList())
         );
 
+        System.out.println("📊 Espacios filtrados: " + listaEspaciosFiltrados.size());
         tablaEspacios.setItems(listaEspaciosFiltrados);
+        tablaEspacios.refresh();
     }
     
     /**
