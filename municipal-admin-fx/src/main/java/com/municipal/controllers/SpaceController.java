@@ -41,4 +41,8 @@ public class SpaceController {
     public void deleteSpace(Long id, String bearerToken) {
         spaceService.delete(id, bearerToken);
     }
+
+    public List<SpaceDTO> loadAvailableSpaces(String startTime, String endTime, String bearerToken) {
+        return spaceService.findAvailableSpaces(startTime, endTime, bearerToken);
+    }
 }

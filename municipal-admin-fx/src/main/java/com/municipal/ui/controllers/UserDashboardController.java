@@ -1,17 +1,16 @@
 package com.municipal.ui.controllers;
 
-import com.municipal.config.AppConfig;
 import com.municipal.controllers.ReservationController;
 import com.municipal.controllers.SpaceController;
 import com.municipal.controllers.WeatherController;
 import com.municipal.dtos.ReservationDTO;
 import com.municipal.dtos.SpaceDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
-import com.municipal.exceptions.ApiClientException;
 import com.municipal.session.SessionManager;
 import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
+import com.municipal.ui.navigation.ViewLifecycle;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,33 +31,40 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class UserDashboardController implements SessionAware, FlowAware {
+/**
+ * Controlador del Dashboard de Usuario (Ciudadano)
+ * Implementa SessionAware, FlowAware y ViewLifecycle para recibir inyección automática de dependencias
+ */
+public class UserDashboardController implements SessionAware, FlowAware, ViewLifecycle {
 
-    // Session & Controllers
-    private static final String LOGIN_VIEW_ID = "login";
+    // ==================== DEPENDENCIES ====================
+    
     private SessionManager sessionManager;
+    private FlowController flowController;
     private ReservationController reservationController;
     private SpaceController spaceController;
     private WeatherController weatherController;
-    private String token;
-    private FlowController flowController;
 
-    // FXML - Header
+    // ==================== FXML - HEADER ====================
+    
     @FXML private VBox mainContainer;
     @FXML private HBox userMenuContainer;
     @FXML private Label userNameLabel;
     @FXML private Label userRoleLabel;
 
-    // FXML - Sidebar Navigation
+    // ==================== FXML - SIDEBAR NAVIGATION ====================
+    
     @FXML private HBox navDashboardButton;
     @FXML private HBox navSpacesButton;
     @FXML private HBox navMyReservationsButton;
     @FXML private HBox navReportsButton;
 
-    // FXML - Content Scroll
+    // ==================== FXML - CONTENT SCROLL ====================
+    
     @FXML private ScrollPane contentScroll;
 
-    // FXML - Dashboard Section
+    // ==================== FXML - DASHBOARD SECTION ====================
+    
     @FXML private VBox dashboardSection;
     @FXML private Label activeReservationsLabel;
     @FXML private Label noShowsLabel;
@@ -70,7 +76,8 @@ public class UserDashboardController implements SessionAware, FlowAware {
     @FXML private Label weatherHumidityLabel;
     @FXML private Label weatherMessageLabel;
 
-    // FXML - Spaces Section
+    // ==================== FXML - SPACES SECTION ====================
+    
     @FXML private VBox spacesSection;
     @FXML private Label spacesCountLabel;
     @FXML private TextField searchSpaceField;
@@ -80,7 +87,8 @@ public class UserDashboardController implements SessionAware, FlowAware {
     @FXML private FlowPane spacesFlowPane;
     @FXML private StackPane spacesLoadingOverlay;
 
-    // FXML - My Reservations Section
+    // ==================== FXML - MY RESERVATIONS SECTION ====================
+    
     @FXML private VBox myReservationsSection;
     @FXML private Label reservationsCountLabel;
     @FXML private TableView<ReservationDTO> reservationsTable;
@@ -92,7 +100,8 @@ public class UserDashboardController implements SessionAware, FlowAware {
     @FXML private TableColumn<ReservationDTO, Void> reservationActionsColumn;
     @FXML private StackPane reservationsLoadingOverlay;
 
-    // FXML - Reports Section
+    // ==================== FXML - REPORTS SECTION ====================
+    
     @FXML private VBox reportsSection;
     @FXML private Label totalReservationsReportLabel;
     @FXML private Label attendanceRateLabel;
@@ -101,19 +110,22 @@ public class UserDashboardController implements SessionAware, FlowAware {
     @FXML private PieChart attendanceChart;
     @FXML private Label attendancePercentageLabel;
 
-    // Data
-    private ObservableList<ReservationDTO> reservationsList = FXCollections.observableArrayList();
-    private ObservableList<SpaceDTO> spacesList = FXCollections.observableArrayList();
-    private List<SpaceDTO> allSpaces = new ArrayList<>();
+    // ==================== DATA ====================
+    
+    private final ObservableList<ReservationDTO> reservationsList = FXCollections.observableArrayList();
+    private final ObservableList<SpaceDTO> spacesList = FXCollections.observableArrayList();
+    private final List<SpaceDTO> allSpaces = new ArrayList<>();
 
-    // Navigation
+    // ==================== NAVIGATION ====================
+    
     private enum Section {
         DASHBOARD, SPACES, MY_RESERVATIONS, REPORTS
     }
 
     private Section currentSection = Section.DASHBOARD;
 
-    // Status mapping
+    // ==================== STATUS MAPPING ====================
+    
     private static final Map<String, String> STATUS_MAP = Map.of(
         "PENDING", "Pendiente",
         "CONFIRMED", "Confirmada",
@@ -122,48 +134,97 @@ public class UserDashboardController implements SessionAware, FlowAware {
         "NO_SHOW", "Inasistencia"
     );
 
+    // ==================== INITIALIZATION ====================
+
     @FXML
     public void initialize() {
+        System.out.println("🔄 UserDashboardController - initialize() llamado");
+        
+        // ✅ Inicializar controladores usando constructores sin parámetros
+        this.reservationController = new ReservationController();
+        this.spaceController = new SpaceController();
+        this.weatherController = new WeatherController();
+        
+        // Configurar UI
         setupUserMenu();
         setupNavigationHandlers();
         setupFilters();
         setupTableColumns();
+        
+        System.out.println("✅ UserDashboardController - initialize() completado");
     }
 
-     @Override
+    // ==================== INTERFACE IMPLEMENTATIONS ====================
+
+    /**
+     * Implementación de SessionAware - Inyección automática del SessionManager
+     */
+    @Override
     public void setSessionManager(SessionManager sessionManager) {
+        System.out.println("🔐 SessionManager inyectado en UserDashboardController");
         this.sessionManager = sessionManager;
-        this.token = sessionManager.getAccessToken();
-
-      String displayName = sessionManager.getUserDisplayName();
-        if (displayName != null && !displayName.isBlank()) {
-            userNameLabel.setText(displayName);
-        }
-        String role = sessionManager.getUserRole();
-        if (role != null && !role.isBlank()) {
-            userRoleLabel.setText("Ciudadano");
+        
+        if (sessionManager != null && sessionManager.getUserId() != null) {
+            updateUserInfo();
+        } else {
+            System.err.println("⚠️ SessionManager es null o no tiene usuario");
         }
     }
 
+    /**
+     * Implementación de FlowAware - Inyección automática del FlowController
+     */
     @Override
     public void setFlowController(FlowController flowController) {
+        System.out.println("🔀 FlowController inyectado en UserDashboardController");
         this.flowController = flowController;
     }
 
-    public void setControllers(ReservationController reservationController,
-                              SpaceController spaceController,
-                              WeatherController weatherController) {
-        this.reservationController = reservationController;
-        this.spaceController = spaceController;
-        this.weatherController = weatherController;
+    /**
+     * Implementación de ViewLifecycle - Se llama cuando la vista se activa
+     */
+    @Override
+    public void onViewActivated() {
+        System.out.println("👁️ Vista UserDashboard activada - Cargando datos iniciales");
+        loadInitialData(true);
     }
 
-    public void loadInitialData(boolean loadWeather) {
+    /**
+     * Actualiza la información del usuario en la UI
+     */
+    private void updateUserInfo() {
+        if (sessionManager != null) {
+            Platform.runLater(() -> {
+                if (userNameLabel != null) {
+                    String displayName = sessionManager.getUserDisplayName();
+                    userNameLabel.setText(displayName != null ? displayName : "Usuario");
+                }
+                if (userRoleLabel != null) {
+                    userRoleLabel.setText("Ciudadano");
+                }
+            });
+        }
+    }
+
+    /**
+     * Carga los datos iniciales del dashboard
+     */
+    public void loadInitialData(boolean includeWeather) {
+        System.out.println("📊 Cargando datos iniciales del dashboard...");
+        
+        if (sessionManager == null) {
+            System.err.println("❌ No se puede cargar datos: SessionManager es null");
+            showError("Error: No hay sesión activa");
+            return;
+        }
+        
         loadReservations();
         loadSpaces();
-        if (loadWeather) {
+        
+        if (includeWeather) {
             loadWeather();
         }
+        
         updateDashboardMetrics();
     }
 
@@ -171,7 +232,7 @@ public class UserDashboardController implements SessionAware, FlowAware {
 
     private void setupUserMenu() {
         if (userMenuContainer != null) {
-            userMenuContainer.setOnMouseClicked(event -> showUserMenu(event));
+            userMenuContainer.setOnMouseClicked(this::showUserMenu);
             userMenuContainer.setStyle("-fx-cursor: hand;");
         }
     }
@@ -195,24 +256,19 @@ public class UserDashboardController implements SessionAware, FlowAware {
     }
 
     private void showProfile() {
+        if (sessionManager == null) {
+            showError("No hay información de usuario disponible");
+            return;
+        }
+
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Mi Perfil");
         alert.setHeaderText("Información del Usuario");
-       
-        String name = sessionManager != null ? sessionManager.getUserDisplayName() : null;
-        String email = sessionManager != null ? sessionManager.getUserEmail() : null;
-        if (name != null || email != null) {
-            StringBuilder info = new StringBuilder();
-            if (name != null) {
-                info.append("Nombre: ").append(name).append("\n");
-            }
-            if (email != null) {
-                info.append("Email: ").append(email).append("\n");
-            }
-            info.append("Rol: Ciudadano");
-            alert.setContentText(info.toString());
-        }
         
+        String displayName = sessionManager.getUserDisplayName();
+        String info = String.format("Nombre: %s\nRol: Ciudadano", 
+            displayName != null ? displayName : "N/A");
+        alert.setContentText(info);
         alert.showAndWait();
     }
 
@@ -232,20 +288,28 @@ public class UserDashboardController implements SessionAware, FlowAware {
 
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-               sessionManager.clear();
-                FlowController controller = flowController;
-                if (controller == null && mainContainer != null && mainContainer.getScene() != null
-                        && mainContainer.getScene().getWindow() != null) {
-                    Object data = mainContainer.getScene().getWindow().getUserData();
-                    if (data instanceof FlowController storedController) {
-                        controller = storedController;
-                    }
-                }
-                 if (controller != null) {
-                    controller.showView(LOGIN_VIEW_ID);
-                }
+                performLogout();
             }
         });
+    }
+
+    private void performLogout() {
+        try {
+            // Limpiar sesión usando el método correcto
+            if (sessionManager != null) {
+                sessionManager.clear();
+            }
+
+            // Navegar al login usando FlowController inyectado
+            if (flowController != null) {
+                flowController.showView("login");
+            } else {
+                showError("Error: No se pudo cerrar sesión correctamente");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Error al cerrar sesión: " + e.getMessage());
+        }
     }
 
     // ==================== NAVIGATION ====================
@@ -277,32 +341,51 @@ public class UserDashboardController implements SessionAware, FlowAware {
     private void navigateToSection(Section section) {
         currentSection = section;
 
-        dashboardSection.setVisible(section == Section.DASHBOARD);
-        dashboardSection.setManaged(section == Section.DASHBOARD);
+        updateSectionVisibility(section);
+        updateNavigationStyles(section);
+        loadSectionData(section);
 
-        spacesSection.setVisible(section == Section.SPACES);
-        spacesSection.setManaged(section == Section.SPACES);
+        if (contentScroll != null) {
+            contentScroll.setVvalue(0);
+        }
+    }
 
-        myReservationsSection.setVisible(section == Section.MY_RESERVATIONS);
-        myReservationsSection.setManaged(section == Section.MY_RESERVATIONS);
+    private void updateSectionVisibility(Section section) {
+        if (dashboardSection != null) {
+            dashboardSection.setVisible(section == Section.DASHBOARD);
+            dashboardSection.setManaged(section == Section.DASHBOARD);
+        }
 
-        reportsSection.setVisible(section == Section.REPORTS);
-        reportsSection.setManaged(section == Section.REPORTS);
+        if (spacesSection != null) {
+            spacesSection.setVisible(section == Section.SPACES);
+            spacesSection.setManaged(section == Section.SPACES);
+        }
 
+        if (myReservationsSection != null) {
+            myReservationsSection.setVisible(section == Section.MY_RESERVATIONS);
+            myReservationsSection.setManaged(section == Section.MY_RESERVATIONS);
+        }
+
+        if (reportsSection != null) {
+            reportsSection.setVisible(section == Section.REPORTS);
+            reportsSection.setManaged(section == Section.REPORTS);
+        }
+    }
+
+    private void updateNavigationStyles(Section section) {
         setNavigationStyle(navDashboardButton, section == Section.DASHBOARD);
         setNavigationStyle(navSpacesButton, section == Section.SPACES);
         setNavigationStyle(navMyReservationsButton, section == Section.MY_RESERVATIONS);
         setNavigationStyle(navReportsButton, section == Section.REPORTS);
+    }
 
-        if (section == Section.SPACES) {
-            loadSpaces();
-        } else if (section == Section.MY_RESERVATIONS) {
-            loadReservations();
-        } else if (section == Section.REPORTS) {
-            updateReportsData();
+    private void loadSectionData(Section section) {
+        switch (section) {
+            case SPACES -> loadSpaces();
+            case MY_RESERVATIONS -> loadReservations();
+            case REPORTS -> updateReportsData();
+            case DASHBOARD -> updateDashboardMetrics();
         }
-
-        contentScroll.setVvalue(0);
     }
 
     private void setNavigationStyle(HBox navItem, boolean active) {
@@ -318,22 +401,25 @@ public class UserDashboardController implements SessionAware, FlowAware {
 
     private void loadReservations() {
         if (sessionManager == null || reservationController == null) {
+            System.err.println("❌ No se puede cargar reservas: dependencias null");
             return;
         }
 
+        // ✅ Obtener userId del SessionManager correctamente
         Long userId = sessionManager.getUserId();
-        if (userId == null) {
+        String token = sessionManager.getAccessToken();
+
+        if (userId == null || token == null) {
+            System.err.println("❌ No se puede cargar reservas: userId o token null");
             return;
         }
 
-        if (reservationsLoadingOverlay != null) {
-            reservationsLoadingOverlay.setVisible(true);
-            reservationsLoadingOverlay.setManaged(true);
-        }
+        showLoadingOverlay(reservationsLoadingOverlay, true);
 
         Task<List<ReservationDTO>> task = new Task<>() {
             @Override
             protected List<ReservationDTO> call() throws Exception {
+                // ✅ Usar el método correcto del ReservationController
                 return reservationController.getReservationsByUserId(userId, token);
             }
         };
@@ -343,22 +429,20 @@ public class UserDashboardController implements SessionAware, FlowAware {
             reservationsList.clear();
             if (data != null) {
                 reservationsList.addAll(data);
+                System.out.println("✅ Cargadas " + data.size() + " reservas");
             }
             reservationsTable.setItems(reservationsList);
             updateReservationsCount();
             updateDashboardMetrics();
-            if (reservationsLoadingOverlay != null) {
-                reservationsLoadingOverlay.setVisible(false);
-                reservationsLoadingOverlay.setManaged(false);
-            }
+            showLoadingOverlay(reservationsLoadingOverlay, false);
         });
 
         task.setOnFailed(e -> {
-            showError("Error al cargar reservas: " + task.getException().getMessage());
-            if (reservationsLoadingOverlay != null) {
-                reservationsLoadingOverlay.setVisible(false);
-                reservationsLoadingOverlay.setManaged(false);
-            }
+            String errorMsg = task.getException() != null ? 
+                task.getException().getMessage() : "Error desconocido";
+            System.err.println("❌ Error al cargar reservas: " + errorMsg);
+            showError("Error al cargar reservas: " + errorMsg);
+            showLoadingOverlay(reservationsLoadingOverlay, false);
         });
 
         new Thread(task).start();
@@ -366,17 +450,19 @@ public class UserDashboardController implements SessionAware, FlowAware {
 
     private void loadSpaces() {
         if (spaceController == null) {
+            System.err.println("❌ No se puede cargar espacios: spaceController null");
             return;
         }
 
-        if (spacesLoadingOverlay != null) {
-            spacesLoadingOverlay.setVisible(true);
-            spacesLoadingOverlay.setManaged(true);
-        }
+        String token = sessionManager != null ? sessionManager.getAccessToken() : null;
+        showLoadingOverlay(spacesLoadingOverlay, true);
 
         Task<List<SpaceDTO>> task = new Task<>() {
             @Override
             protected List<SpaceDTO> call() throws Exception {
+                // ✅ Mostrar todos los espacios activos del sistema
+                // El usuario puede ver todos los espacios y cuando intente reservar
+                // se verificará la disponibilidad para la fecha/hora específica
                 return spaceController.loadSpaces(token);
             }
         };
@@ -388,21 +474,19 @@ public class UserDashboardController implements SessionAware, FlowAware {
             if (data != null) {
                 allSpaces.addAll(data);
                 spacesList.addAll(data);
+                System.out.println("✅ Cargados " + data.size() + " espacios");
             }
             displaySpaces(spacesList);
             updateSpacesCount();
-            if (spacesLoadingOverlay != null) {
-                spacesLoadingOverlay.setVisible(false);
-                spacesLoadingOverlay.setManaged(false);
-            }
+            showLoadingOverlay(spacesLoadingOverlay, false);
         });
 
         task.setOnFailed(e -> {
-            showError("Error al cargar espacios: " + task.getException().getMessage());
-            if (spacesLoadingOverlay != null) {
-                spacesLoadingOverlay.setVisible(false);
-                spacesLoadingOverlay.setManaged(false);
-            }
+            String errorMsg = task.getException() != null ? 
+                task.getException().getMessage() : "Error desconocido";
+            System.err.println("❌ Error al cargar espacios: " + errorMsg);
+            showError("Error al cargar espacios: " + errorMsg);
+            showLoadingOverlay(spacesLoadingOverlay, false);
         });
 
         new Thread(task).start();
@@ -410,22 +494,17 @@ public class UserDashboardController implements SessionAware, FlowAware {
 
     private void loadWeather() {
         if (weatherController == null) {
-            return;
-        }
-double latitude;
-        double longitude;
-        try {
-            latitude = Double.parseDouble(AppConfig.require("weather.default-lat"));
-            longitude = Double.parseDouble(AppConfig.require("weather.default-lon"));
-        } catch (IllegalStateException | NumberFormatException exception) {
-            weatherMessageLabel.setText("No se pudo determinar la ubicación para el clima");
+            System.err.println("❌ No se puede cargar clima: weatherController null");
             return;
         }
 
         Task<CurrentWeatherDTO> task = new Task<>() {
             @Override
             protected CurrentWeatherDTO call() throws Exception {
-                return weatherController.loadCurrentWeather(latitude, longitude, token);
+                // ✅ Usar coordenadas configuradas en application.properties
+                // Pérez Zeledón, Costa Rica: 9.3640, -83.7139
+                String token = sessionManager != null ? sessionManager.getAccessToken() : null;
+                return weatherController.loadCurrentWeather(9.3640, -83.7139, token);
             }
         };
 
@@ -433,55 +512,80 @@ double latitude;
             CurrentWeatherDTO weather = task.getValue();
             if (weather != null) {
                 updateWeatherUI(weather);
+                System.out.println("✅ Clima cargado correctamente");
             }
         });
 
         task.setOnFailed(e -> {
-            weatherMessageLabel.setText("No se pudo cargar la información del clima");
+            System.err.println("❌ Error al cargar clima: " + 
+                (task.getException() != null ? task.getException().getMessage() : "Error desconocido"));
+            if (weatherMessageLabel != null) {
+                weatherMessageLabel.setText("No se pudo cargar la información del clima");
+            }
         });
 
         new Thread(task).start();
     }
 
+    private void showLoadingOverlay(StackPane overlay, boolean show) {
+        if (overlay != null) {
+            Platform.runLater(() -> {
+                overlay.setVisible(show);
+                overlay.setManaged(show);
+            });
+        }
+    }
+
     private void updateWeatherUI(CurrentWeatherDTO weather) {
-        Double temperature = weather.temperature();
-        weatherTempLabel.setText(temperature != null ? String.format("%.1f°C", temperature) : "N/D");
-
-        String description = weather.description();
-        weatherConditionLabel.setText(description != null ? capitalizeFirst(description) : "-");
-
-        Double windSpeed = weather.windSpeed();
-        weatherWindLabel.setText(windSpeed != null ? String.format("Viento: %.1f km/h", windSpeed) : "Viento: N/D");
-
-        Integer humidity = weather.humidity();
-        weatherHumidityLabel.setText(humidity != null ? String.format("Humedad: %d%%", humidity) : "Humedad: N/D");
-
-        String iconReference = weather.icon() != null ? weather.icon() : description;
-        weatherIconLabel.setText(getWeatherIcon(iconReference));
-
-       String message = getWeatherMessage(description, temperature);
-        weatherMessageLabel.setText(message);
+        Platform.runLater(() -> {
+            // ✅ Usar los campos correctos de CurrentWeatherDTO
+            if (weatherTempLabel != null) {
+                weatherTempLabel.setText(String.format("%.1f°C", weather.temperature()));
+            }
+            if (weatherConditionLabel != null) {
+                weatherConditionLabel.setText(capitalizeFirst(weather.description()));
+            }
+            if (weatherWindLabel != null) {
+                weatherWindLabel.setText(String.format("Viento: %.1f km/h", weather.windSpeed()));
+            }
+            if (weatherHumidityLabel != null) {
+                weatherHumidityLabel.setText(String.format("Humedad: %d%%", weather.humidity()));
+            }
+            if (weatherIconLabel != null) {
+                String icon = getWeatherIcon(weather.description());
+                weatherIconLabel.setText(icon);
+            }
+            if (weatherMessageLabel != null) {
+                String message = getWeatherMessage(weather.description(), weather.temperature());
+                weatherMessageLabel.setText(message);
+            }
+        });
     }
 
     private String getWeatherIcon(String condition) {
-        if (condition == null) {
-            return "🌤️";
-        }
+        if (condition == null) return "🌤️";
+        
         return switch (condition.toLowerCase()) {
-            case "clear" -> "☀️";
-            case "clouds" -> "☁️";
-            case "rain" -> "🌧️";
-            case "drizzle" -> "🌦️";
-            case "thunderstorm" -> "⛈️";
-            case "snow" -> "❄️";
-            case "mist", "fog" -> "🌫️";
+            case "clear", "despejado" -> "☀️";
+            case "clouds", "nublado" -> "☁️";
+            case "rain", "lluvia" -> "🌧️";
+            case "drizzle", "llovizna" -> "🌦️";
+            case "thunderstorm", "tormenta" -> "⛈️";
+            case "snow", "nieve" -> "❄️";
+            case "mist", "fog", "niebla" -> "🌫️";
             default -> "🌤️";
         };
     }
 
-  private String getWeatherMessage(String condition, Double temp) {
-        if (condition != null && (condition.equalsIgnoreCase("rain") || condition.equalsIgnoreCase("thunderstorm"))) {
-    return "⚠️ Considera reservar espacios cubiertos debido a la lluvia.";
+    private String getWeatherMessage(String condition, double temp) {
+        if (condition == null) {
+            return "✨ Información del clima no disponible.";
+        }
+        
+        String lowerCondition = condition.toLowerCase();
+        if (lowerCondition.contains("rain") || lowerCondition.contains("lluvia") || 
+            lowerCondition.contains("thunderstorm") || lowerCondition.contains("tormenta")) {
+            return "⚠️ Considera reservar espacios cubiertos debido a la lluvia.";
         } else if (temp > 30) {
             return "☀️ Día caluroso. Recomendamos espacios con sombra o climatizados.";
         } else if (temp < 18) {
@@ -501,7 +605,8 @@ double latitude;
     private void setupTableColumns() {
         reservationSpaceColumn.setCellValueFactory(data -> {
             Long spaceId = data.getValue().spaceId();
-            SpaceDTO space = spacesList.stream()
+            List<SpaceDTO> searchList = !spacesList.isEmpty() ? spacesList : allSpaces;
+            SpaceDTO space = searchList.stream()
                     .filter(s -> s.id() != null && s.id().equals(spaceId))
                     .findFirst().orElse(null);
             String name = space != null ? space.name() : "Espacio #" + spaceId;
@@ -602,7 +707,7 @@ double latitude;
     private void setupFilters() {
         if (spaceTypeChoice != null) {
             spaceTypeChoice.setItems(FXCollections.observableArrayList(
-                "Todos", "Auditorio", "Sala", "Cancha", "Parque", "Gimnasio"
+                "Todos", "SALA", "CANCHA", "AUDITORIO"
             ));
             spaceTypeChoice.setValue("Todos");
         }
@@ -623,25 +728,29 @@ double latitude;
     private void handleApplyFilters() {
         List<SpaceDTO> filtered = new ArrayList<>(allSpaces);
 
-        String searchText = searchSpaceField.getText().toLowerCase();
-        if (!searchText.isEmpty()) {
+        if (searchSpaceField != null && !searchSpaceField.getText().isEmpty()) {
+            String searchText = searchSpaceField.getText().toLowerCase();
             filtered = filtered.stream()
                     .filter(s -> s.name().toLowerCase().contains(searchText))
                     .collect(Collectors.toList());
         }
 
-        String type = spaceTypeChoice.getValue();
-        if (type != null && !"Todos".equals(type)) {
-            filtered = filtered.stream()
-                    .filter(s -> type.equalsIgnoreCase(s.type()))
-                    .collect(Collectors.toList());
+        if (spaceTypeChoice != null) {
+            String type = spaceTypeChoice.getValue();
+            if (type != null && !"Todos".equals(type)) {
+                filtered = filtered.stream()
+                        .filter(s -> type.equalsIgnoreCase(s.type()))
+                        .collect(Collectors.toList());
+            }
         }
 
-        String capacity = capacityChoice.getValue();
-        if (capacity != null && !"Todas".equals(capacity)) {
-            filtered = filtered.stream()
-                    .filter(s -> matchesCapacity(s.capacity(), capacity))
-                    .collect(Collectors.toList());
+        if (capacityChoice != null) {
+            String capacity = capacityChoice.getValue();
+            if (capacity != null && !"Todas".equals(capacity)) {
+                filtered = filtered.stream()
+                        .filter(s -> matchesCapacity(s.capacity(), capacity))
+                        .collect(Collectors.toList());
+            }
         }
 
         spacesList.clear();
@@ -667,12 +776,14 @@ double latitude;
             return;
         }
 
-        spacesFlowPane.getChildren().clear();
+        Platform.runLater(() -> {
+            spacesFlowPane.getChildren().clear();
 
-        for (SpaceDTO space : spaces) {
-            VBox card = createSpaceCard(space);
-            spacesFlowPane.getChildren().add(card);
-        }
+            for (SpaceDTO space : spaces) {
+                VBox card = createSpaceCard(space);
+                spacesFlowPane.getChildren().add(card);
+            }
+        });
     }
 
     private VBox createSpaceCard(SpaceDTO space) {
@@ -695,15 +806,16 @@ double latitude;
         Label capacityLabel = new Label("👥 Capacidad: " + space.capacity() + " personas");
         capacityLabel.getStyleClass().add("space-detail");
 
-        boolean available = space.active() == null || Boolean.TRUE.equals(space.active());
-        String status = available ? "✓ Disponible" : "✖ No disponible";
+        // ✅ Usar active en lugar de available
+        boolean isAvailable = space.active();
+        String status = isAvailable ? "✓ Disponible" : "✖ No disponible";
         Label availabilityLabel = new Label(status);
-        availabilityLabel.getStyleClass().add(available ? "space-available" : "space-unavailable");
+        availabilityLabel.getStyleClass().add(isAvailable ? "space-available" : "space-unavailable");
 
         Button reserveBtn = new Button("📅 Reservar espacio");
         reserveBtn.getStyleClass().add("primary-button");
         reserveBtn.setMaxWidth(Double.MAX_VALUE);
-        reserveBtn.setDisable(!available);
+        reserveBtn.setDisable(!isAvailable);
         reserveBtn.setOnAction(e -> handleReserveSpace(space));
 
         card.getChildren().addAll(nameLabel, typeBox, capacityLabel, availabilityLabel, reserveBtn);
@@ -711,12 +823,12 @@ double latitude;
     }
 
     private String getSpaceIcon(String type) {
-        return switch (type.toLowerCase()) {
-            case "auditorio" -> "🎭";
-            case "sala" -> "🏛️";
-            case "cancha" -> "⚽";
-            case "parque" -> "🌳";
-            case "gimnasio" -> "💪";
+        if (type == null) return "🏢";
+        
+        return switch (type.toUpperCase()) {
+            case "AUDITORIO" -> "🎭";
+            case "SALA" -> "🏛️";
+            case "CANCHA" -> "⚽";
             default -> "🏢";
         };
     }
@@ -736,58 +848,138 @@ double latitude;
         ButtonType confirmButtonType = new ButtonType("Confirmar", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(confirmButtonType, ButtonType.CANCEL);
 
+        // ✅ Grid con mejor espaciado y estructura
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
+        grid.setHgap(18);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(20, 20, 10, 20));
+        grid.setPrefWidth(440);
 
-        DatePicker datePicker = new DatePicker(LocalDate.now());
+        // ✅ DatePicker con estilo
+        DatePicker reservationDatePicker = new DatePicker(LocalDate.now());
+        reservationDatePicker.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.isBefore(LocalDate.now()));
+            }
+        });
+        reservationDatePicker.getStyleClass().add("form-field");
+        reservationDatePicker.setPrefWidth(260);
         
+        // ✅ Spinners de hora inicio con mejor configuración
         Spinner<Integer> startHour = new Spinner<>(8, 20, 9);
         startHour.setEditable(true);
+        startHour.setPrefWidth(70);
+        startHour.getStyleClass().add("form-field");
+        
         Spinner<Integer> startMinute = new Spinner<>(0, 59, 0, 15);
         startMinute.setEditable(true);
+        startMinute.setPrefWidth(70);
+        startMinute.getStyleClass().add("form-field");
         
+        // ✅ Spinners de hora fin con mejor configuración
         Spinner<Integer> endHour = new Spinner<>(8, 20, 11);
         endHour.setEditable(true);
+        endHour.setPrefWidth(70);
+        endHour.getStyleClass().add("form-field");
+        
         Spinner<Integer> endMinute = new Spinner<>(0, 59, 0, 15);
         endMinute.setEditable(true);
+        endMinute.setPrefWidth(70);
+        endMinute.getStyleClass().add("form-field");
 
+        // ✅ TextField con estilo
         TextField notesField = new TextField();
         notesField.setPromptText("Descripción del evento...");
+        notesField.getStyleClass().add("form-field");
+        notesField.setPrefWidth(260);
 
-        grid.add(new Label("Fecha:"), 0, 0);
-        grid.add(datePicker, 1, 0);
+        // ✅ Labels con estilo
+        Label lblFecha = new Label("Fecha:");
+        lblFecha.getStyleClass().add("form-label");
+        Label lblHoraInicio = new Label("Hora inicio:");
+        lblHoraInicio.getStyleClass().add("form-label");
+        Label lblHoraFin = new Label("Hora fin:");
+        lblHoraFin.getStyleClass().add("form-label");
+        Label lblNotas = new Label("Notas:");
+        lblNotas.getStyleClass().add("form-label");
+
+        // ✅ HBox para horas con mejor alineación
+        HBox startTimeBox = new HBox(8, startHour, new Label(":"), startMinute);
+        startTimeBox.setAlignment(Pos.CENTER_LEFT);
+        HBox endTimeBox = new HBox(8, endHour, new Label(":"), endMinute);
+        endTimeBox.setAlignment(Pos.CENTER_LEFT);
+
+        grid.add(lblFecha, 0, 0);
+        grid.add(reservationDatePicker, 1, 0);
         
-        grid.add(new Label("Hora inicio:"), 0, 1);
-        HBox startTimeBox = new HBox(5, startHour, new Label(":"), startMinute);
+        grid.add(lblHoraInicio, 0, 1);
         grid.add(startTimeBox, 1, 1);
         
-        grid.add(new Label("Hora fin:"), 0, 2);
-        HBox endTimeBox = new HBox(5, endHour, new Label(":"), endMinute);
+        grid.add(lblHoraFin, 0, 2);
         grid.add(endTimeBox, 1, 2);
         
-        grid.add(new Label("Notas:"), 0, 3);
+        grid.add(lblNotas, 0, 3);
         grid.add(notesField, 1, 3);
 
+        // ✅ Configurar crecimiento horizontal
+        GridPane.setHgrow(reservationDatePicker, Priority.ALWAYS);
+        GridPane.setHgrow(notesField, Priority.ALWAYS);
+
         dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().setPrefWidth(520);
+
+        // ✅ Aplicar estilos a los botones del diálogo
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(confirmButtonType);
+        if (okButton != null) {
+            okButton.getStyleClass().add("dialog-primary-button");
+        }
+        
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.setText("Cancelar");
+            cancelButton.getStyleClass().add("dialog-cancel-button");
+        }
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == confirmButtonType) {
                 LocalTime start = LocalTime.of(startHour.getValue(), startMinute.getValue());
                 LocalTime end = LocalTime.of(endHour.getValue(), endMinute.getValue());
-                return new ReservationData(datePicker.getValue(), start, end, notesField.getText());
+                return new ReservationData(reservationDatePicker.getValue(), start, end, notesField.getText());
             }
             return null;
         });
 
         dialog.showAndWait().ifPresent(data -> {
-           if (data.startTime().isAfter(data.endTime()) || data.startTime().equals(data.endTime())) {
-                showError("La hora de inicio debe ser antes de la hora de fin");
-                return;
+            if (validateReservationData(data)) {
+                createReservation(space, data);
             }
-            createReservation(space, data);
         });
+    }
+
+    private boolean validateReservationData(ReservationData data) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDateTime = LocalDateTime.of(data.date(), data.startTime());
+        LocalDateTime endDateTime = LocalDateTime.of(data.date(), data.endTime());
+
+        if (startDateTime.isBefore(now)) {
+            showError("No puedes reservar en una fecha/hora pasada");
+            return false;
+        }
+
+        if (data.startTime().isAfter(data.endTime()) || data.startTime().equals(data.endTime())) {
+            showError("La hora de inicio debe ser antes de la hora de fin");
+            return false;
+        }
+
+        long minutes = java.time.Duration.between(startDateTime, endDateTime).toMinutes();
+        if (minutes < 30) {
+            showError("La reserva debe ser de al menos 30 minutos");
+            return false;
+        }
+
+        return true;
     }
 
     private void createReservation(SpaceDTO space, ReservationData data) {
@@ -810,28 +1002,30 @@ double latitude;
         Task<ReservationDTO> task = new Task<>() {
             @Override
             protected ReservationDTO call() throws Exception {
+                // ✅ Crear ReservationDTO con TODOS los campos del record
                 ReservationDTO newReservation = new ReservationDTO(
-                    null, // id
-                    userId, // userId
-                    space.id(), // spaceId
-                    startDateTime, // startTime
-                    endDateTime, // endTime
-                    "PENDING", // status
-                    UUID.randomUUID().toString(), // qrCode
-                    null, // canceledAt
-                    null, // checkinAt
-                    data.notes(), // notes
-                    1, // attendees
-                    null, // approvedByUserId
-                    null, // weatherCheck
-                    null, // cancellationReason
-                    null, // createdAt
-                    null, // updatedAt
-                    null, // ratingId
-                    List.of(), // notificationIds
-                    List.of() // attendeeRecords
+                    null,              // id
+                    userId,            // userId
+                    space.id(),        // spaceId
+                    startDateTime,     // startTime
+                    endDateTime,       // endTime
+                    "PENDING",         // status
+                    "",                // qrCode (string vacío en lugar de null)
+                    null,              // canceledAt
+                    null,              // checkinAt
+                    data.notes(),      // notes
+                    1,                 // attendees (mínimo 1, requerido por backend)
+                    null,              // approvedByUserId
+                    null,              // weatherCheck
+                    null,              // cancellationReason
+                    null,              // createdAt
+                    null,              // updatedAt
+                    null,              // ratingId
+                    null,              // notificationIds
+                    null               // attendeeRecords
                 );
                 
+                // ✅ Usar el método correcto del ReservationController
                 return reservationController.createReservation(newReservation, token);
             }
         };
@@ -848,7 +1042,8 @@ double latitude;
 
         task.setOnFailed(e -> {
             Throwable ex = task.getException();
-            showError("Error al crear la reserva: " + (ex != null ? ex.getMessage() : "Error desconocido"));
+            String errorMsg = ex != null ? ex.getMessage() : "Error desconocido";
+            showError("Error al crear la reserva: " + errorMsg);
             if (ex != null) ex.printStackTrace();
         });
 
@@ -856,7 +1051,8 @@ double latitude;
     }
 
     private void handleViewReservation(ReservationDTO res) {
-        SpaceDTO space = spacesList.stream()
+        List<SpaceDTO> searchList = !spacesList.isEmpty() ? spacesList : allSpaces;
+        SpaceDTO space = searchList.stream()
                 .filter(s -> s.id() != null && s.id().equals(res.spaceId()))
                 .findFirst().orElse(null);
 
@@ -907,6 +1103,7 @@ double latitude;
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
+                // ✅ Usar el método correcto del ReservationController
                 reservationController.cancelReservation(reservation.id(), token);
                 return null;
             }
@@ -921,7 +1118,8 @@ double latitude;
 
         task.setOnFailed(e -> {
             Throwable ex = task.getException();
-            showError("Error al cancelar: " + (ex != null ? ex.getMessage() : "Error desconocido"));
+            String errorMsg = ex != null ? ex.getMessage() : "Error desconocido";
+            showError("Error al cancelar: " + errorMsg);
             if (ex != null) ex.printStackTrace();
         });
 
@@ -931,69 +1129,105 @@ double latitude;
     // ==================== METRICS ====================
 
     private void updateDashboardMetrics() {
-        LocalDateTime now = LocalDateTime.now();
+        Platform.runLater(() -> {
+            LocalDateTime now = LocalDateTime.now();
 
-        long active = reservationsList.stream()
-                .filter(r -> "CONFIRMED".equals(r.status()) && r.startTime().isAfter(now))
-                .count();
+            long active = reservationsList.stream()
+                    .filter(r -> "CONFIRMED".equals(r.status()) && r.startTime().isAfter(now))
+                    .count();
 
-        long noShows = reservationsList.stream()
-                .filter(r -> "NO_SHOW".equals(r.status()))
-                .count();
+            long noShows = reservationsList.stream()
+                    .filter(r -> "NO_SHOW".equals(r.status()))
+                    .count();
 
-        long completed = reservationsList.stream()
-                .filter(r -> "COMPLETED".equals(r.status()))
-                .count();
+            long completed = reservationsList.stream()
+                    .filter(r -> "COMPLETED".equals(r.status()))
+                    .count();
 
-        activeReservationsLabel.setText(String.valueOf(active));
-        noShowsLabel.setText(String.valueOf(noShows));
-        completedReservationsLabel.setText(String.valueOf(completed));
+            if (activeReservationsLabel != null) {
+                activeReservationsLabel.setText(String.valueOf(active));
+            }
+            if (noShowsLabel != null) {
+                noShowsLabel.setText(String.valueOf(noShows));
+            }
+            if (completedReservationsLabel != null) {
+                completedReservationsLabel.setText(String.valueOf(completed));
+            }
+        });
     }
 
     private void updateReservationsCount() {
-        if (reservationsCountLabel != null) {
-            reservationsCountLabel.setText("Reservas (" + reservationsList.size() + ")");
-        }
+        Platform.runLater(() -> {
+            if (reservationsCountLabel != null) {
+                reservationsCountLabel.setText("Reservas (" + reservationsList.size() + ")");
+            }
+        });
     }
 
     private void updateSpacesCount() {
-        if (spacesCountLabel != null) {
-            spacesCountLabel.setText("Espacios disponibles (" + spacesList.size() + ")");
-        }
+        Platform.runLater(() -> {
+            if (spacesCountLabel != null) {
+                spacesCountLabel.setText("Espacios disponibles (" + spacesList.size() + ")");
+            }
+        });
     }
 
     // ==================== REPORTS ====================
 
     private void updateReportsData() {
-        totalReservationsReportLabel.setText(String.valueOf(reservationsList.size()));
+        Platform.runLater(() -> {
+            if (totalReservationsReportLabel != null) {
+                totalReservationsReportLabel.setText(String.valueOf(reservationsList.size()));
+            }
 
-        long completed = reservationsList.stream().filter(r -> "COMPLETED".equals(r.status())).count();
-        long noShows = reservationsList.stream().filter(r -> "NO_SHOW".equals(r.status())).count();
-        long total = completed + noShows;
-        double rate = total > 0 ? (completed * 100.0 / total) : 0;
-        attendanceRateLabel.setText(String.format("%.1f%%", rate));
+            long completed = reservationsList.stream()
+                .filter(r -> "COMPLETED".equals(r.status())).count();
+            long noShows = reservationsList.stream()
+                .filter(r -> "NO_SHOW".equals(r.status())).count();
+            long total = completed + noShows;
+            double rate = total > 0 ? (completed * 100.0 / total) : 0;
 
-        Map<Long, Long> spaceFreq = reservationsList.stream()
-                .collect(Collectors.groupingBy(ReservationDTO::spaceId, Collectors.counting()));
+            if (attendanceRateLabel != null) {
+                attendanceRateLabel.setText(String.format("%.1f%%", rate));
+            }
 
-        if (!spaceFreq.isEmpty()) {
-            Long favSpaceId = Collections.max(spaceFreq.entrySet(), Map.Entry.comparingByValue()).getKey();
-            SpaceDTO favSpace = spacesList.stream().filter(s -> s.id().equals(favSpaceId)).findFirst().orElse(null);
-            favoriteSpaceLabel.setText(favSpace != null ? favSpace.name() : "N/A");
-        } else {
-            favoriteSpaceLabel.setText("N/A");
-        }
+            Map<Long, Long> spaceFreq = reservationsList.stream()
+                    .collect(Collectors.groupingBy(ReservationDTO::spaceId, Collectors.counting()));
 
-        updateSpacesDistributionChart(spaceFreq);
-        updateAttendanceChart(completed, noShows);
-        attendancePercentageLabel.setText(String.format("%.0f%%", rate));
+            if (!spaceFreq.isEmpty()) {
+                Long favSpaceId = Collections.max(spaceFreq.entrySet(), Map.Entry.comparingByValue()).getKey();
+                List<SpaceDTO> searchList = !spacesList.isEmpty() ? spacesList : allSpaces;
+                SpaceDTO favSpace = searchList.stream()
+                    .filter(s -> s.id().equals(favSpaceId)).findFirst().orElse(null);
+                if (favoriteSpaceLabel != null) {
+                    favoriteSpaceLabel.setText(favSpace != null ? favSpace.name() : "N/A");
+                }
+            } else {
+                if (favoriteSpaceLabel != null) {
+                    favoriteSpaceLabel.setText("N/A");
+                }
+            }
+
+            updateSpacesDistributionChart(spaceFreq);
+            updateAttendanceChart(completed, noShows);
+            
+            if (attendancePercentageLabel != null) {
+                attendancePercentageLabel.setText(String.format("%.0f%%", rate));
+            }
+        });
     }
 
     private void updateSpacesDistributionChart(Map<Long, Long> spaceFreq) {
+        if (spacesDistributionChart == null) {
+            return;
+        }
+
         ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
 
         spaceFreq.forEach((spaceId, count) -> {
-            SpaceDTO space = spacesList.stream().filter(s -> s.id().equals(spaceId)).findFirst().orElse(null);
+            List<SpaceDTO> searchList = !spacesList.isEmpty() ? spacesList : allSpaces;
+            SpaceDTO space = searchList.stream()
+                .filter(s -> s.id().equals(spaceId)).findFirst().orElse(null);
             String name = space != null ? space.name() : "Espacio #" + spaceId;
             pieData.add(new PieChart.Data(name, count));
         });
@@ -1002,6 +1236,10 @@ double latitude;
     }
 
     private void updateAttendanceChart(long completed, long noShows) {
+        if (attendanceChart == null) {
+            return;
+        }
+
         ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList(
             new PieChart.Data("Asistidas", completed),
             new PieChart.Data("Inasistencias", noShows)
@@ -1033,5 +1271,10 @@ double latitude;
 
     // ==================== DATA CLASSES ====================
 
-    private record ReservationData(LocalDate date, LocalTime startTime, LocalTime endTime, String notes) {}
+    private record ReservationData(
+        LocalDate date, 
+        LocalTime startTime, 
+        LocalTime endTime, 
+        String notes
+    ) {}
 }

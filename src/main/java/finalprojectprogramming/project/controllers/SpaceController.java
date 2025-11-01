@@ -46,7 +46,7 @@ public class SpaceController {
 
     @GetMapping
     @Operation(summary = "Retrieve all spaces")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','USER')")
     public ResponseEntity<List<SpaceDTO>> getAllSpaces() {
         return ResponseEntity.ok(spaceService.findAll());
     }

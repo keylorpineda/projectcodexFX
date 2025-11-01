@@ -52,4 +52,9 @@ public class SpaceService {
         Objects.requireNonNull(id, "id");
         apiClient.delete("/api/spaces/" + id, bearerToken);
     }
+
+    public List<SpaceDTO> findAvailableSpaces(String startTime, String endTime, String bearerToken) {
+        String path = "/api/spaces/available?startTime=" + startTime + "&endTime=" + endTime;
+        return apiClient.get(path, bearerToken, SPACE_LIST_TYPE);
+    }
 }

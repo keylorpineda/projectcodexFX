@@ -752,3 +752,160 @@
 .primary-button {
     -fx-transition: all 0.2s ease;
 }
+
+/* ============================
+   DIALOG & FORM STYLES
+   ============================ */
+
+/* Dialog Pane */
+.dialog-pane {
+    -fx-background-color: white;
+    -fx-padding: 0;
+}
+
+.dialog-pane > .header-panel {
+    -fx-background-color: #f9fafb;
+    -fx-padding: 20 24 16 24;
+    -fx-border-color: #e5e7eb;
+    -fx-border-width: 0 0 1 0;
+}
+
+.dialog-pane > .header-panel > .label {
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #111827;
+}
+
+.dialog-pane > .content {
+    -fx-padding: 24;
+}
+
+.dialog-pane > .button-bar {
+    -fx-padding: 16 24 20 24;
+    -fx-background-color: #f9fafb;
+    -fx-border-color: #e5e7eb;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* Form Labels */
+.form-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #374151;
+    -fx-padding: 0 0 4 0;
+}
+
+/* Form Fields */
+.form-field {
+    -fx-background-color: white;
+    -fx-border-color: #d1d5db;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+    -fx-text-fill: #111827;
+    -fx-pref-height: 38px;
+}
+
+.form-field:focused {
+    -fx-border-color: #2563eb;
+    -fx-border-width: 2px;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(three-pass-box, rgba(37,99,235,0.1), 4, 0, 0, 0);
+}
+
+/* TextField */
+.text-field.form-field {
+    -fx-prompt-text-fill: #9ca3af;
+}
+
+/* DatePicker */
+.date-picker.form-field {
+    -fx-background-color: white;
+}
+
+.date-picker.form-field .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.date-picker.form-field .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 8 0 0;
+}
+
+/* Spinner */
+.spinner.form-field {
+    -fx-background-color: white;
+}
+
+.spinner.form-field .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-alignment: center;
+}
+
+.spinner.form-field .increment-arrow-button,
+.spinner.form-field .decrement-arrow-button {
+    -fx-background-color: #f3f4f6;
+    -fx-border-color: #d1d5db;
+}
+
+.spinner.form-field .increment-arrow-button:hover,
+.spinner.form-field .decrement-arrow-button:hover {
+    -fx-background-color: #e5e7eb;
+}
+
+/* Dialog Buttons */
+.dialog-primary-button {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-padding: 10 24;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+
+.dialog-primary-button:hover {
+    -fx-background-color: #1d4ed8;
+}
+
+.dialog-primary-button:pressed {
+    -fx-background-color: #1e40af;
+}
+
+.dialog-cancel-button {
+    -fx-background-color: white;
+    -fx-text-fill: #6b7280;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-padding: 10 24;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-border-color: #d1d5db;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+}
+
+.dialog-cancel-button:hover {
+    -fx-background-color: #f9fafb;
+    -fx-border-color: #9ca3af;
+}
+
+.dialog-cancel-button:pressed {
+    -fx-background-color: #f3f4f6;
+}
+
+/* Grid Form Layout */
+.form-grid {
+    -fx-hgap: 18;
+    -fx-vgap: 12;
+}
+
+.form-grid .label {
+    -fx-text-fill: #374151;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
