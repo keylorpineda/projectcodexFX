@@ -2207,7 +2207,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                         : "No registrada")
                 .append('\n');
         detalles.append("Duración máxima: ")
-                .append(espacio.getMaxDuracion() != null ? espacio.getMaxDuracion() + " horas" : "No definida")
+                .append(espacio.getMaxDuracion() != null 
+                    ? String.format("%.1f horas (%d minutos)", espacio.getMaxDuracion() / 60.0, espacio.getMaxDuracion())
+                    : "No definida")
                 .append('\n');
         detalles.append("Requiere aprobación: ").append(espacio.isRequiereAprobacion() ? "Sí" : "No").append('\n');
         detalles.append("Estado: ").append(espacio.getEstado()).append('\n');
@@ -2310,6 +2312,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         txtUbicacion.setPromptText("Ubicación");
         txtUbicacion.getStyleClass().add("form-field");
 
+        // ✅ Spinner de duración en HORAS (1-12 horas, se convertirá a minutos al guardar)
         Spinner<Integer> spMaxDuracion = new Spinner<>(1, 12, 2);
         spMaxDuracion.setEditable(true);
         spMaxDuracion.getStyleClass().add("form-field");
@@ -2331,8 +2334,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             cmbTipo.setValue(espacio.getTipo());
             spCapacidad.getValueFactory().setValue(espacio.getCapacidad());
             txtUbicacion.setText(espacio.getUbicacion());
+            // ✅ Convertir de minutos a horas al cargar
             if (espacio.getMaxDuracion() != null) {
-                spMaxDuracion.getValueFactory().setValue(espacio.getMaxDuracion());
+                int horas = espacio.getMaxDuracion() / 60;
+                spMaxDuracion.getValueFactory().setValue(Math.max(1, horas)); // Mínimo 1 hora
             }
             chkRequiereAprobacion.setSelected(espacio.isRequiereAprobacion());
             chkActivo.setSelected(espacio.isActivo());
@@ -2401,6 +2406,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             }
             String descripcion = txtDescripcion.getText() != null ? txtDescripcion.getText().trim() : "";
             String ubicacion = txtUbicacion.getText() != null ? txtUbicacion.getText().trim() : "";
+            // ✅ Convertir horas a minutos para el backend
+            Integer duracionMinutos = spMaxDuracion.getValue() * 60;
             return new SpaceInputDTO(
                     txtNombre.getText().trim(),
                     cmbTipo.getValue(),
@@ -2408,7 +2415,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     descripcion,
                     ubicacion,
                     chkActivo.isSelected(),
-                    spMaxDuracion.getValue(),
+                    duracionMinutos,
                     chkRequiereAprobacion.isSelected()
             );
         });

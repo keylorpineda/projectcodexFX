@@ -57,6 +57,7 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     @FXML private HBox navDashboardButton;
     @FXML private HBox navSpacesButton;
     @FXML private HBox navMyReservationsButton;
+    @FXML private HBox navMyQRCodesButton;
     @FXML private HBox navReportsButton;
 
     // ==================== FXML - CONTENT SCROLL ====================
@@ -100,6 +101,12 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     @FXML private TableColumn<ReservationDTO, Void> reservationActionsColumn;
     @FXML private StackPane reservationsLoadingOverlay;
 
+    // ==================== FXML - MY QR CODES SECTION ====================
+    
+    @FXML private VBox myQRCodesSection;
+    @FXML private FlowPane qrCodesFlowPane;
+    @FXML private Label qrCodesCountLabel;
+
     // ==================== FXML - REPORTS SECTION ====================
     
     @FXML private VBox reportsSection;
@@ -119,7 +126,7 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     // ==================== NAVIGATION ====================
     
     private enum Section {
-        DASHBOARD, SPACES, MY_RESERVATIONS, REPORTS
+        DASHBOARD, SPACES, MY_RESERVATIONS, MY_QR_CODES, REPORTS
     }
 
     private Section currentSection = Section.DASHBOARD;
@@ -334,6 +341,11 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     }
 
     @FXML
+    private void handleNavigateMyQRCodes() {
+        navigateToSection(Section.MY_QR_CODES);
+    }
+
+    @FXML
     private void handleNavigateReports() {
         navigateToSection(Section.REPORTS);
     }
@@ -366,6 +378,11 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             myReservationsSection.setManaged(section == Section.MY_RESERVATIONS);
         }
 
+        if (myQRCodesSection != null) {
+            myQRCodesSection.setVisible(section == Section.MY_QR_CODES);
+            myQRCodesSection.setManaged(section == Section.MY_QR_CODES);
+        }
+
         if (reportsSection != null) {
             reportsSection.setVisible(section == Section.REPORTS);
             reportsSection.setManaged(section == Section.REPORTS);
@@ -376,6 +393,7 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         setNavigationStyle(navDashboardButton, section == Section.DASHBOARD);
         setNavigationStyle(navSpacesButton, section == Section.SPACES);
         setNavigationStyle(navMyReservationsButton, section == Section.MY_RESERVATIONS);
+        setNavigationStyle(navMyQRCodesButton, section == Section.MY_QR_CODES);
         setNavigationStyle(navReportsButton, section == Section.REPORTS);
     }
 
@@ -383,6 +401,7 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         switch (section) {
             case SPACES -> loadSpaces();
             case MY_RESERVATIONS -> loadReservations();
+            case MY_QR_CODES -> loadQRCodes();
             case REPORTS -> updateReportsData();
             case DASHBOARD -> updateDashboardMetrics();
         }
@@ -952,13 +971,13 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         });
 
         dialog.showAndWait().ifPresent(data -> {
-            if (validateReservationData(data)) {
+            if (validateReservationData(data, space)) {
                 createReservation(space, data);
             }
         });
     }
 
-    private boolean validateReservationData(ReservationData data) {
+    private boolean validateReservationData(ReservationData data, SpaceDTO space) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startDateTime = LocalDateTime.of(data.date(), data.startTime());
         LocalDateTime endDateTime = LocalDateTime.of(data.date(), data.endTime());
@@ -976,6 +995,21 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         long minutes = java.time.Duration.between(startDateTime, endDateTime).toMinutes();
         if (minutes < 30) {
             showError("La reserva debe ser de al menos 30 minutos");
+            return false;
+        }
+
+        // ✅ Validar duración máxima permitida por el espacio
+        if (space.maxReservationDuration() != null && minutes > space.maxReservationDuration()) {
+            showError(String.format(
+                "⚠️ Duración Máxima Excedida\n\n" +
+                "Este espacio permite reservas de máximo %d minutos (%.1f horas).\n" +
+                "La duración solicitada es de %d minutos (%.1f horas).\n\n" +
+                "Para usar este espacio por más tiempo, debe crear múltiples reservas consecutivas.",
+                space.maxReservationDuration(),
+                space.maxReservationDuration() / 60.0,
+                minutes,
+                minutes / 60.0
+            ));
             return false;
         }
 
@@ -1002,15 +1036,24 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         Task<ReservationDTO> task = new Task<>() {
             @Override
             protected ReservationDTO call() throws Exception {
-                // ✅ Crear ReservationDTO con TODOS los campos del record
+                // ✅ Generar QR único y seguro para esta reserva
+                // Formato: RES-{userId}-{spaceId}-{timestamp}-{random}
+                String uniqueQR = String.format("RES-%d-%d-%d-%s",
+                    userId,
+                    space.id(),
+                    System.currentTimeMillis(),
+                    java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase()
+                );
+                
+                // ✅ Crear ReservationDTO con QR único
                 ReservationDTO newReservation = new ReservationDTO(
                     null,              // id
                     userId,            // userId
                     space.id(),        // spaceId
                     startDateTime,     // startTime
                     endDateTime,       // endTime
-                    "PENDING",         // status
-                    "",                // qrCode (string vacío en lugar de null)
+                    "PENDING",         // status (será convertido a enum en backend)
+                    uniqueQR,          // qrCode (único para cada reserva)
                     null,              // canceledAt
                     null,              // checkinAt
                     data.notes(),      // notes
@@ -1021,8 +1064,8 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                     null,              // createdAt
                     null,              // updatedAt
                     null,              // ratingId
-                    null,              // notificationIds
-                    null               // attendeeRecords
+                    new java.util.ArrayList<>(),  // notificationIds (lista vacía, no null)
+                    new java.util.ArrayList<>()   // attendeeRecords (lista vacía, no null)
                 );
                 
                 // ✅ Usar el método correcto del ReservationController
@@ -1043,7 +1086,20 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         task.setOnFailed(e -> {
             Throwable ex = task.getException();
             String errorMsg = ex != null ? ex.getMessage() : "Error desconocido";
-            showError("Error al crear la reserva: " + errorMsg);
+            
+            // ✅ Mejorar mensaje si es error de duración
+            if (errorMsg.contains("duration exceeds") || errorMsg.contains("Reservation duration")) {
+                showError(String.format(
+                    "⚠️ Duración Máxima Excedida\n\n" +
+                    "Este espacio permite reservas de máximo %d minutos (%.1f horas).\n\n" +
+                    "Para usar este espacio por más tiempo, debe crear múltiples reservas consecutivas.",
+                    space.maxReservationDuration() != null ? space.maxReservationDuration() : 0,
+                    space.maxReservationDuration() != null ? space.maxReservationDuration() / 60.0 : 0
+                ));
+            } else {
+                showError("Error al crear la reserva: " + errorMsg);
+            }
+            
             if (ex != null) ex.printStackTrace();
         });
 
@@ -1267,6 +1323,104 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             alert.setContentText(message);
             alert.showAndWait();
         });
+    }
+
+    // ==================== QR CODES SECTION ====================
+
+    private void loadQRCodes() {
+        if (qrCodesFlowPane == null) {
+            return;
+        }
+
+        qrCodesFlowPane.getChildren().clear();
+
+        // Filtrar reservas activas (PENDING, CONFIRMED, CHECKED_IN)
+        List<ReservationDTO> activeReservations = reservationsList.stream()
+            .filter(r -> "PENDING".equals(r.status()) || 
+                        "CONFIRMED".equals(r.status()) || 
+                        "CHECKED_IN".equals(r.status()))
+            .toList();
+
+        if (qrCodesCountLabel != null) {
+            qrCodesCountLabel.setText(String.valueOf(activeReservations.size()));
+        }
+
+        if (activeReservations.isEmpty()) {
+            Label noQRLabel = new Label("No tienes reservas activas");
+            noQRLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #6b7280; -fx-padding: 40px;");
+            qrCodesFlowPane.getChildren().add(noQRLabel);
+            return;
+        }
+
+        for (ReservationDTO reservation : activeReservations) {
+            qrCodesFlowPane.getChildren().add(createQRCodeCard(reservation));
+        }
+    }
+
+    private VBox createQRCodeCard(ReservationDTO reservation) {
+        VBox card = new VBox(15);
+        card.getStyleClass().add("qr-code-card");
+        card.setPadding(new Insets(20));
+        card.setMaxWidth(300);
+        card.setAlignment(javafx.geometry.Pos.CENTER);
+
+        // Buscar información del espacio
+        SpaceDTO space = allSpaces.stream()
+            .filter(s -> s.id().equals(reservation.spaceId()))
+            .findFirst().orElse(null);
+
+        String spaceName = space != null ? space.name() : "Espacio #" + reservation.spaceId();
+
+        // Título
+        Label titleLabel = new Label(spaceName);
+        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        // Fecha y hora
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        
+        String dateText = reservation.startTime().format(dateFormatter);
+        String timeText = reservation.startTime().format(timeFormatter) + " - " + 
+                         reservation.endTime().format(timeFormatter);
+
+        Label dateLabel = new Label("📅 " + dateText);
+        Label timeLabel = new Label("🕒 " + timeText);
+        dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #4b5563;");
+        timeLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #4b5563;");
+
+        // Estado
+        String statusText = STATUS_MAP.getOrDefault(reservation.status(), reservation.status());
+        Label statusLabel = new Label("Estado: " + statusText);
+        statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #10b981; -fx-font-weight: bold;");
+
+        // Generar imagen QR
+        try {
+            javafx.scene.image.WritableImage qrImage = 
+                com.municipal.ui.utils.QRCodeGenerator.generate(reservation.qrCode(), 200);
+            javafx.scene.image.ImageView qrImageView = new javafx.scene.image.ImageView(qrImage);
+            qrImageView.setFitWidth(200);
+            qrImageView.setFitHeight(200);
+            qrImageView.setPreserveRatio(true);
+
+            // Código QR texto (para referencia)
+            Label qrTextLabel = new Label("ID: " + reservation.qrCode().substring(0, Math.min(20, reservation.qrCode().length())) + "...");
+            qrTextLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #9ca3af; -fx-font-family: monospace;");
+
+            // Mensaje de validación
+            Label validationLabel = new Label("✓ Válido 30 min antes del inicio");
+            validationLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-padding: 5 0 0 0;");
+
+            card.getChildren().addAll(titleLabel, dateLabel, timeLabel, statusLabel, 
+                                     qrImageView, qrTextLabel, validationLabel);
+
+        } catch (Exception e) {
+            Label errorLabel = new Label("Error generando QR");
+            errorLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ef4444;");
+            card.getChildren().addAll(titleLabel, dateLabel, timeLabel, errorLabel);
+            e.printStackTrace();
+        }
+
+        return card;
     }
 
     // ==================== DATA CLASSES ====================

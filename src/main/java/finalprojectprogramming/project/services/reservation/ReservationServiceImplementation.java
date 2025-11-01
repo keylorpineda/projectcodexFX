@@ -223,6 +223,25 @@ public class ReservationServiceImplementation implements ReservationService {
                 if (reservation.getQrCode() == null || !reservation.getQrCode().equalsIgnoreCase(request.getQrCode())) {
             throw new BusinessRuleException("Provided QR code does not match reservation");
         }
+        
+        // ✅ Validar ventana temporal: 30 minutos antes y 30 minutos después del inicio
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime windowStart = reservation.getStartTime().minusMinutes(30);
+        LocalDateTime windowEnd = reservation.getStartTime().plusMinutes(30);
+        
+        if (now.isBefore(windowStart)) {
+            long minutesUntil = java.time.Duration.between(now, windowStart).toMinutes();
+            throw new BusinessRuleException(
+                String.format("QR code cannot be scanned yet. Check-in opens %d minutes before the reservation starts (at %s)",
+                    30, windowStart.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")))
+            );
+        }
+        
+        if (now.isAfter(windowEnd)) {
+            throw new BusinessRuleException(
+                "Check-in window has closed. This reservation will be automatically marked as NO_SHOW"
+            );
+        }
         List<ReservationAttendee> attendeeRecords = reservation.getAttendeeRecords();
         if (attendeeRecords == null) {
             attendeeRecords = new ArrayList<>();

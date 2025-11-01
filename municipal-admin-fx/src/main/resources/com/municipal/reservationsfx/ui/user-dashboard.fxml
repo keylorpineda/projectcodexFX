@@ -80,6 +80,14 @@
                 <Label text="Mis reservas"/>
             </HBox>
 
+            <HBox fx:id="navMyQRCodesButton" styleClass="nav-item" onMouseClicked="#handleNavigateMyQRCodes" alignment="CENTER_LEFT" spacing="12">
+                <padding>
+                    <Insets top="12" right="20" bottom="12" left="20"/>
+                </padding>
+                <Label text="📱" styleClass="nav-icon"/>
+                <Label text="Mis códigos QR"/>
+            </HBox>
+
             <HBox fx:id="navReportsButton" styleClass="nav-item" onMouseClicked="#handleNavigateReports" alignment="CENTER_LEFT" spacing="12">
                 <padding>
                     <Insets top="12" right="20" bottom="12" left="20"/>
@@ -292,6 +300,39 @@
                                 </StackPane>
                             </StackPane>
                         </VBox>
+                    </VBox>
+
+                    <!-- My QR Codes Section -->
+                    <VBox fx:id="myQRCodesSection" styleClass="main-content" spacing="24" visible="false" managed="false">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <!-- Header -->
+                        <HBox alignment="CENTER_LEFT" spacing="16">
+                            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                <Label text="Mis Códigos QR" styleClass="section-title"/>
+                                <Label text="Códigos QR de tus reservas activas para check-in" styleClass="section-subtitle"/>
+                            </VBox>
+                            <HBox styleClass="info-card" alignment="CENTER" spacing="8">
+                                <padding>
+                                    <Insets top="12" right="20" bottom="12" left="20"/>
+                                </padding>
+                                <VBox alignment="CENTER" spacing="4">
+                                    <Label text="Reservas activas" styleClass="info-card-label"/>
+                                    <Label fx:id="qrCodesCountLabel" text="0" styleClass="info-card-value"/>
+                                </VBox>
+                            </HBox>
+                        </HBox>
+
+                        <!-- QR Codes Grid -->
+                        <ScrollPane fitToWidth="true" styleClass="content-scroll">
+                            <FlowPane fx:id="qrCodesFlowPane" hgap="20" vgap="20" styleClass="spaces-flow">
+                                <padding>
+                                    <Insets top="8" right="0" bottom="8" left="0"/>
+                                </padding>
+                            </FlowPane>
+                        </ScrollPane>
                     </VBox>
 
                     <!-- Reports Section -->
