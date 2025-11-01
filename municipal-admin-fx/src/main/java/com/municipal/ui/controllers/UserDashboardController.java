@@ -136,8 +136,8 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     private static final Map<String, String> STATUS_MAP = Map.of(
         "PENDING", "Pendiente",
         "CONFIRMED", "Confirmada",
-        "CANCELLED", "Cancelada",
-        "COMPLETED", "Completada",
+        "CANCELED", "Cancelada",
+        "CHECKED_IN", "Asistido",
         "NO_SHOW", "Inasistencia"
     );
 
