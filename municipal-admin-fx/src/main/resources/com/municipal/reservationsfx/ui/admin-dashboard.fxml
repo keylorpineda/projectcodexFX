@@ -420,11 +420,11 @@
                             <columns>
                                 <TableColumn fx:id="colUsuario" text="Usuario" prefWidth="250"/>
                                 <TableColumn fx:id="colCorreo" text="Correo" prefWidth="300"/>
-                                <TableColumn fx:id="colRol" text="Rol" prefWidth="150"/>
+                                <TableColumn fx:id="colRol" text="Rol" prefWidth="180"/>
                                 <TableColumn fx:id="colEstadoUsuario" text="Estado" prefWidth="120"/>
                                 <TableColumn fx:id="colUltimoAcceso" text="Último acceso" prefWidth="180"/>
                                 <TableColumn fx:id="colReservasUsuario" text="Reservas" prefWidth="160"/>
-                                <TableColumn fx:id="colAccionesUsuario" text="Acciones" prefWidth="160"/>
+                                <TableColumn fx:id="colAccionesUsuario" text="Acciones"/>
                             </columns>
                         </TableView>
                     </VBox>

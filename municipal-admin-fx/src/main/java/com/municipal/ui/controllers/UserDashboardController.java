@@ -447,8 +447,14 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             List<ReservationDTO> data = task.getValue();
             reservationsList.clear();
             if (data != null) {
+                // Ordenar reservas por prioridad de estado
+                data.sort((r1, r2) -> {
+                    int priority1 = getStatusPriority(r1.status());
+                    int priority2 = getStatusPriority(r2.status());
+                    return Integer.compare(priority1, priority2);
+                });
                 reservationsList.addAll(data);
-                System.out.println("✅ Cargadas " + data.size() + " reservas");
+                System.out.println("✅ Cargadas " + data.size() + " reservas (ordenadas por estado)");
             }
             reservationsTable.setItems(reservationsList);
             updateReservationsCount();
@@ -619,9 +625,30 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         return text.substring(0, 1).toUpperCase() + text.substring(1);
     }
 
+    /**
+     * Define la prioridad de ordenamiento de estados de reserva
+     * Menor número = mayor prioridad (aparece primero)
+     * Orden: CONFIRMED -> PENDING -> CHECKED_IN -> NO_SHOW -> CANCELLED
+     */
+    private int getStatusPriority(String status) {
+        if (status == null) return 999;
+        return switch (status.toUpperCase()) {
+            case "CONFIRMED" -> 1;      // Confirmadas primero (más importantes)
+            case "PENDING" -> 2;        // Pendientes de aprobación
+            case "CHECKED_IN" -> 3;     // Asistidas (pasadas exitosas)
+            case "NO_SHOW" -> 4;        // Inasistencias
+            case "CANCELLED" -> 5;      // Canceladas (al final)
+            default -> 999;             // Estados desconocidos al final
+        };
+    }
+
     // ==================== TABLE SETUP ====================
 
     private void setupTableColumns() {
+        // Configurar ancho de columna de acciones para que los botones se vean completos
+        reservationActionsColumn.setMinWidth(230);
+        reservationActionsColumn.setPrefWidth(240);
+        
         reservationSpaceColumn.setCellValueFactory(data -> {
             Long spaceId = data.getValue().spaceId();
             List<SpaceDTO> searchList = !spacesList.isEmpty() ? spacesList : allSpaces;
@@ -682,14 +709,24 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         });
 
         reservationActionsColumn.setCellFactory(col -> new TableCell<>() {
-            private final Button viewBtn = new Button("👁");
-            private final Button cancelBtn = new Button("✖");
-            private final HBox box = new HBox(5, viewBtn, cancelBtn);
+            private final Button viewBtn = new Button("👁️ Ver");
+            private final Button cancelBtn = new Button("❌ Cancelar");
+            private final HBox box = new HBox(8);
 
             {
-                viewBtn.getStyleClass().add("action-button");
-                cancelBtn.getStyleClass().add("action-button");
-                cancelBtn.getStyleClass().add("cancel-button");
+                // Aplicar clases CSS definidas en user-dashboard.css
+                viewBtn.getStyleClass().add("reservation-view-btn");
+                cancelBtn.getStyleClass().add("reservation-cancel-btn");
+                
+                // Tooltips informativos
+                javafx.scene.control.Tooltip viewTooltip = new javafx.scene.control.Tooltip("Ver detalles completos de la reserva");
+                viewTooltip.setShowDelay(javafx.util.Duration.millis(300));
+                javafx.scene.control.Tooltip.install(viewBtn, viewTooltip);
+                
+                javafx.scene.control.Tooltip cancelTooltip = new javafx.scene.control.Tooltip("Cancelar esta reserva");
+                cancelTooltip.setShowDelay(javafx.util.Duration.millis(300));
+                javafx.scene.control.Tooltip.install(cancelBtn, cancelTooltip);
+                
                 box.setAlignment(Pos.CENTER);
 
                 viewBtn.setOnAction(e -> {
@@ -706,15 +743,21 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || getIndex() < 0 || getIndex() >= getTableView().getItems().size()) {
                     setGraphic(null);
                 } else {
                     ReservationDTO res = getTableView().getItems().get(getIndex());
-                    if ("CONFIRMED".equals(res.status())) {
-                        box.getChildren().setAll(viewBtn, cancelBtn);
-                    } else {
-                        box.getChildren().setAll(viewBtn);
+                    box.getChildren().clear();
+                    
+                    // Siempre mostrar botón Ver
+                    box.getChildren().add(viewBtn);
+                    
+                    // Solo mostrar botón Cancelar si está PENDING (no confirmada aún)
+                    // Las reservas CONFIRMED solo pueden ser canceladas por admin
+                    if ("PENDING".equals(res.status())) {
+                        box.getChildren().add(cancelBtn);
                     }
+                    
                     setGraphic(box);
                 }
             }
@@ -1411,10 +1454,19 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #4b5563;");
         timeLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #4b5563;");
 
-        // Estado
+        // Estado y lógica de QR activo/bloqueado
         String statusText = STATUS_MAP.getOrDefault(reservation.status(), reservation.status());
+        boolean isQRActive = "CONFIRMED".equals(reservation.status()) || "CHECKED_IN".equals(reservation.status());
+        boolean isPending = "PENDING".equals(reservation.status());
+        
         Label statusLabel = new Label("Estado: " + statusText);
-        statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #10b981; -fx-font-weight: bold;");
+        if (isPending) {
+            statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+        } else if (isQRActive) {
+            statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #10b981; -fx-font-weight: bold;");
+        } else {
+            statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280; -fx-font-weight: bold;");
+        }
 
         // Generar imagen QR
         try {
@@ -1424,14 +1476,34 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             qrImageView.setFitWidth(200);
             qrImageView.setFitHeight(200);
             qrImageView.setPreserveRatio(true);
+            
+            // Si está PENDING, aplicar efecto de deshabilitado visual
+            if (isPending) {
+                qrImageView.setOpacity(0.3);
+                javafx.scene.effect.ColorAdjust grayscale = new javafx.scene.effect.ColorAdjust();
+                grayscale.setSaturation(-1.0); // Escala de grises
+                qrImageView.setEffect(grayscale);
+            }
 
             // Código QR texto (para referencia)
             Label qrTextLabel = new Label("ID: " + reservation.qrCode().substring(0, Math.min(20, reservation.qrCode().length())) + "...");
             qrTextLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #9ca3af; -fx-font-family: monospace;");
 
-            // Mensaje de validación
-            Label validationLabel = new Label("✓ Válido 30 min antes del inicio");
-            validationLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-padding: 5 0 0 0;");
+            // Mensaje de validación según estado
+            Label validationLabel;
+            if (isPending) {
+                validationLabel = new Label("🔒 QR bloqueado - Esperando aprobación del administrador");
+                validationLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #f59e0b; -fx-padding: 5 0 0 0; -fx-font-weight: bold; -fx-wrap-text: true; -fx-text-alignment: center;");
+            } else if ("CHECKED_IN".equals(reservation.status())) {
+                validationLabel = new Label("✓ Check-in registrado");
+                validationLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-padding: 5 0 0 0; -fx-font-weight: bold;");
+            } else {
+                validationLabel = new Label("✓ QR activo - Válido 30 min antes del inicio");
+                validationLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-padding: 5 0 0 0;");
+            }
+            validationLabel.setMaxWidth(250);
+            validationLabel.setWrapText(true);
+            validationLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
 
             card.getChildren().addAll(titleLabel, dateLabel, timeLabel, statusLabel, 
                                      qrImageView, qrTextLabel, validationLabel);

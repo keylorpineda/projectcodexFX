@@ -554,3 +554,98 @@
 .top-space-cell:empty {
     -fx-background-color: transparent;
 }
+
+/* ============================
+   ADMIN TABLE ACTION BUTTONS
+   ============================ */
+
+/* Common button styles */
+.admin-btn-base {
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 7 14 7 14;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-min-width: 90px;
+    -fx-pref-width: 100px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 4, 0, 0, 2);
+}
+
+/* View button (Info - Blue) */
+.admin-btn-view {
+    -fx-background-color: #3b82f6;
+}
+
+.admin-btn-view:hover {
+    -fx-background-color: #2563eb;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+/* Edit button (Warning - Yellow) */
+.admin-btn-edit {
+    -fx-background-color: #f59e0b;
+}
+
+.admin-btn-edit:hover {
+    -fx-background-color: #d97706;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+/* Delete button (Danger - Red) */
+.admin-btn-delete {
+    -fx-background-color: #ef4444;
+}
+
+.admin-btn-delete:hover {
+    -fx-background-color: #dc2626;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+/* Approve button (Success - Green) */
+.admin-btn-approve {
+    -fx-background-color: #10b981;
+}
+
+.admin-btn-approve:hover {
+    -fx-background-color: #059669;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+/* State/Status button (Info - Cyan) */
+.admin-btn-state {
+    -fx-background-color: #06b6d4;
+}
+
+.admin-btn-state:hover {
+    -fx-background-color: #0891b2;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+/* Email/Notify button (Purple) */
+.admin-btn-email {
+    -fx-background-color: #8b5cf6;
+}
+
+.admin-btn-email:hover {
+    -fx-background-color: #7c3aed;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+/* Cancel button (Danger - Red darker) */
+.admin-btn-cancel {
+    -fx-background-color: #dc2626;
+}
+
+.admin-btn-cancel:hover {
+    -fx-background-color: #b91c1c;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+

@@ -216,11 +216,18 @@ public class ReservationServiceImplementation implements ReservationService {
         if (request == null) {
             throw new BusinessRuleException("Check-in data is required");
         }
+        
+        // ✅ Validación mejorada del estado: el QR solo funciona si la reserva está CONFIRMED
+        if (reservation.getStatus() == ReservationStatus.PENDING) {
+            throw new BusinessRuleException("QR code is not yet active. Reservation must be approved by an administrator first");
+        }
+        
         if (reservation.getStatus() != ReservationStatus.CONFIRMED
                 && reservation.getStatus() != ReservationStatus.CHECKED_IN) {
              throw new BusinessRuleException("Only confirmed reservations can be checked in");
         }
-                if (reservation.getQrCode() == null || !reservation.getQrCode().equalsIgnoreCase(request.getQrCode())) {
+        
+        if (reservation.getQrCode() == null || !reservation.getQrCode().equalsIgnoreCase(request.getQrCode())) {
             throw new BusinessRuleException("Provided QR code does not match reservation");
         }
         

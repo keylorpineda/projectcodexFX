@@ -927,3 +927,51 @@
     -fx-border-color: #2563eb;
     -fx-effect: dropshadow(three-pass-box, rgba(37,99,235,0.15), 12, 0, 0, 4);
 }
+
+/* ============================
+   RESERVATION ACTION BUTTONS
+   ============================ */
+
+/* View Button (Blue) */
+.reservation-view-btn {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-min-width: 85px;
+    -fx-pref-width: 95px;
+    -fx-max-width: 95px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 5, 0, 0, 2);
+}
+
+.reservation-view-btn:hover {
+    -fx-background-color: #2563eb;
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 8, 0, 0, 3);
+}
+
+/* Cancel Button (Red) */
+.reservation-cancel-btn {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-min-width: 105px;
+    -fx-pref-width: 120px;
+    -fx-max-width: 120px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 5, 0, 0, 2);
+}
+
+.reservation-cancel-btn:hover {
+    -fx-background-color: #dc2626;
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 8, 0, 0, 3);
+}

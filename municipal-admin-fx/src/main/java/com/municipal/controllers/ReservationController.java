@@ -141,6 +141,28 @@ public class ReservationController {
          }
     }
 
+    // ✅ NUEVO MÉTODO - Aprobar reserva (cambia de PENDING a CONFIRMED)
+    public ReservationDTO approveReservation(Long reservationId, Long approverUserId, String token) throws Exception {
+        String url = apiClient.getBaseUrl() + "/api/reservations/" + reservationId + "/approve";
+        
+        // Crear el payload con el ID del aprobador
+        String jsonBody = String.format("{\"approverUserId\": %d}", approverUserId);
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build();
+
+        HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            return JsonUtils.fromJson(response.body(), ReservationDTO.class);
+        }
+        throw new ApiClientException(response.statusCode(), response.body());
+    }
+
     public List<ReservationDTO> getReservationsByUserId(Long userId, String token) throws Exception {
         String url = apiClient.getBaseUrl() + "/api/reservations/user/" + userId;
         
