@@ -61,6 +61,11 @@ public class ReservationController {
         String url = apiClient.getBaseUrl() + "/api/reservations";
         String jsonBody = JsonUtils.toJson(reservation);
 
+        // 🔍 DEBUG: Ver el JSON que se envía al backend
+        System.out.println("🌐 JSON enviado al backend:");
+        System.out.println(jsonBody);
+        System.out.println("───────────────────────────────────────────");
+
         HttpRequest httpRequest = HttpRequest.newBuilder()
 
             .uri(URI.create(url))
@@ -74,6 +79,12 @@ public class ReservationController {
         if (response.statusCode() == 200 || response.statusCode() == 201) {
             return JsonUtils.fromJson(response.body(), ReservationDTO.class);
        }
+        
+        // 🔍 DEBUG: Ver el error exacto del backend
+        System.err.println("❌ Error del backend (status " + response.statusCode() + "):");
+        System.err.println(response.body());
+        System.err.println("───────────────────────────────────────────");
+        
         throw new ApiClientException(response.statusCode(), response.body());
     }
 

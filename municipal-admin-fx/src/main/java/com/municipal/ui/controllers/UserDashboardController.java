@@ -1033,6 +1033,19 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         LocalDateTime startDateTime = LocalDateTime.of(data.date(), data.startTime());
         LocalDateTime endDateTime = LocalDateTime.of(data.date(), data.endTime());
 
+        // 🔍 DEBUG: Verificar las fechas que se están enviando
+        System.out.println("═══════════════════════════════════════════");
+        System.out.println("🕐 DEBUG - Creación de Reserva:");
+        System.out.println("   Fecha seleccionada: " + data.date());
+        System.out.println("   Hora inicio: " + data.startTime());
+        System.out.println("   Hora fin: " + data.endTime());
+        System.out.println("   LocalDateTime inicio: " + startDateTime);
+        System.out.println("   LocalDateTime fin: " + endDateTime);
+        System.out.println("   Fecha/hora actual: " + LocalDateTime.now());
+        System.out.println("   ¿Inicio es futuro?: " + startDateTime.isAfter(LocalDateTime.now()));
+        System.out.println("   ¿Fin es futuro?: " + endDateTime.isAfter(LocalDateTime.now()));
+        System.out.println("═══════════════════════════════════════════");
+
         Task<ReservationDTO> task = new Task<>() {
             @Override
             protected ReservationDTO call() throws Exception {
@@ -1086,6 +1099,16 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         task.setOnFailed(e -> {
             Throwable ex = task.getException();
             String errorMsg = ex != null ? ex.getMessage() : "Error desconocido";
+            
+            // 🔍 DEBUG: Mostrar detalles completos del error
+            System.err.println("❌❌❌ ERROR AL CREAR RESERVA ❌❌❌");
+            if (ex instanceof com.municipal.exceptions.ApiClientException) {
+                com.municipal.exceptions.ApiClientException apiEx = (com.municipal.exceptions.ApiClientException) ex;
+                System.err.println("Status Code: " + apiEx.getStatusCode());
+                System.err.println("Response Body: " + apiEx.getResponseBody());
+            }
+            System.err.println("Exception Message: " + errorMsg);
+            System.err.println("═══════════════════════════════════════════");
             
             // ✅ Mejorar mensaje si es error de duración
             if (errorMsg.contains("duration exceeds") || errorMsg.contains("Reservation duration")) {

@@ -8,6 +8,7 @@ import com.municipal.session.SessionManager;
 import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
+import com.municipal.ui.utils.QRScanner;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,8 +48,11 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -71,7 +75,37 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm", LOCALE_ES_CR);
     private static final Set<String> ACCEPTED_STATUSES = Set.of("CONFIRMED", "CHECKED_IN");
 
-    @FXML private BorderPane rootPane;
+    @FXML private VBox mainContainer;
+    
+    // Navegación
+    @FXML private HBox navDashboardButton;
+    @FXML private HBox navScanQRButton;
+    @FXML private HBox navControlButton;
+    @FXML private HBox navSearchButton;
+    
+    // Secciones
+    @FXML private VBox dashboardSection;
+    @FXML private VBox scanQRSection;
+    @FXML private VBox controlSection;
+    @FXML private VBox searchSection;
+    
+    // Usuario info
+    @FXML private Label supervisorNameLabel;
+    @FXML private Label supervisorEmailLabel;
+    @FXML private HBox userMenuContainer;
+    
+    // Scan QR Section
+    @FXML private StackPane cameraPreviewContainer;
+    @FXML private ImageView cameraImageView;
+    @FXML private Label scanningLabel;
+    @FXML private Button startCameraButton;
+    @FXML private Button stopCameraButton;
+    @FXML private TextField qrCodeField;
+    @FXML private Button scanButton;
+    @FXML private VBox validationMessageBox;
+    @FXML private Label validationMessageLabel;
+    
+    // Campos antiguos (mantener compatibilidad)
     @FXML private Label lblSupervisorName;
     @FXML private Label lblSupervisorEmail;
     @FXML private TextField txtBuscar;
@@ -102,15 +136,30 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
 
     private final AtomicBoolean loadingGuard = new AtomicBoolean(false);
     private final BooleanProperty loadingProperty = new SimpleBooleanProperty(false);
+    
+    private QRScanner qrScanner;
+    private volatile boolean isScanningQR = false;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // Configurar navegación de secciones
+        initializeSections();
+        
+        // Configuraciones antiguas (compatibilidad)
         configureListView();
         configureFiltering();
         configureButtons();
         configureEmptyState();
         loadingProperty.addListener((obs, oldValue, newValue) -> updateEmptyStateMessage());
         resetDetail();
+    }
+    
+    private void initializeSections() {
+        // Mostrar dashboard por defecto
+        if (dashboardSection != null) {
+            showSection(dashboardSection);
+            updateActiveNavButton(navDashboardButton);
+        }
     }
 
     @Override
@@ -132,6 +181,397 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         }
         if (flowController != null) {
             flowController.showView(LOGIN_VIEW_ID);
+        }
+    }
+    
+    // ==================== MÉTODOS DE NAVEGACIÓN ====================
+    
+    @FXML
+    private void showDashboard() {
+        showSection(dashboardSection);
+        updateActiveNavButton(navDashboardButton);
+    }
+    
+    @FXML
+    private void showScanQR() {
+        showSection(scanQRSection);
+        updateActiveNavButton(navScanQRButton);
+    }
+    
+    @FXML
+    private void showControl() {
+        showSection(controlSection);
+        updateActiveNavButton(navControlButton);
+    }
+    
+    @FXML
+    private void showSearch() {
+        showSection(searchSection);
+        updateActiveNavButton(navSearchButton);
+    }
+    
+    @FXML
+    private void handleLogout() {
+        cerrarSesion();
+    }
+    
+    @FXML
+    private void handleStartCamera() {
+        if (isScanningQR) {
+            return;
+        }
+        
+        if (!QRScanner.isCameraAvailable()) {
+            showValidationMessage("❌ No se detectó ninguna cámara", "error");
+            return;
+        }
+        
+        if (qrScanner == null) {
+            qrScanner = new QRScanner();
+        }
+        
+        boolean started = qrScanner.start(
+            this::onQRCodeDetected,
+            image -> {
+                if (cameraImageView != null) {
+                    cameraImageView.setImage(image);
+                }
+            }
+        );
+        
+        if (started) {
+            isScanningQR = true;
+            if (cameraPreviewContainer != null) cameraPreviewContainer.setVisible(true);
+            if (startCameraButton != null) startCameraButton.setVisible(false);
+            if (stopCameraButton != null) stopCameraButton.setVisible(true);
+            if (scanningLabel != null) scanningLabel.setVisible(true);
+            hideValidationMessage();
+        } else {
+            showValidationMessage("❌ No se pudo iniciar la cámara", "error");
+        }
+    }
+    
+    @FXML
+    private void handleStopCamera() {
+        stopQRScanning();
+    }
+    
+    @FXML
+    private void handleScanQR() {
+        if (qrCodeField == null || qrCodeField.getText() == null || qrCodeField.getText().trim().isEmpty()) {
+            showValidationMessage("⚠️ Por favor ingrese un código QR", "warning");
+            return;
+        }
+        
+        String qrCode = qrCodeField.getText().trim();
+        validateQRCode(qrCode);
+    }
+    
+    /**
+     * Callback cuando se detecta un código QR desde la cámara
+     */
+    private void onQRCodeDetected(String qrCode) {
+        stopQRScanning();
+        
+        if (qrCodeField != null) {
+            qrCodeField.setText(qrCode);
+        }
+        
+        validateQRCode(qrCode);
+    }
+    
+    /**
+     * Detiene el escaneo QR y limpia recursos
+     */
+    private void stopQRScanning() {
+        if (qrScanner != null) {
+            qrScanner.stop();
+        }
+        
+        isScanningQR = false;
+        
+        if (cameraPreviewContainer != null) cameraPreviewContainer.setVisible(false);
+        if (startCameraButton != null) startCameraButton.setVisible(true);
+        if (stopCameraButton != null) stopCameraButton.setVisible(false);
+        if (scanningLabel != null) scanningLabel.setVisible(false);
+        if (cameraImageView != null) cameraImageView.setImage(null);
+    }
+    
+    /**
+     * Valida el código QR y registra el check-in
+     * Verifica la ventana temporal de 30 minutos antes y después de la reserva
+     */
+    private void validateQRCode(String qrCode) {
+        if (sessionManager == null) {
+            showValidationMessage("❌ No hay sesión activa", "error");
+            return;
+        }
+        
+        String token = sessionManager.getAccessToken();
+        if (token == null || token.isBlank()) {
+            showValidationMessage("❌ Token de autenticación no encontrado", "error");
+            return;
+        }
+        
+        showValidationMessage("🔄 Validando código QR...", "info");
+        
+        Task<ReservationDTO> task = new Task<>() {
+            @Override
+            protected ReservationDTO call() throws Exception {
+                // Buscar la reserva por código QR
+                List<ReservationDTO> allReservations = reservationController.getAllReservations(token);
+                
+                for (ReservationDTO reservation : allReservations) {
+                    if (qrCode.equals(reservation.qrCode())) {
+                        return reservation;
+                    }
+                }
+                
+                throw new Exception("Código QR no encontrado");
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            ReservationDTO reservation = task.getValue();
+            validateTemporalWindow(reservation, qrCode, token);
+        });
+        
+        task.setOnFailed(event -> {
+            Throwable error = task.getException();
+            String message = error != null ? error.getMessage() : "Error desconocido";
+            showValidationMessage("❌ " + message, "error");
+        });
+        
+        new Thread(task).start();
+    }
+    
+    /**
+     * Valida que el check-in esté dentro de la ventana temporal permitida
+     * (30 minutos antes y 30 minutos después de la hora de inicio)
+     */
+    private void validateTemporalWindow(ReservationDTO reservation, String qrCode, String token) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = reservation.startTime();
+        LocalDateTime windowStart = startTime.minusMinutes(30);
+        LocalDateTime windowEnd = startTime.plusMinutes(30);
+        
+        // Verificar si ya tiene check-in
+        if ("CHECKED_IN".equals(reservation.status())) {
+            showValidationMessage("✅ Esta reserva ya fue registrada anteriormente", "success");
+            showReservationInfo(reservation);
+            return;
+        }
+        
+        // Verificar ventana temporal
+        if (now.isBefore(windowStart)) {
+            long minutesUntil = java.time.Duration.between(now, windowStart).toMinutes();
+            showValidationMessage(
+                String.format("⏰ Demasiado temprano. Podrá validar el QR en %d minutos (a las %s)",
+                    minutesUntil,
+                    windowStart.format(TIME_FORMAT)),
+                "warning"
+            );
+            return;
+        }
+        
+        if (now.isAfter(windowEnd)) {
+            showValidationMessage(
+                String.format("⏰ La ventana de check-in cerró a las %s (30 min después del inicio)",
+                    windowEnd.format(TIME_FORMAT)),
+                "error"
+            );
+            return;
+        }
+        
+        // Ventana válida, proceder con el check-in
+        performCheckIn(reservation, qrCode, token);
+    }
+    
+    /**
+     * Realiza el check-in de la reserva
+     */
+    private void performCheckIn(ReservationDTO reservation, String qrCode, String token) {
+        showValidationMessage("🔄 Registrando ingreso...", "info");
+        
+        // Crear el payload de check-in
+        ReservationCheckInRequest payload = new ReservationCheckInRequest(
+            qrCode,
+            sessionManager.getUserId() != null ? sessionManager.getUserId().toString() : "supervisor",
+            sessionManager.getUserDisplayName() != null ? sessionManager.getUserDisplayName() : "Supervisor",
+            ""
+        );
+        
+        Task<ReservationDTO> task = new Task<>() {
+            @Override
+            protected ReservationDTO call() throws Exception {
+                return reservationController.markCheckIn(reservation.id(), token, payload);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            ReservationDTO updated = task.getValue();
+            
+            // Obtener información del espacio
+            String spaceName = getSpaceName(updated.spaceId(), token);
+            
+            // Obtener nombre de usuario del session manager
+            String userName = sessionManager.getUserDisplayName() != null ? 
+                sessionManager.getUserDisplayName() : "Usuario";
+            
+            showValidationMessage(
+                String.format("✅ Check-in exitoso\n\n" +
+                    "Usuario: %s\n" +
+                    "Espacio: %s\n" +
+                    "Horario: %s - %s\n" +
+                    "Estado: ASISTIÓ",
+                    userName,
+                    spaceName,
+                    updated.startTime().format(TIME_FORMAT),
+                    updated.endTime().format(TIME_FORMAT)
+                ),
+                "success"
+            );
+            
+            // Limpiar el campo de texto
+            if (qrCodeField != null) {
+                qrCodeField.clear();
+            }
+            
+            // Recargar reservas si estamos en la vista antigua
+            loadReservations();
+            
+            // Auto-navegar a la sección de Control después de 2 segundos
+            Platform.runLater(() -> {
+                try {
+                    Thread.sleep(2000);
+                    showControl();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Throwable error = task.getException();
+            String message = error != null ? error.getMessage() : "Error al registrar check-in";
+            showValidationMessage("❌ " + message, "error");
+        });
+        
+        new Thread(task).start();
+    }
+    
+    /**
+     * Obtiene el nombre del espacio por ID
+     */
+    private String getSpaceName(Long spaceId, String token) {
+        try {
+            List<SpaceDTO> spaces = spaceController.loadSpaces(token);
+            return spaces.stream()
+                .filter(s -> s.id().equals(spaceId))
+                .findFirst()
+                .map(SpaceDTO::name)
+                .orElse("Espacio #" + spaceId);
+        } catch (Exception e) {
+            return "Espacio #" + spaceId;
+        }
+    }
+    
+    /**
+     * Muestra información de la reserva
+     */
+    private void showReservationInfo(ReservationDTO reservation) {
+        String spaceName = getSpaceName(reservation.spaceId(), sessionManager.getAccessToken());
+        String userName = sessionManager.getUserDisplayName() != null ? 
+            sessionManager.getUserDisplayName() : "Usuario";
+        System.out.println("Reserva: " + userName + " - " + spaceName);
+    }
+    
+    /**
+     * Muestra un mensaje de validación en la UI
+     */
+    private void showValidationMessage(String message, String type) {
+        if (validationMessageBox == null || validationMessageLabel == null) {
+            return;
+        }
+        
+        Platform.runLater(() -> {
+            validationMessageLabel.setText(message);
+            validationMessageLabel.getStyleClass().removeAll("success", "error", "warning", "info");
+            validationMessageLabel.getStyleClass().add(type);
+            validationMessageBox.setVisible(true);
+        });
+    }
+    
+    /**
+     * Oculta el mensaje de validación
+     */
+    private void hideValidationMessage() {
+        if (validationMessageBox != null) {
+            Platform.runLater(() -> validationMessageBox.setVisible(false));
+        }
+    }
+    
+    @FXML
+    private void handleReservationSelected() {
+        // TODO: Implementar lógica cuando se selecciona una reserva
+        System.out.println("Reserva seleccionada");
+    }
+    
+    @FXML
+    private void refreshDashboard() {
+        // TODO: Actualizar métricas del dashboard
+        System.out.println("Refrescando dashboard...");
+    }
+    
+    @FXML
+    private void refreshControl() {
+        // TODO: Actualizar control de ingresos
+        System.out.println("Refrescando control...");
+    }
+    
+    @FXML
+    private void handleSearch() {
+        // TODO: Implementar búsqueda
+        System.out.println("Buscando...");
+    }
+    
+    @FXML
+    private void handleClearSearch() {
+        // TODO: Limpiar búsqueda
+        System.out.println("Limpiando búsqueda...");
+    }
+    
+    private void showSection(VBox section) {
+        // Detener escaneo QR si está activo al cambiar de sección
+        if (section != scanQRSection && isScanningQR) {
+            stopQRScanning();
+        }
+        
+        if (dashboardSection != null) dashboardSection.setVisible(false);
+        if (scanQRSection != null) scanQRSection.setVisible(false);
+        if (controlSection != null) controlSection.setVisible(false);
+        if (searchSection != null) searchSection.setVisible(false);
+        
+        if (section != null) {
+            section.setVisible(true);
+            
+            // Limpiar mensaje de validación al mostrar scan QR section
+            if (section == scanQRSection) {
+                hideValidationMessage();
+            }
+        }
+    }
+    
+    private void updateActiveNavButton(HBox activeButton) {
+        // Remover clase activa de todos los botones
+        if (navDashboardButton != null) navDashboardButton.getStyleClass().remove("active");
+        if (navScanQRButton != null) navScanQRButton.getStyleClass().remove("active");
+        if (navControlButton != null) navControlButton.getStyleClass().remove("active");
+        if (navSearchButton != null) navSearchButton.getStyleClass().remove("active");
+        
+        // Agregar clase activa al botón seleccionado
+        if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
+            activeButton.getStyleClass().add("active");
         }
     }
 
@@ -590,15 +1030,26 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         if (sessionManager == null) {
             return;
         }
+        String displayName = sessionManager.getUserDisplayName();
+        String email = sessionManager.getUserEmail();
+        
+        String finalName = displayName == null || displayName.isBlank() ? "Supervisor" : displayName;
+        String finalEmail = email == null || email.isBlank() ? "supervisor@municipalidad.go.cr" : email;
+        
+        // Labels antiguos
         if (lblSupervisorName != null) {
-            String displayName = sessionManager.getUserDisplayName();
-            lblSupervisorName.setText(displayName == null || displayName.isBlank() ? "Supervisor" : displayName);
+            lblSupervisorName.setText(finalName);
         }
         if (lblSupervisorEmail != null) {
-            String email = sessionManager.getUserEmail();
-            lblSupervisorEmail.setText(email == null || email.isBlank()
-                    ? "supervisor@municipalidad.go.cr"
-                    : email);
+            lblSupervisorEmail.setText(finalEmail);
+        }
+        
+        // Labels nuevos
+        if (supervisorNameLabel != null) {
+            supervisorNameLabel.setText(finalName);
+        }
+        if (supervisorEmailLabel != null) {
+            supervisorEmailLabel.setText(finalEmail);
         }
     }
 
@@ -635,8 +1086,8 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     }
 
     private Window getWindow() {
-        if (rootPane != null && rootPane.getScene() != null) {
-            return rootPane.getScene().getWindow();
+        if (mainContainer != null && mainContainer.getScene() != null) {
+            return mainContainer.getScene().getWindow();
         }
         return null;
     }
