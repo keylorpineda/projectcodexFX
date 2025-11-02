@@ -473,6 +473,19 @@
     -fx-effect: dropshadow(gaussian, rgba(25, 118, 210, 0.2), 12, 0.3, 0, 0);
 }
 
+.qr-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.qr-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.qr-scroll .scroll-bar {
+    -fx-background-color: transparent;
+}
+
 .validation-message {
     -fx-font-size: 15px;
     -fx-font-weight: 600;
@@ -848,4 +861,56 @@
 .badge-info {
     -fx-text-fill: #1976d2;
     -fx-background-color: rgba(25, 118, 210, 0.15);
+}
+
+/* ==================== PANEL DE PERFIL ==================== */
+.overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.2);
+}
+
+.profile-panel {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 15, 0, 0, 5);
+}
+
+.profile-avatar {
+    -fx-fill: linear-gradient(to bottom right, #1976d2, #1565c0);
+    -fx-stroke: #e5e7eb;
+    -fx-stroke-width: 2;
+}
+
+.profile-name {
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #111827;
+}
+
+.profile-email {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6b7280;
+}
+
+.profile-menu-item,
+.profile-menu-item-danger {
+    -fx-background-color: transparent;
+    -fx-text-fill: #4b5563;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+    -fx-padding: 10 12;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.profile-menu-item:hover {
+    -fx-background-color: #f3f4f6;
+}
+
+.profile-menu-item-danger {
+    -fx-text-fill: #dc2626;
+}
+
+.profile-menu-item-danger:hover {
+    -fx-background-color: rgba(220, 38, 38, 0.1);
 }

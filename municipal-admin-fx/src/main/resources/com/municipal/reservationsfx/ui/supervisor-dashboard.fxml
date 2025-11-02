@@ -8,15 +8,17 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
 
-<VBox xmlns="http://javafx.com/javafx"
-      xmlns:fx="http://javafx.com/fxml"
-      fx:id="mainContainer"
-      fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
-      stylesheets="@../styles/supervisor-dashboard.css"
-      styleClass="supervisor-root"
-      spacing="0">
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.municipal.ui.controllers.SupervisorDashboardController"
+           stylesheets="@../styles/supervisor-dashboard.css"
+           prefWidth="1400" prefHeight="900">
 
-    <!-- Top Header -->
+    <!-- Main Content -->
+    <VBox fx:id="mainContainer" styleClass="supervisor-root" spacing="0" 
+          StackPane.alignment="TOP_LEFT" maxWidth="Infinity" maxHeight="Infinity">
+
+        <!-- Top Header -->
     <HBox styleClass="supervisor-header" alignment="CENTER_LEFT" spacing="0" VBox.vgrow="NEVER">
         <padding>
             <Insets top="16" right="24" bottom="16" left="24"/>
@@ -87,17 +89,8 @@
                 <padding>
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
-                <Label text="✅" styleClass="nav-icon"/>
-                <Label text="Control de Ingresos"/>
-                <cursor><Cursor fx:constant="HAND"/></cursor>
-            </HBox>
-
-            <HBox fx:id="navSearchButton" styleClass="nav-item" onMouseClicked="#showSearch" alignment="CENTER_LEFT" spacing="12">
-                <padding>
-                    <Insets top="12" right="20" bottom="12" left="20"/>
-                </padding>
-                <Label text="🔍" styleClass="nav-icon"/>
-                <Label text="Buscar Eventos"/>
+                <Label text="🏟️" styleClass="nav-icon"/>
+                <Label text="Espacios en Uso"/>
                 <cursor><Cursor fx:constant="HAND"/></cursor>
             </HBox>
 
@@ -162,14 +155,7 @@
                     
                     <!-- Eventos en progreso -->
                     <VBox spacing="16">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <Label text="Eventos en Progreso" styleClass="subsection-title"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <Button fx:id="refreshDashboardButton" text="🔄 Actualizar" styleClass="ghost-button"
-                                    onAction="#refreshDashboard">
-                                <cursor><Cursor fx:constant="HAND"/></cursor>
-                            </Button>
-                        </HBox>
+                        <Label text="Eventos en Progreso" styleClass="subsection-title"/>
                         
                         <FlowPane fx:id="inProgressEventsPane" styleClass="events-flow" hgap="20" vgap="20">
                             <padding>
@@ -192,6 +178,7 @@
                     </VBox>
                     
                     <!-- Área de escaneo -->
+                    <ScrollPane fitToWidth="true" styleClass="qr-scroll" VBox.vgrow="ALWAYS">
                     <VBox styleClass="scan-container" spacing="20" alignment="CENTER">
                         <padding>
                             <Insets top="40" right="40" bottom="40" left="40"/>
@@ -244,9 +231,10 @@
                                    styleClass="validation-message" maxWidth="500"/>
                         </VBox>
                     </VBox>
+                    </ScrollPane>
                 </VBox>
                 
-                <!-- SECCIÓN 3: CONTROL DE INGRESOS -->
+                <!-- SECCIÓN 3: ESPACIOS EN USO -->
                 <VBox fx:id="controlSection" styleClass="content-section" spacing="24" visible="false">
                     <padding>
                         <Insets top="32" right="40" bottom="32" left="40"/>
@@ -254,99 +242,59 @@
                     
                     <!-- Header -->
                     <VBox spacing="8">
-                        <Label text="Control de Ingresos" styleClass="section-header"/>
-                        <Label text="Monitorea las asistencias en tiempo real" styleClass="section-subtitle"/>
+                        <Label text="Espacios en Uso" styleClass="section-header"/>
+                        <Label text="Espacios con actividades en curso en este momento" styleClass="section-subtitle"/>
                     </VBox>
                     
-                    <!-- Selector de reserva -->
-                    <HBox spacing="16" alignment="CENTER_LEFT">
-                        <Label text="Seleccionar Evento:" styleClass="control-label"/>
-                        <ComboBox fx:id="reservationComboBox" promptText="Seleccione una reserva activa"
-                                  styleClass="reservation-combo" prefWidth="400" HBox.hgrow="ALWAYS"
-                                  onAction="#handleReservationSelected"/>
-                        <Button fx:id="refreshControlButton" text="🔄 Actualizar" styleClass="ghost-button"
-                                onAction="#refreshControl">
-                            <cursor><Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-                    
-                    <!-- Panel de información de la reserva -->
-                    <VBox fx:id="reservationInfoBox" styleClass="info-box" spacing="12" visible="false">
-                        <padding>
-                            <Insets top="20" right="20" bottom="20" left="20"/>
-                        </padding>
-                        
-                        <HBox spacing="20" alignment="CENTER_LEFT">
-                            <VBox spacing="4" HBox.hgrow="ALWAYS">
-                                <Label fx:id="reservationTitleLabel" text="Título de la Reserva" styleClass="info-title"/>
-                                <Label fx:id="reservationDetailsLabel" text="Detalles" styleClass="info-details"/>
-                            </VBox>
-                            
-                            <VBox spacing="4" alignment="CENTER_RIGHT">
-                                <Label text="Capacidad" styleClass="capacity-label"/>
-                                <Label fx:id="capacityLabel" text="0 / 0" styleClass="capacity-value"/>
-                            </VBox>
-                        </HBox>
-                        
-                        <!-- Barra de progreso de capacidad -->
-                        <ProgressBar fx:id="capacityProgressBar" progress="0.0" styleClass="capacity-progress"
-                                     prefWidth="Infinity" minHeight="12"/>
+                    <!-- Resumen -->
+                    <VBox spacing="4">
+                        <Label fx:id="spacesInUseCountLabel" text="0 espacios en uso" styleClass="control-label"/>
+                        <Label fx:id="spacesInUseTimeLabel" text="Actualizado hace un momento" styleClass="timestamp-label"/>
                     </VBox>
                     
-                    <!-- Lista de asistentes -->
-                    <VBox spacing="12" VBox.vgrow="ALWAYS">
-                        <Label text="Lista de Asistentes" styleClass="subsection-title"/>
-                        
-                        <ListView fx:id="attendeesListView" styleClass="attendees-list" prefHeight="400"/>
-                    </VBox>
-                </VBox>
-                
-                <!-- SECCIÓN 4: BUSCAR EVENTOS -->
-                <VBox fx:id="searchSection" styleClass="content-section" spacing="24" visible="false">
-                    <padding>
-                        <Insets top="32" right="40" bottom="32" left="40"/>
-                    </padding>
-                    
-                    <!-- Header -->
-                    <VBox spacing="8">
-                        <Label text="Buscar Eventos" styleClass="section-header"/>
-                        <Label text="Encuentra reservas por espacio, fecha o estado" styleClass="section-subtitle"/>
-                    </VBox>
-                    
-                    <!-- Filtros de búsqueda -->
-                    <HBox spacing="16" alignment="CENTER_LEFT">
-                        <TextField fx:id="searchField" promptText="Buscar por nombre de espacio..." 
-                                   styleClass="search-input" HBox.hgrow="ALWAYS"/>
-                        
-                        <ComboBox fx:id="statusFilterCombo" promptText="Estado" styleClass="filter-combo"
-                                  prefWidth="180"/>
-                        
-                        <DatePicker fx:id="dateFilterPicker" promptText="Fecha" styleClass="date-picker"
-                                    prefWidth="160"/>
-                        
-                        <Button fx:id="searchButton" text="🔍 Buscar" styleClass="primary-button"
-                                onAction="#handleSearch">
-                            <cursor><Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                        
-                        <Button fx:id="clearSearchButton" text="Limpiar" styleClass="ghost-button"
-                                onAction="#handleClearSearch">
-                            <cursor><Cursor fx:constant="HAND"/></cursor>
-                        </Button>
-                    </HBox>
-                    
-                    <!-- Resultados de búsqueda -->
-                    <VBox spacing="12" VBox.vgrow="ALWAYS">
-                        <Label text="Resultados" styleClass="subsection-title"/>
-                        
-                        <FlowPane fx:id="searchResultsPane" styleClass="search-results-flow" hgap="20" vgap="20">
+                    <!-- Grid de espacios en uso -->
+                    <ScrollPane fitToWidth="true" styleClass="spaces-scroll" VBox.vgrow="ALWAYS">
+                        <FlowPane fx:id="spacesInUsePane" styleClass="spaces-flow" hgap="24" vgap="24">
                             <padding>
-                                <Insets top="10" right="10" bottom="10" left="10"/>
+                                <Insets top="16" right="16" bottom="16" left="16"/>
                             </padding>
                         </FlowPane>
-                    </VBox>
+                    </ScrollPane>
                 </VBox>
                 
         </StackPane>
     </HBox>
-</VBox>
+    </VBox>
+
+    <!-- Panel de Perfil (Overlay) -->
+    <StackPane fx:id="profilePanelOverlay" visible="false" managed="false" styleClass="overlay"
+               mouseTransparent="false">
+        <VBox fx:id="profilePanel" styleClass="profile-panel" spacing="12" 
+              prefWidth="240" maxWidth="240" StackPane.alignment="TOP_RIGHT">
+            <StackPane.margin>
+                <Insets top="70" right="20" bottom="0" left="0"/>
+            </StackPane.margin>
+            <padding>
+                <Insets top="16" right="16" bottom="16" left="16"/>
+            </padding>
+            
+            <!-- User Info -->
+            <VBox spacing="8" alignment="CENTER">
+                <Circle radius="24" styleClass="profile-avatar"/>
+                <Label fx:id="profileNameLabel" text="Supervisor" styleClass="profile-name"/>
+                <Label fx:id="profileEmailLabel" text="supervisor@mail.com" styleClass="profile-email"/>
+            </VBox>
+            
+            <Separator/>
+            
+            <!-- Menu Options -->
+            <VBox spacing="8">
+                <Button text="🚪  Cerrar sesión" styleClass="profile-menu-item-danger" 
+                        onAction="#handleLogout" maxWidth="Infinity">
+                    <cursor><Cursor fx:constant="HAND"/></cursor>
+                </Button>
+            </VBox>
+        </VBox>
+    </StackPane>
+
+</StackPane>

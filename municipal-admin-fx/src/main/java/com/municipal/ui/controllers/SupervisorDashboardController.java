@@ -25,11 +25,15 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
+import javafx.util.Duration;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -52,6 +56,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -81,18 +86,28 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     @FXML private HBox navDashboardButton;
     @FXML private HBox navScanQRButton;
     @FXML private HBox navControlButton;
-    @FXML private HBox navSearchButton;
     
     // Secciones
     @FXML private VBox dashboardSection;
     @FXML private VBox scanQRSection;
     @FXML private VBox controlSection;
-    @FXML private VBox searchSection;
     
     // Usuario info
     @FXML private Label supervisorNameLabel;
     @FXML private Label supervisorEmailLabel;
     @FXML private HBox userMenuContainer;
+    
+    // Panel de perfil
+    @FXML private StackPane profilePanelOverlay;
+    @FXML private VBox profilePanel;
+    @FXML private Label profileNameLabel;
+    @FXML private Label profileEmailLabel;
+    
+    // Dashboard Section
+    @FXML private Label activeEventsLabel;
+    @FXML private Label todayCheckInsLabel;
+    @FXML private Label pendingReservationsLabel;
+    @FXML private FlowPane inProgressEventsPane;
     
     // Scan QR Section
     @FXML private StackPane cameraPreviewContainer;
@@ -104,6 +119,11 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     @FXML private Button scanButton;
     @FXML private VBox validationMessageBox;
     @FXML private Label validationMessageLabel;
+    
+    // Espacios en Uso Section
+    @FXML private Label spacesInUseCountLabel;
+    @FXML private Label spacesInUseTimeLabel;
+    @FXML private FlowPane spacesInUsePane;
     
     // Campos antiguos (mantener compatibilidad)
     @FXML private Label lblSupervisorName;
@@ -139,11 +159,18 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     
     private QRScanner qrScanner;
     private volatile boolean isScanningQR = false;
+    private Timeline autoRefreshTimeline;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         // Configurar navegación de secciones
         initializeSections();
+        
+        // Configurar auto-refresh
+        initializeAutoRefresh();
+        
+        // Configurar panel de perfil
+        initializeProfilePanel();
         
         // Configuraciones antiguas (compatibilidad)
         configureListView();
@@ -161,12 +188,81 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             updateActiveNavButton(navDashboardButton);
         }
     }
+    
+    private void initializeProfilePanel() {
+        // Configurar click en el menú de usuario para abrir/cerrar panel
+        if (userMenuContainer != null) {
+            userMenuContainer.setOnMouseClicked(event -> toggleProfilePanel());
+        }
+        
+        // Configurar click en el overlay para cerrar el panel
+        if (profilePanelOverlay != null) {
+            profilePanelOverlay.setOnMouseClicked(event -> {
+                if (event.getTarget() == profilePanelOverlay) {
+                    closeProfilePanel();
+                }
+            });
+        }
+    }
+    
+    private void toggleProfilePanel() {
+        if (profilePanelOverlay != null) {
+            boolean isVisible = profilePanelOverlay.isVisible();
+            if (isVisible) {
+                closeProfilePanel();
+            } else {
+                openProfilePanel();
+            }
+        }
+    }
+    
+    private void openProfilePanel() {
+        if (profilePanelOverlay != null) {
+            profilePanelOverlay.setVisible(true);
+            profilePanelOverlay.setManaged(true);
+        }
+    }
+    
+    private void closeProfilePanel() {
+        if (profilePanelOverlay != null) {
+            profilePanelOverlay.setVisible(false);
+            profilePanelOverlay.setManaged(false);
+        }
+    }
+    
+    private void initializeAutoRefresh() {
+        // Timeline para actualizar datos automáticamente cada 30 segundos
+        autoRefreshTimeline = new Timeline(
+            new KeyFrame(Duration.seconds(30), event -> {
+                if (sessionManager != null && sessionManager.getAccessToken() != null) {
+                    // Actualizar dashboard si está visible
+                    if (dashboardSection != null && dashboardSection.isVisible()) {
+                        refreshDashboard();
+                    }
+                    // Actualizar espacios en uso si está visible
+                    if (controlSection != null && controlSection.isVisible()) {
+                        refreshSpacesInUse();
+                    }
+                }
+            })
+        );
+        autoRefreshTimeline.setCycleCount(Animation.INDEFINITE);
+    }
 
     @Override
     public void setSessionManager(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
         updateSupervisorLabels();
+        
+        // Cargar datos iniciales
         loadReservations();
+        refreshDashboard();
+        refreshSpacesInUse();
+        
+        // Iniciar auto-refresh
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.play();
+        }
     }
 
     @Override
@@ -176,6 +272,16 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
 
     @FXML
     private void cerrarSesion() {
+        // Detener auto-refresh
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+        }
+        
+        // Detener escaneo QR si está activo
+        if (isScanningQR) {
+            stopQRScanning();
+        }
+        
         if (sessionManager != null) {
             sessionManager.clear();
         }
@@ -191,23 +297,17 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         showSection(dashboardSection);
         updateActiveNavButton(navDashboardButton);
     }
-    
+
     @FXML
     private void showScanQR() {
         showSection(scanQRSection);
         updateActiveNavButton(navScanQRButton);
     }
-    
+
     @FXML
     private void showControl() {
         showSection(controlSection);
         updateActiveNavButton(navControlButton);
-    }
-    
-    @FXML
-    private void showSearch() {
-        showSection(searchSection);
-        updateActiveNavButton(navSearchButton);
     }
     
     @FXML
@@ -355,10 +455,44 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         LocalDateTime windowStart = startTime.minusMinutes(30);
         LocalDateTime windowEnd = startTime.plusMinutes(30);
         
+        // Verificar si está en estado PENDING (bloqueado/pendiente de aprobación)
+        if ("PENDING".equalsIgnoreCase(reservation.status())) {
+            showValidationMessage(
+                "🔒 Reserva Bloqueada\n\n" +
+                "Esta reserva está pendiente de aprobación por un administrador.\n" +
+                "El código QR no puede ser usado hasta que la reserva sea aprobada.\n\n" +
+                "Estado: PENDIENTE DE APROBACIÓN",
+                "error"
+            );
+            return;
+        }
+        
+        // Verificar si está en estado CANCELLED (cancelada)
+        if ("CANCELLED".equalsIgnoreCase(reservation.status())) {
+            showValidationMessage(
+                "❌ Reserva Cancelada\n\n" +
+                "Esta reserva fue cancelada y no puede ser utilizada.\n" +
+                "Por favor, solicite una nueva reserva.",
+                "error"
+            );
+            return;
+        }
+        
         // Verificar si ya tiene check-in
         if ("CHECKED_IN".equals(reservation.status())) {
             showValidationMessage("✅ Esta reserva ya fue registrada anteriormente", "success");
             showReservationInfo(reservation);
+            return;
+        }
+        
+        // Verificar que esté en estado CONFIRMED (confirmada)
+        if (!"CONFIRMED".equalsIgnoreCase(reservation.status())) {
+            showValidationMessage(
+                "⚠️ Estado de Reserva Inválido\n\n" +
+                "Solo las reservas confirmadas pueden realizar check-in.\n" +
+                "Estado actual: " + reservation.status(),
+                "warning"
+            );
             return;
         }
         
@@ -517,28 +651,340 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         System.out.println("Reserva seleccionada");
     }
     
-    @FXML
     private void refreshDashboard() {
-        // TODO: Actualizar métricas del dashboard
-        System.out.println("Refrescando dashboard...");
+        loadReservations();
+        updateDashboardMetrics();
     }
     
-    @FXML
-    private void refreshControl() {
-        // TODO: Actualizar control de ingresos
-        System.out.println("Refrescando control...");
+    private void refreshSpacesInUse() {
+        if (sessionManager == null) {
+            return;
+        }
+        
+        String token = sessionManager.getAccessToken();
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        
+        Task<List<SpaceInUseData>> task = new Task<>() {
+            @Override
+            protected List<SpaceInUseData> call() throws Exception {
+                // Cargar todas las reservaciones
+                List<ReservationDTO> allReservations = reservationController.getAllReservations(token);
+                LocalDateTime now = LocalDateTime.now();
+                
+                // Filtrar solo las reservaciones activas (en curso ahora)
+                List<ReservationDTO> activeReservations = allReservations.stream()
+                    .filter(r -> {
+                        String status = r.status();
+                        return (status != null && 
+                               (status.equalsIgnoreCase("CONFIRMED") || status.equalsIgnoreCase("CHECKED_IN")))
+                            && r.startTime() != null && r.startTime().isBefore(now.plusMinutes(5))
+                            && r.endTime() != null && r.endTime().isAfter(now);
+                    })
+                    .collect(Collectors.toList());
+                
+                // Agrupar por espacio
+                Map<Long, List<ReservationDTO>> reservationsBySpace = activeReservations.stream()
+                    .filter(r -> r.spaceId() != null)
+                    .collect(Collectors.groupingBy(ReservationDTO::spaceId));
+                
+                // Cargar información de espacios
+                List<SpaceDTO> allSpaces = spaceController.loadSpaces(token);
+                Map<Long, SpaceDTO> spacesById = allSpaces.stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toMap(SpaceDTO::id, space -> space));
+                
+                // Crear datos de espacios en uso
+                return reservationsBySpace.entrySet().stream()
+                    .map(entry -> {
+                        Long spaceId = entry.getKey();
+                        List<ReservationDTO> reservations = entry.getValue();
+                        SpaceDTO space = spacesById.get(spaceId);
+                        
+                        if (space == null) {
+                            return null;
+                        }
+                        
+                        return new SpaceInUseData(space, reservations);
+                    })
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparing(data -> data.space.name()))
+                    .collect(Collectors.toList());
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            List<SpaceInUseData> spaces = task.getValue();
+            updateSpacesInUseUI(spaces);
+        });
+        
+        task.setOnFailed(e -> {
+            System.err.println("Error al cargar espacios en uso: " + e.getSource().getException().getMessage());
+            if (spacesInUseCountLabel != null) {
+                spacesInUseCountLabel.setText("Error al cargar espacios");
+            }
+        });
+        
+        Thread thread = new Thread(task, "spaces-in-use-loader");
+        thread.setDaemon(true);
+        thread.start();
     }
     
-    @FXML
-    private void handleSearch() {
-        // TODO: Implementar búsqueda
-        System.out.println("Buscando...");
+    private void updateSpacesInUseUI(List<SpaceInUseData> spaces) {
+        if (spacesInUsePane != null) {
+            spacesInUsePane.getChildren().clear();
+            
+            for (SpaceInUseData spaceData : spaces) {
+                VBox card = createSpaceCard(spaceData);
+                spacesInUsePane.getChildren().add(card);
+            }
+        }
+        
+        if (spacesInUseCountLabel != null) {
+            int count = spaces.size();
+            spacesInUseCountLabel.setText(count + (count == 1 ? " espacio en uso" : " espacios en uso"));
+        }
+        
+        if (spacesInUseTimeLabel != null) {
+            spacesInUseTimeLabel.setText("Actualizado ahora");
+        }
     }
     
-    @FXML
-    private void handleClearSearch() {
-        // TODO: Limpiar búsqueda
-        System.out.println("Limpiando búsqueda...");
+    private VBox createSpaceCard(SpaceInUseData data) {
+        VBox card = new VBox(12);
+        card.getStyleClass().add("space-card");
+        card.setPadding(new Insets(20));
+        card.setMaxWidth(280);
+        card.setMinWidth(280);
+        
+        // Header con icono y nombre del espacio
+        HBox header = new HBox(8);
+        header.setStyle("-fx-alignment: center-left;");
+        
+        Label icon = new Label("🏟️");
+        icon.setStyle("-fx-font-size: 24px;");
+        
+        VBox nameBox = new VBox(2);
+        Label name = new Label(data.space.name());
+        name.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+        name.setWrapText(true);
+        
+        if (data.space.location() != null && !data.space.location().isBlank()) {
+            Label location = new Label(data.space.location());
+            location.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+            location.setWrapText(true);
+            nameBox.getChildren().add(location);
+        }
+        
+        nameBox.getChildren().add(0, name);
+        header.getChildren().addAll(icon, nameBox);
+        HBox.setHgrow(nameBox, Priority.ALWAYS);
+        
+        // Información de actividades
+        int activityCount = data.reservations.size();
+        Label activityLabel = new Label(activityCount + (activityCount == 1 ? " actividad en curso" : " actividades en curso"));
+        activityLabel.setStyle("-fx-text-fill: #059669; -fx-font-weight: 600;");
+        
+        // Capacidad
+        if (data.space.capacity() != null) {
+            int totalAttendees = data.reservations.stream()
+                .mapToInt(r -> r.attendees() != null ? r.attendees() : 0)
+                .sum();
+            
+            Label capacityLabel = new Label("Capacidad: " + totalAttendees + " / " + data.space.capacity());
+            capacityLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12px;");
+            card.getChildren().add(capacityLabel);
+        }
+        
+        card.getChildren().addAll(header, activityLabel);
+        
+        // Agregar cursor pointer para indicar que es clickeable
+        card.setStyle(card.getStyle() + "-fx-cursor: hand;");
+        
+        return card;
+    }
+    
+    private void updateDashboardMetrics() {
+        if (sessionManager == null) {
+            return;
+        }
+        
+        String token = sessionManager.getAccessToken();
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        
+        Task<DashboardMetrics> task = new Task<>() {
+            @Override
+            protected DashboardMetrics call() throws Exception {
+                List<ReservationDTO> allReservations = reservationController.getAllReservations(token);
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
+                LocalDateTime todayEnd = todayStart.plusDays(1);
+                
+                // Eventos activos (en curso ahora)
+                long activeEvents = allReservations.stream()
+                    .filter(r -> {
+                        String status = r.status();
+                        return (status != null && 
+                               (status.equalsIgnoreCase("CONFIRMED") || status.equalsIgnoreCase("CHECKED_IN")))
+                            && r.startTime() != null && r.startTime().isBefore(now.plusMinutes(5))
+                            && r.endTime() != null && r.endTime().isAfter(now);
+                    })
+                    .count();
+                
+                // Check-ins de hoy
+                long todayCheckIns = allReservations.stream()
+                    .filter(r -> {
+                        String status = r.status();
+                        return status != null && status.equalsIgnoreCase("CHECKED_IN")
+                            && r.startTime() != null 
+                            && r.startTime().isAfter(todayStart) 
+                            && r.startTime().isBefore(todayEnd);
+                    })
+                    .count();
+                
+                // Reservaciones pendientes (confirmadas pero no checked in)
+                long pendingReservations = allReservations.stream()
+                    .filter(r -> {
+                        String status = r.status();
+                        return status != null && status.equalsIgnoreCase("CONFIRMED");
+                    })
+                    .count();
+                
+                // Obtener eventos en progreso
+                List<ReservationDTO> inProgressList = allReservations.stream()
+                    .filter(r -> {
+                        String status = r.status();
+                        return (status != null && 
+                               (status.equalsIgnoreCase("CONFIRMED") || status.equalsIgnoreCase("CHECKED_IN")))
+                            && r.startTime() != null && r.startTime().isBefore(now.plusMinutes(5))
+                            && r.endTime() != null && r.endTime().isAfter(now);
+                    })
+                    .limit(6)  // Limitar a 6 eventos
+                    .collect(Collectors.toList());
+                
+                // Cargar espacios
+                List<SpaceDTO> spaces = spaceController.loadSpaces(token);
+                Map<Long, SpaceDTO> spacesById = spaces.stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toMap(SpaceDTO::id, space -> space));
+                
+                return new DashboardMetrics(activeEvents, todayCheckIns, pendingReservations, inProgressList, spacesById);
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            DashboardMetrics metrics = task.getValue();
+            updateDashboardUI(metrics);
+        });
+        
+        task.setOnFailed(e -> {
+            System.err.println("Error al cargar métricas del dashboard: " + e.getSource().getException().getMessage());
+        });
+        
+        Thread thread = new Thread(task, "dashboard-metrics-loader");
+        thread.setDaemon(true);
+        thread.start();
+    }
+    
+    private void updateDashboardUI(DashboardMetrics metrics) {
+        if (activeEventsLabel != null) {
+            activeEventsLabel.setText(String.valueOf(metrics.activeEvents));
+        }
+        
+        if (todayCheckInsLabel != null) {
+            todayCheckInsLabel.setText(String.valueOf(metrics.todayCheckIns));
+        }
+        
+        if (pendingReservationsLabel != null) {
+            pendingReservationsLabel.setText(String.valueOf(metrics.pendingReservations));
+        }
+        
+        if (inProgressEventsPane != null) {
+            inProgressEventsPane.getChildren().clear();
+            
+            for (ReservationDTO reservation : metrics.inProgressEvents) {
+                VBox card = createEventCard(reservation, metrics.spacesById);
+                inProgressEventsPane.getChildren().add(card);
+            }
+        }
+    }
+    
+    private VBox createEventCard(ReservationDTO reservation, Map<Long, SpaceDTO> spacesById) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("event-card");
+        card.setPadding(new Insets(16));
+        card.setMaxWidth(240);
+        card.setMinWidth(240);
+        
+        // Nombre del espacio
+        SpaceDTO space = reservation.spaceId() != null ? spacesById.get(reservation.spaceId()) : null;
+        String spaceName = space != null && space.name() != null ? space.name() : "Espacio sin nombre";
+        
+        Label nameLabel = new Label(spaceName);
+        nameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+        nameLabel.setWrapText(true);
+        
+        // Horario
+        String timeRange = "";
+        if (reservation.startTime() != null && reservation.endTime() != null) {
+            timeRange = reservation.startTime().format(TIME_FORMAT) + " - " + 
+                       reservation.endTime().format(TIME_FORMAT);
+        }
+        
+        Label timeLabel = new Label("🕐 " + timeRange);
+        timeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+        
+        // Asistentes
+        String attendeesText = "";
+        if (reservation.attendees() != null) {
+            attendeesText = "👥 " + reservation.attendees() + " asistentes";
+        }
+        
+        Label attendeesLabel = new Label(attendeesText);
+        attendeesLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+        
+        // Estado
+        String status = reservation.status() != null ? reservation.status() : "";
+        String statusText = status.equalsIgnoreCase("CHECKED_IN") ? "✓ En curso" : "⏱ Confirmada";
+        String statusColor = status.equalsIgnoreCase("CHECKED_IN") ? "#059669" : "#f59e0b";
+        
+        Label statusLabel = new Label(statusText);
+        statusLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: " + statusColor + ";");
+        
+        card.getChildren().addAll(nameLabel, timeLabel, attendeesLabel, statusLabel);
+        
+        return card;
+    }
+    
+    // Clases auxiliares para almacenar datos
+    private static class SpaceInUseData {
+        final SpaceDTO space;
+        final List<ReservationDTO> reservations;
+        
+        SpaceInUseData(SpaceDTO space, List<ReservationDTO> reservations) {
+            this.space = space;
+            this.reservations = reservations;
+        }
+    }
+    
+    private static class DashboardMetrics {
+        final long activeEvents;
+        final long todayCheckIns;
+        final long pendingReservations;
+        final List<ReservationDTO> inProgressEvents;
+        final Map<Long, SpaceDTO> spacesById;
+        
+        DashboardMetrics(long activeEvents, long todayCheckIns, long pendingReservations, 
+                        List<ReservationDTO> inProgressEvents, Map<Long, SpaceDTO> spacesById) {
+            this.activeEvents = activeEvents;
+            this.todayCheckIns = todayCheckIns;
+            this.pendingReservations = pendingReservations;
+            this.inProgressEvents = inProgressEvents;
+            this.spacesById = spacesById;
+        }
     }
     
     private void showSection(VBox section) {
@@ -550,7 +996,6 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         if (dashboardSection != null) dashboardSection.setVisible(false);
         if (scanQRSection != null) scanQRSection.setVisible(false);
         if (controlSection != null) controlSection.setVisible(false);
-        if (searchSection != null) searchSection.setVisible(false);
         
         if (section != null) {
             section.setVisible(true);
@@ -567,7 +1012,6 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         if (navDashboardButton != null) navDashboardButton.getStyleClass().remove("active");
         if (navScanQRButton != null) navScanQRButton.getStyleClass().remove("active");
         if (navControlButton != null) navControlButton.getStyleClass().remove("active");
-        if (navSearchButton != null) navSearchButton.getStyleClass().remove("active");
         
         // Agregar clase activa al botón seleccionado
         if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
@@ -1050,6 +1494,14 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         }
         if (supervisorEmailLabel != null) {
             supervisorEmailLabel.setText(finalEmail);
+        }
+        
+        // Labels del panel de perfil
+        if (profileNameLabel != null) {
+            profileNameLabel.setText(finalName);
+        }
+        if (profileEmailLabel != null) {
+            profileEmailLabel.setText(finalEmail);
         }
     }
 

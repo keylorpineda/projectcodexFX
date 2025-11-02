@@ -109,10 +109,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     @FXML private Label lblInasistencias;
     @FXML private Label lblOcupacionSemanal;
     @FXML private Label lblVariacionOcupacion;
+    
+    // Campos de clima (mismo formato que UserDashboard)
+    @FXML private Label weatherIconLabel;
+    @FXML private Label weatherTempLabel;
+    @FXML private Label weatherConditionLabel;
+    @FXML private Label weatherWindLabel;
+    @FXML private Label weatherHumidityLabel;
+    @FXML private Label weatherMessageLabel;
+    
+    // Campos antiguos de clima (mantener compatibilidad)
     @FXML private Label lblTemperatura;
     @FXML private Label lblClimaCondicion;
     @FXML private Label lblViento;
     @FXML private Label lblLluvia;
+    
     @FXML private Label lblNumAlertas;
     @FXML private VBox contenedorAlertas;
     
@@ -145,6 +156,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     
     @FXML private TextField txtBuscarReserva;
     @FXML private ComboBox<String> cmbEstadoReserva;
+    @FXML private DatePicker dpFechaDesdeReservas;
+    @FXML private DatePicker dpFechaHastaReservas;
+    @FXML private Button btnLimpiarFiltrosReservas;
+    @FXML private Label lblTotalReservas;
+    @FXML private Label lblReservasFiltradas;
+    @FXML private ComboBox<Integer> cmbFilasPorPagina;
+    @FXML private Label lblPaginaReservas;
     @FXML private TableView<Reserva> tablaReservas;
     @FXML private TableColumn<Reserva, Long> colIdReserva;
     @FXML private TableColumn<Reserva, String> colUsuarioReserva;
@@ -366,6 +384,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         inicializarComboBox(cmbRangoFechas, "Último mes",
                 FXCollections.observableArrayList(
                         "Última semana", "Último mes", "Últimos 3 meses", "Último año", "Personalizado"));
+        
+        // Inicializar combo de filas por página
+        if (cmbFilasPorPagina != null) {
+            cmbFilasPorPagina.setItems(FXCollections.observableArrayList(10, 25, 50, 100));
+            cmbFilasPorPagina.getSelectionModel().select(Integer.valueOf(25));
+        }
     }
 
     private void inicializarComboBox(ComboBox<String> comboBox, String defaultOption) {
@@ -952,9 +976,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             }
         });
         
-        // Configurar columna de acciones con anchos adecuados (más espacio para el botón eliminar)
-        colAccionesReserva.setMinWidth(480);
-        colAccionesReserva.setPrefWidth(500);
+        // Configurar columna de acciones - Ancho reducido y disposición vertical
+        colAccionesReserva.setMinWidth(180);
+        colAccionesReserva.setPrefWidth(200);
+        colAccionesReserva.setMaxWidth(220);
         
         colAccionesReserva.setCellFactory(param -> new TableCell<Reserva, Void>() {
             private final Button btnVer = new Button("👁️ Ver");
@@ -962,15 +987,22 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             private final Button btnCancelar = new Button("❌ Cancelar");
             private final Button btnEmail = new Button("📧 Email");
             private final Button btnEliminar = new Button("🗑️ Eliminar");
-            private final HBox contenedor = new HBox(6);
+            private final VBox contenedor = new VBox(4);
             
             {
-                // Aplicar estilos CSS
+                // Aplicar estilos CSS y hacer que los botones ocupen todo el ancho
                 btnVer.getStyleClass().addAll("admin-btn-base", "admin-btn-view");
                 btnAprobar.getStyleClass().addAll("admin-btn-base", "admin-btn-approve");
                 btnCancelar.getStyleClass().addAll("admin-btn-base", "admin-btn-cancel");
                 btnEmail.getStyleClass().addAll("admin-btn-base", "admin-btn-email");
                 btnEliminar.getStyleClass().addAll("admin-btn-base", "admin-btn-delete");
+                
+                // Hacer que los botones ocupen todo el ancho disponible
+                btnVer.setMaxWidth(Double.MAX_VALUE);
+                btnAprobar.setMaxWidth(Double.MAX_VALUE);
+                btnCancelar.setMaxWidth(Double.MAX_VALUE);
+                btnEmail.setMaxWidth(Double.MAX_VALUE);
+                btnEliminar.setMaxWidth(Double.MAX_VALUE);
                 
                 // Tooltips detallados
                 javafx.scene.control.Tooltip.install(btnVer, new javafx.scene.control.Tooltip("Ver detalles completos de la reserva"));
@@ -1004,7 +1036,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     eliminarReservaPermanente(reserva);
                 });
                 
+                // Alinear al centro y agregar padding
                 contenedor.setAlignment(Pos.CENTER);
+                contenedor.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
             }
             
             @Override
@@ -1091,6 +1125,19 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         
         if (cmbEstadoReserva != null) {
             cmbEstadoReserva.valueProperty().addListener((obs, oldVal, newVal) -> {
+                filtrarReservas();
+            });
+        }
+        
+        // Filtros de fecha para reservas
+        if (dpFechaDesdeReservas != null) {
+            dpFechaDesdeReservas.valueProperty().addListener((obs, oldVal, newVal) -> {
+                filtrarReservas();
+            });
+        }
+        
+        if (dpFechaHastaReservas != null) {
+            dpFechaHastaReservas.valueProperty().addListener((obs, oldVal, newVal) -> {
                 filtrarReservas();
             });
         }
@@ -1575,6 +1622,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     private void actualizarIndicadoresClimaticos() {
+        // Mantener compatibilidad con labels antiguos
         if (lblTemperatura != null) {
             lblTemperatura.setText(climaActual != null ? climaActual.getTemperaturaFormateada() : "--");
         }
@@ -1586,6 +1634,115 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
         if (lblLluvia != null) {
             lblLluvia.setText(climaActual != null ? climaActual.getProbabilidadLluviaFormateada() : "--");
+        }
+        
+        // Cargar clima con la nueva implementación (igual a User)
+        loadWeather();
+    }
+    
+    /**
+     * Carga el clima actual usando WeatherController (igual que UserDashboard)
+     */
+    private void loadWeather() {
+        if (weatherController == null) {
+            System.err.println("❌ No se puede cargar clima: weatherController null");
+            return;
+        }
+
+        Task<CurrentWeatherDTO> task = new Task<>() {
+            @Override
+            protected CurrentWeatherDTO call() throws Exception {
+                // ✅ Usar coordenadas configuradas en application.properties
+                // Pérez Zeledón, Costa Rica: 9.3640, -83.7139
+                String token = sessionManager != null ? sessionManager.getAccessToken() : null;
+                return weatherController.loadCurrentWeather(9.3640, -83.7139, token);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            CurrentWeatherDTO weather = task.getValue();
+            if (weather != null) {
+                updateWeatherUI(weather);
+                System.out.println("✅ Clima cargado correctamente");
+            }
+        });
+
+        task.setOnFailed(e -> {
+            System.err.println("❌ Error al cargar clima: " + 
+                (task.getException() != null ? task.getException().getMessage() : "Error desconocido"));
+            if (weatherMessageLabel != null) {
+                weatherMessageLabel.setText("No se pudo cargar la información del clima");
+            }
+        });
+
+        new Thread(task).start();
+    }
+    
+    /**
+     * Actualiza la UI con los datos del clima (igual que UserDashboard)
+     */
+    private void updateWeatherUI(CurrentWeatherDTO weather) {
+        Platform.runLater(() -> {
+            // ✅ Usar los campos correctos de CurrentWeatherDTO
+            if (weatherTempLabel != null) {
+                weatherTempLabel.setText(String.format("%.1f°C", weather.temperature()));
+            }
+            if (weatherConditionLabel != null) {
+                weatherConditionLabel.setText(capitalizeFirst(weather.description()));
+            }
+            if (weatherWindLabel != null) {
+                weatherWindLabel.setText(String.format("Viento: %.1f km/h", weather.windSpeed()));
+            }
+            if (weatherHumidityLabel != null) {
+                weatherHumidityLabel.setText(String.format("Humedad: %d%%", weather.humidity()));
+            }
+            if (weatherIconLabel != null) {
+                String icon = getWeatherIcon(weather.description());
+                weatherIconLabel.setText(icon);
+            }
+            if (weatherMessageLabel != null) {
+                String message = getWeatherMessage(weather.description(), weather.temperature());
+                weatherMessageLabel.setText(message);
+            }
+        });
+    }
+
+    /**
+     * Retorna el icono emoji según la condición climática (igual que UserDashboard)
+     */
+    private String getWeatherIcon(String condition) {
+        if (condition == null) return "🌤️";
+        
+        return switch (condition.toLowerCase()) {
+            case "clear", "despejado" -> "☀️";
+            case "clouds", "nublado" -> "☁️";
+            case "rain", "lluvia" -> "🌧️";
+            case "drizzle", "llovizna" -> "🌦️";
+            case "thunderstorm", "tormenta" -> "⛈️";
+            case "snow", "nieve" -> "❄️";
+            case "mist", "fog", "niebla" -> "🌫️";
+            default -> "🌤️";
+        };
+    }
+
+    /**
+     * Genera un mensaje personalizado según el clima (igual que UserDashboard)
+     */
+    private String getWeatherMessage(String condition, double temp) {
+        if (condition == null) {
+            return "✨ Información del clima no disponible.";
+        }
+        
+        String lowerCondition = condition.toLowerCase();
+        if (lowerCondition.contains("rain") || lowerCondition.contains("lluvia") || 
+            lowerCondition.contains("thunderstorm") || lowerCondition.contains("tormenta")) {
+            return "⚠️ Considera reservar espacios cubiertos debido a la lluvia.";
+        } else if (temp > 30) {
+            return "☀️ Día caluroso. Recomendamos espacios con sombra o climatizados.";
+        } else if (temp < 18) {
+            return "🌡️ Clima fresco. Ideal para actividades al aire libre.";
+        } else {
+            return "✨ Excelente clima para cualquier actividad.";
         }
     }
 
@@ -1938,6 +2095,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         // Crear PieChart
         PieChart pieChart = new PieChart();
         pieChart.setTitle("Distribución de Reservas");
+        pieChart.setAnimated(true); // ✨ Habilitar animación
+        pieChart.setLegendVisible(true);
         
         // Contar reservas por tipo de espacio
         long interiores = listaReservas.stream()
@@ -1950,8 +2109,6 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         
         pieChart.getData().add(new PieChart.Data("Interior (" + interiores + ")", interiores));
         pieChart.getData().add(new PieChart.Data("Exterior (" + exteriores + ")", exteriores));
-        
-        pieChart.setLegendVisible(true);
         
         graficoDistribucion.getChildren().add(pieChart);
     }
@@ -1970,6 +2127,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
         
         barChart.setTitle("Espacios Más Utilizados");
+        barChart.setAnimated(true); // ✨ Habilitar animación
+        barChart.setLegendVisible(false);
         xAxis.setLabel("Espacio");
         yAxis.setLabel("Número de Reservas");
         
@@ -1989,7 +2148,6 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         });
         
         barChart.getData().add(series);
-        barChart.setLegendVisible(false);
         
         graficoRanking.getChildren().add(barChart);
     }
@@ -2267,6 +2425,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         
         String busqueda = txtBuscarReserva != null ? txtBuscarReserva.getText().toLowerCase() : "";
         String estadoSeleccionado = cmbEstadoReserva != null ? cmbEstadoReserva.getValue() : "Todos los estados";
+        LocalDate fechaDesde = dpFechaDesdeReservas != null ? dpFechaDesdeReservas.getValue() : null;
+        LocalDate fechaHasta = dpFechaHastaReservas != null ? dpFechaHastaReservas.getValue() : null;
         
         listaReservasFiltradas.clear();
         listaReservasFiltradas.addAll(
@@ -2291,6 +2451,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     String estado = r.getEstado() != null ? r.getEstado() : "";
                     return estado.equalsIgnoreCase(estadoSeleccionado);
                 })
+                .filter(r -> {
+                    // Filtro por rango de fechas
+                    if (fechaDesde == null && fechaHasta == null) return true;
+                    
+                    LocalDate fechaReserva = r.getFecha();
+                    if (fechaReserva == null) return false;
+                    
+                    if (fechaDesde != null && fechaReserva.isBefore(fechaDesde)) {
+                        return false;
+                    }
+                    if (fechaHasta != null && fechaReserva.isAfter(fechaHasta)) {
+                        return false;
+                    }
+                    return true;
+                })
                 // Ordenar por prioridad de estado: Pendiente -> Confirmada -> Checked In -> No Show -> Cancelada
                 .sorted((r1, r2) -> {
                     int prioridad1 = obtenerPrioridadEstado(r1.getEstado());
@@ -2301,6 +2476,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         );
 
         tablaReservas.setItems(listaReservasFiltradas);
+        actualizarEstadisticasReservas();
     }
     
     /**
@@ -2318,6 +2494,139 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             case "Cancelada" -> 5;      // Último (finalizadas)
             default -> 999;             // Desconocidos al final
         };
+    }
+    
+    // ==================== NUEVOS MÉTODOS DE FILTRADO Y PAGINACIÓN ====================
+    
+    /**
+     * Limpia todos los filtros de reservas
+     */
+    @FXML
+    private void limpiarFiltrosReservas() {
+        if (txtBuscarReserva != null) {
+            txtBuscarReserva.clear();
+        }
+        if (cmbEstadoReserva != null) {
+            cmbEstadoReserva.getSelectionModel().select("Todos los estados");
+        }
+        if (dpFechaDesdeReservas != null) {
+            dpFechaDesdeReservas.setValue(null);
+        }
+        if (dpFechaHastaReservas != null) {
+            dpFechaHastaReservas.setValue(null);
+        }
+        filtrarReservas();
+    }
+    
+    /**
+     * Filtra reservas de hoy
+     */
+    @FXML
+    private void filtrarReservasHoy() {
+        LocalDate hoy = LocalDate.now();
+        if (dpFechaDesdeReservas != null) {
+            dpFechaDesdeReservas.setValue(hoy);
+        }
+        if (dpFechaHastaReservas != null) {
+            dpFechaHastaReservas.setValue(hoy);
+        }
+        filtrarReservas();
+    }
+    
+    /**
+     * Filtra reservas de esta semana
+     */
+    @FXML
+    private void filtrarReservasSemana() {
+        LocalDate hoy = LocalDate.now();
+        LocalDate inicioSemana = hoy.minusDays(hoy.getDayOfWeek().getValue() - 1);
+        LocalDate finSemana = inicioSemana.plusDays(6);
+        
+        if (dpFechaDesdeReservas != null) {
+            dpFechaDesdeReservas.setValue(inicioSemana);
+        }
+        if (dpFechaHastaReservas != null) {
+            dpFechaHastaReservas.setValue(finSemana);
+        }
+        filtrarReservas();
+    }
+    
+    /**
+     * Filtra reservas de este mes
+     */
+    @FXML
+    private void filtrarReservasMes() {
+        LocalDate hoy = LocalDate.now();
+        LocalDate inicioMes = hoy.withDayOfMonth(1);
+        LocalDate finMes = hoy.withDayOfMonth(hoy.lengthOfMonth());
+        
+        if (dpFechaDesdeReservas != null) {
+            dpFechaDesdeReservas.setValue(inicioMes);
+        }
+        if (dpFechaHastaReservas != null) {
+            dpFechaHastaReservas.setValue(finMes);
+        }
+        filtrarReservas();
+    }
+    
+    /**
+     * Filtra solo reservas confirmadas
+     */
+    @FXML
+    private void filtrarReservasConfirmadas() {
+        if (cmbEstadoReserva != null) {
+            cmbEstadoReserva.getSelectionModel().select("Confirmada");
+        }
+        filtrarReservas();
+    }
+    
+    /**
+     * Navega a la página anterior de reservas
+     */
+    @FXML
+    private void paginaAnteriorReservas() {
+        // Por ahora, solo muestra un mensaje
+        // La paginación completa se implementará en una fase posterior
+        System.out.println("Navegando a página anterior...");
+    }
+    
+    /**
+     * Navega a la página siguiente de reservas
+     */
+    @FXML
+    private void paginaSiguienteReservas() {
+        // Por ahora, solo muestra un mensaje
+        // La paginación completa se implementará en una fase posterior
+        System.out.println("Navegando a página siguiente...");
+    }
+    
+    /**
+     * Exporta las reservas filtradas
+     */
+    @FXML
+    private void exportarReservas() {
+        // Por ahora, solo muestra un mensaje
+        mostrarAlerta("Exportar reservas", "Esta funcionalidad se implementará próximamente.", Alert.AlertType.INFORMATION);
+    }
+    
+    /**
+     * Refresca los datos de las reservas
+     */
+    @FXML
+    private void refrescarReservas() {
+        cargarReservas();
+    }
+    
+    /**
+     * Actualiza las estadísticas de la tabla de reservas
+     */
+    private void actualizarEstadisticasReservas() {
+        if (lblTotalReservas != null) {
+            lblTotalReservas.setText(listaReservas.size() + " registros");
+        }
+        if (lblReservasFiltradas != null) {
+            lblReservasFiltradas.setText(listaReservasFiltradas.size() + " mostrados");
+        }
     }
     
     // ==================== ACCIONES DE ESPACIOS ====================
@@ -2908,20 +3217,80 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         alert.setTitle("Detalles de la Reserva");
         alert.setHeaderText("Reserva #" + reserva.getId());
         
-        StringBuilder detalles = new StringBuilder();
-        detalles.append("Usuario: ").append(reserva.getUsuario() != null ? reserva.getUsuario().getNombre() : "N/A").append("\n");
-        detalles.append("Espacio: ").append(reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "N/A").append("\n");
-        detalles.append("Fecha: ").append(reserva.getFecha()).append("\n");
-        detalles.append("Hora: ").append(reserva.getHoraInicio()).append(" - ").append(reserva.getHoraFin()).append("\n");
-        detalles.append("Estado: ").append(reserva.getEstado()).append("\n");
-        detalles.append("Código QR: ").append(reserva.getCodigoQR()).append("\n");
+        // Crear contenedor principal con disposición vertical
+        VBox contenedorPrincipal = new VBox(12);
+        contenedorPrincipal.setPadding(new javafx.geometry.Insets(15));
+        contenedorPrincipal.setStyle("-fx-font-size: 13px;");
         
+        // Información de la reserva en formato vertical
+        VBox infoBox = new VBox(6);
+        infoBox.getChildren().addAll(
+            crearLabelDetalle("👤 Usuario:", reserva.getUsuario() != null ? reserva.getUsuario().getNombre() : "N/A"),
+            crearLabelDetalle("📍 Espacio:", reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "N/A"),
+            crearLabelDetalle("📅 Fecha:", reserva.getFecha() != null ? reserva.getFecha().toString() : "N/A"),
+            crearLabelDetalle("🕐 Horario:", 
+                (reserva.getHoraInicio() != null ? reserva.getHoraInicio().toString() : "N/A") + 
+                " - " + 
+                (reserva.getHoraFin() != null ? reserva.getHoraFin().toString() : "N/A")),
+            crearLabelDetalle("📊 Estado:", reserva.getEstado() != null ? reserva.getEstado() : "N/A")
+        );
+        
+        // Sección del código QR con mayor visibilidad
+        VBox qrBox = new VBox(8);
+        qrBox.setPadding(new javafx.geometry.Insets(10));
+        qrBox.setStyle("-fx-background-color: #f0f9ff; -fx-border-color: #0ea5e9; -fx-border-width: 2px; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+        
+        Label qrTitulo = new Label("🔲 Código QR de la Reserva");
+        qrTitulo.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #0369a1;");
+        
+        Label qrCodigo = new Label(reserva.getCodigoQR() != null ? reserva.getCodigoQR() : "Sin código QR");
+        qrCodigo.setStyle("-fx-font-family: 'Courier New', monospace; -fx-font-size: 16px; -fx-text-fill: #0c4a6e; -fx-font-weight: bold;");
+        qrCodigo.setWrapText(true);
+        
+        Label qrInfo = new Label(
+            "PENDING".equals(reserva.getEstado()) || "Pendiente".equals(reserva.getEstado())
+            ? "⚠️ Este QR estará bloqueado hasta que se apruebe la reserva"
+            : "✅ Este código QR puede ser escaneado para el check-in"
+        );
+        qrInfo.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-style: italic;");
+        qrInfo.setWrapText(true);
+        
+        qrBox.getChildren().addAll(qrTitulo, qrCodigo, qrInfo);
+        
+        // Notas adicionales si existen
         if (reserva.getNotas() != null && !reserva.getNotas().isEmpty()) {
-            detalles.append("Notas: ").append(reserva.getNotas()).append("\n");
+            VBox notasBox = new VBox(4);
+            Label notasTitulo = new Label("📝 Notas:");
+            notasTitulo.setStyle("-fx-font-weight: bold;");
+            Label notasContenido = new Label(reserva.getNotas());
+            notasContenido.setWrapText(true);
+            notasContenido.setStyle("-fx-text-fill: #475569;");
+            notasBox.getChildren().addAll(notasTitulo, notasContenido);
+            contenedorPrincipal.getChildren().addAll(infoBox, new javafx.scene.control.Separator(), qrBox, new javafx.scene.control.Separator(), notasBox);
+        } else {
+            contenedorPrincipal.getChildren().addAll(infoBox, new javafx.scene.control.Separator(), qrBox);
         }
         
-        alert.setContentText(detalles.toString());
+        // Configurar el diálogo
+        ScrollPane scrollPane = new ScrollPane(contenedorPrincipal);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefWidth(500);
+        scrollPane.setPrefHeight(400);
+        scrollPane.setStyle("-fx-background-color: transparent;");
+        
+        alert.getDialogPane().setContent(scrollPane);
+        alert.getDialogPane().setPrefWidth(550);
         alert.showAndWait();
+    }
+    
+    /**
+     * Helper para crear labels de detalle con formato consistente
+     */
+    private Label crearLabelDetalle(String titulo, String valor) {
+        Label label = new Label(titulo + " " + valor);
+        label.setWrapText(true);
+        label.setStyle("-fx-padding: 2px 0px;");
+        return label;
     }
     
     /**
@@ -3588,7 +3957,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }
     
-}
+    /**
+     * Método auxiliar para capitalizar la primera letra de un texto (igual que UserDashboard)
+     */
+    private String capitalizeFirst(String text) {
+        if (text == null || text.isEmpty()) return text;
+        return text.substring(0, 1).toUpperCase() + text.substring(1);
+    }
+    
+} // Fin de AdminDashboardController
 
 record DatosIniciales(List<Espacio> espacios, List<Usuario> usuarios, List<Reserva> reservas,
         DatosClimaticos clima, List<String> warnings) {
