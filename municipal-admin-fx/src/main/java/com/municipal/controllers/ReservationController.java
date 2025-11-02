@@ -123,22 +123,45 @@ public class ReservationController {
         }
     }
 
-    // ✅ NUEVO MÉTODO - Cancelar reserva
-    public void cancelReservation(Long reservationId, String token) throws Exception {
-        String url = apiClient.getBaseUrl() + "/api/reservations/" + reservationId + "/cancel";
+    // ✅ MÉTODO PARA ELIMINACIÓN PERMANENTE - Elimina físicamente de la base de datos
+    public void permanentlyDeleteReservation(Long id, String token) throws Exception {
+        String url = apiClient.getBaseUrl() + "/api/reservations/" + id + "/permanent";
         
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.noBody())
+            .DELETE()
             .build();
 
         HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200 && response.statusCode() != 204) {
-            throw new ApiClientException(response.statusCode(), response.body());
-         }
+            throw new ApiClientException(response.statusCode(), response.body());   
+        }
+    }
+
+    // ✅ NUEVO MÉTODO - Cancelar reserva con motivo
+    public ReservationDTO cancelReservation(Long reservationId, String reason, String token) throws Exception {
+        String url = apiClient.getBaseUrl() + "/api/reservations/" + reservationId + "/cancel";
+        
+        // Crear el payload con el motivo de cancelación
+        String jsonBody = reason != null && !reason.trim().isEmpty() 
+            ? String.format("{\"reason\": \"%s\"}", reason.replace("\"", "\\\""))
+            : "{}";
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build();
+
+        HttpResponse<String> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            return JsonUtils.fromJson(response.body(), ReservationDTO.class);
+        }
+        throw new ApiClientException(response.statusCode(), response.body());
     }
 
     // ✅ NUEVO MÉTODO - Aprobar reserva (cambia de PENDING a CONFIRMED)

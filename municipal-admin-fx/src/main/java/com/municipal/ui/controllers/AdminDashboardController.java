@@ -200,6 +200,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private final UserController userController = new UserController();
     private final ReservationController reservationController = new ReservationController();
     private final WeatherController weatherController = new WeatherController();
+    private final com.municipal.controllers.NotificationController notificationController = new com.municipal.controllers.NotificationController(new com.municipal.ApiClient());
 
     private SessionManager sessionManager;
     private FlowController flowController;
@@ -222,7 +223,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private static final String LOGIN_VIEW_ID = "login";
     private static final double PANEL_SLIDE_OFFSET = 360;
     private static final Duration PANEL_ANIMATION_DURATION = Duration.millis(260);
-    private static final Duration CLIMA_REFRESH_INTERVAL = Duration.seconds(30);
+    private static final Duration CLIMA_REFRESH_INTERVAL = Duration.minutes(10); // Actualización del clima cada 10 minutos
     private static final Duration DATA_REFRESH_INTERVAL = Duration.seconds(30); // Actualización cada 30 segundos
     private static final List<String> TIPOS_ESPACIO = List.of("SALA", "CANCHA", "AUDITORIO");
     private static final Map<String, String> ROLES_FRIENDLY = Map.of(
@@ -935,6 +936,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                             label.setStyle("-fx-background-color: #DC3545; -fx-text-fill: white; " +
                                          "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;");
                             break;
+                        case "En sitio":
+                            label.setStyle("-fx-background-color: #17A2B8; -fx-text-fill: white; " +
+                                         "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;");
+                            break;
+                        case "Inasistencia":
+                            label.setStyle("-fx-background-color: #6C757D; -fx-text-fill: white; " +
+                                         "-fx-padding: 4 10; -fx-background-radius: 12; -fx-font-weight: bold;");
+                            break;
                     }
                     
                     setGraphic(label);
@@ -943,15 +952,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             }
         });
         
-        // Configurar columna de acciones con anchos adecuados
-        colAccionesReserva.setMinWidth(380);
-        colAccionesReserva.setPrefWidth(400);
+        // Configurar columna de acciones con anchos adecuados (más espacio para el botón eliminar)
+        colAccionesReserva.setMinWidth(480);
+        colAccionesReserva.setPrefWidth(500);
         
         colAccionesReserva.setCellFactory(param -> new TableCell<Reserva, Void>() {
             private final Button btnVer = new Button("👁️ Ver");
             private final Button btnAprobar = new Button("✅ Aprobar");
             private final Button btnCancelar = new Button("❌ Cancelar");
             private final Button btnEmail = new Button("📧 Email");
+            private final Button btnEliminar = new Button("🗑️ Eliminar");
             private final HBox contenedor = new HBox(6);
             
             {
@@ -960,12 +970,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 btnAprobar.getStyleClass().addAll("admin-btn-base", "admin-btn-approve");
                 btnCancelar.getStyleClass().addAll("admin-btn-base", "admin-btn-cancel");
                 btnEmail.getStyleClass().addAll("admin-btn-base", "admin-btn-email");
+                btnEliminar.getStyleClass().addAll("admin-btn-base", "admin-btn-delete");
                 
                 // Tooltips detallados
                 javafx.scene.control.Tooltip.install(btnVer, new javafx.scene.control.Tooltip("Ver detalles completos de la reserva"));
                 javafx.scene.control.Tooltip.install(btnAprobar, new javafx.scene.control.Tooltip("Aprobar reserva y desbloquear código QR"));
                 javafx.scene.control.Tooltip.install(btnCancelar, new javafx.scene.control.Tooltip("Cancelar esta reserva"));
                 javafx.scene.control.Tooltip.install(btnEmail, new javafx.scene.control.Tooltip("Enviar notificación por correo electrónico"));
+                javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar permanentemente esta reserva de la base de datos"));
                 
                 btnVer.setOnAction(e -> {
                     Reserva reserva = getTableView().getItems().get(getIndex());
@@ -985,6 +997,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 btnEmail.setOnAction(e -> {
                     Reserva reserva = getTableView().getItems().get(getIndex());
                     enviarEmailReserva(reserva);
+                });
+                
+                btnEliminar.setOnAction(e -> {
+                    Reserva reserva = getTableView().getItems().get(getIndex());
+                    eliminarReservaPermanente(reserva);
                 });
                 
                 contenedor.setAlignment(Pos.CENTER);
@@ -1015,11 +1032,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 else if ("Confirmada".equals(estado)) {
                     contenedor.getChildren().addAll(btnCancelar, btnEmail);
                 }
-                // CHECKED_IN o NO_SHOW: Ver + Email (solo consulta)
-                else if ("Checked In".equals(estado) || "No Show".equals(estado)) {
-                    contenedor.getChildren().add(btnEmail);
+                // EN SITIO (CHECKED_IN) o INASISTENCIA (NO_SHOW): Ver + Email + Eliminar
+                else if ("En sitio".equals(estado) || "Inasistencia".equals(estado)) {
+                    contenedor.getChildren().addAll(btnEmail, btnEliminar);
                 }
-                // CANCELADA: Solo Ver
+                // CANCELADA: Ver + Email + Eliminar
+                else if ("Cancelada".equals(estado)) {
+                    contenedor.getChildren().addAll(btnEmail, btnEliminar);
+                }
                 
                 setGraphic(contenedor);
             }
@@ -1320,7 +1340,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                         .collect(Collectors.toMap(Usuario::getId, usuario -> usuario, (a, b) -> a, HashMap::new));
 
                 List<Reserva> reservas = cargarReservasDesdeApi(token, warnings, usuariosPorId, espaciosPorId);
-                DatosClimaticos clima = cargarClimaDesdeApi(token, warnings);
+                // ✅ El clima se actualiza por separado cada 10 minutos mediante climaTimeline
+                // No necesitamos cargarlo aquí cada 30 segundos
+                DatosClimaticos clima = climaActual; // Usar el clima ya cargado
 
                 return new DatosIniciales(espacios, usuarios, reservas, clima, warnings);
             }
@@ -3021,11 +3043,35 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             
             Optional<ButtonType> confirmResult = confirmacion.showAndWait();
             if (confirmResult.isPresent() && confirmResult.get() == ButtonType.OK) {
-                // TODO: Llamar al backend para cancelar la reserva
-                // TODO: Enviar email con el motivo
-                mostrarInformacion("Reserva cancelada", 
-                    "La reserva ha sido cancelada exitosamente.\nSe ha enviado un email al usuario con el motivo de la cancelación.");
-                cargarReservas(); // Recargar tabla
+                // Obtener token de sesión
+                String token = sessionManager.getAccessToken();
+                if (token == null) {
+                    mostrarError("Error: Token de sesión no disponible");
+                    return;
+                }
+                
+                // Ejecutar cancelación en segundo plano
+                Task<ReservationDTO> task = new Task<>() {
+                    @Override
+                    protected ReservationDTO call() throws Exception {
+                        return reservationController.cancelReservation(reserva.getId(), motivo, token);
+                    }
+                };
+                
+                task.setOnSucceeded(e -> {
+                    ReservationDTO cancelada = task.getValue();
+                    mostrarExito("✅ Reserva cancelada exitosamente\n\nSe ha enviado un email al usuario con el motivo de la cancelación.");
+                    // Recargar datos para mostrar el cambio de estado
+                    cargarDatosIniciales(false);
+                });
+                
+                task.setOnFailed(e -> {
+                    String errorMsg = task.getException() != null ? 
+                        task.getException().getMessage() : "Error desconocido";
+                    mostrarError("Error al cancelar la reserva: " + errorMsg);
+                });
+                
+                new Thread(task).start();
             }
         });
     }
@@ -3034,27 +3080,46 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
      * Envía un email personalizado relacionado con la reserva
      */
     private void enviarEmailReserva(Reserva reserva) {
+        // Validar que la reserva tenga usuario con email
+        if (reserva.getUsuario() == null || reserva.getUsuario().getCorreo() == null) {
+            mostrarAdvertencia("Esta reserva no tiene un usuario o email asociado");
+            return;
+        }
+        
         // Crear diálogo personalizado para el email
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Enviar Email");
         dialog.setHeaderText("Enviar notificación para Reserva #" + reserva.getId());
         
+        // Mostrar información del destinatario
+        Label lblDestinatario = new Label("Destinatario: " + reserva.getUsuario().getCorreo());
+        lblDestinatario.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        
         // Crear campos del formulario
         TextField asuntoField = new TextField();
-        asuntoField.setPromptText("Asunto del email");
-        TextArea mensajeArea = new TextArea();
-        mensajeArea.setPromptText("Mensaje del email...");
-        mensajeArea.setPrefRowCount(6);
+        asuntoField.setPromptText("Ejemplo: Recordatorio de tu reserva");
         
-        VBox content = new VBox(10);
+        TextArea mensajeArea = new TextArea();
+        mensajeArea.setPromptText("Escribe aquí tu mensaje personalizado...\n\nLa información de la reserva (fecha, espacio, etc.) se incluirá automáticamente.");
+        mensajeArea.setPrefRowCount(8);
+        mensajeArea.setWrapText(true);
+        
+        VBox content = new VBox(12);
         content.getChildren().addAll(
+            lblDestinatario,
+            new javafx.scene.control.Separator(),
             new Label("Asunto:"), asuntoField,
             new Label("Mensaje:"), mensajeArea
         );
         content.setPadding(new javafx.geometry.Insets(20));
+        content.setStyle("-fx-font-size: 13px;");
         
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        
+        // Personalizar el botón OK
+        javafx.scene.control.Button btnEnviar = (javafx.scene.control.Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        btnEnviar.setText("📧 Enviar Email");
         
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -3062,18 +3127,109 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             String mensaje = mensajeArea.getText().trim();
             
             if (asunto.isEmpty() || mensaje.isEmpty()) {
-                mostrarAdvertencia("Debe completar el asunto y el mensaje");
+                mostrarAdvertencia("Debe completar tanto el asunto como el mensaje");
                 return;
             }
             
-            // TODO: Llamar al backend para enviar email
-            mostrarInformacion("Email enviado", 
-                "La notificación ha sido enviada exitosamente al usuario.");
+            // Obtener token
+            String token = sessionManager.getAccessToken();
+            if (token == null) {
+                mostrarError("Error: Token de sesión no disponible");
+                return;
+            }
+            
+            // Enviar email en segundo plano
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    notificationController.sendCustomEmail(reserva.getId(), asunto, mensaje, token);
+                    return null;
+                }
+            };
+            
+            task.setOnSucceeded(e -> {
+                mostrarExito("✅ Email enviado exitosamente\n\nLa notificación ha sido enviada a: " + reserva.getUsuario().getCorreo());
+            });
+            
+            task.setOnFailed(e -> {
+                String errorMsg = task.getException() != null ? 
+                    task.getException().getMessage() : "Error desconocido";
+                mostrarError("Error al enviar el email: " + errorMsg);
+            });
+            
+            new Thread(task).start();
         }
     }
 
     private void notificarUsuarioReserva(Reserva reserva) {
         enviarEmailReserva(reserva);
+    }
+
+    /**
+     * Elimina permanentemente una reserva de la base de datos
+     * Solo disponible para reservas con estado CHECKED_IN, NO_SHOW o CANCELED
+     */
+    private void eliminarReservaPermanente(Reserva reserva) {
+        String estado = reserva.getEstado();
+        
+        // Validar que solo se puedan eliminar reservas finalizadas o canceladas
+        if (!"En sitio".equals(estado) && !"Inasistencia".equals(estado) && !"Cancelada".equals(estado)) {
+            mostrarAdvertencia("Solo se pueden eliminar reservas con asistencia confirmada, inasistencia registrada o canceladas");
+            return;
+        }
+        
+        // Crear diálogo de confirmación con advertencia fuerte
+        Alert confirmacion = new Alert(Alert.AlertType.WARNING);
+        confirmacion.setTitle("⚠️ Eliminar Reserva Permanentemente");
+        confirmacion.setHeaderText("¿Está seguro de eliminar esta reserva de la base de datos?");
+        confirmacion.setContentText(
+            "Esta acción es IRREVERSIBLE y eliminará permanentemente:\n\n" +
+            "• Reserva ID: " + reserva.getId() + "\n" +
+            "• Usuario: " + formatearNombreUsuario(reserva.getUsuario()) + "\n" +
+            "• Espacio: " + (reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "N/A") + "\n" +
+            "• Fecha: " + reserva.getFecha() + "\n" +
+            "• Estado: " + estado + "\n\n" +
+            "⚠️ Esta operación NO SE PUEDE DESHACER\n" +
+            "⚠️ Los datos serán eliminados permanentemente de la base de datos"
+        );
+        
+        // Agregar botón personalizado para mayor claridad
+        ButtonType btnEliminar = new ButtonType("Eliminar Permanentemente", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        confirmacion.getButtonTypes().setAll(btnEliminar, btnCancelar);
+        
+        Optional<ButtonType> result = confirmacion.showAndWait();
+        if (result.isPresent() && result.get() == btnEliminar) {
+            // Ejecutar eliminación
+            String token = sessionManager.getAccessToken();
+            if (token == null) {
+                mostrarError("Error: Token de sesión no disponible");
+                return;
+            }
+            
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    // Usar el nuevo método de eliminación permanente
+                    reservationController.permanentlyDeleteReservation(reserva.getId(), token);
+                    return null;
+                }
+            };
+            
+            task.setOnSucceeded(e -> {
+                mostrarExito("✅ Reserva eliminada permanentemente de la base de datos");
+                // Recargar datos para reflejar la eliminación
+                cargarDatosIniciales(false);
+            });
+            
+            task.setOnFailed(e -> {
+                String errorMsg = task.getException() != null ? 
+                    task.getException().getMessage() : "Error desconocido";
+                mostrarError("Error al eliminar la reserva: " + errorMsg);
+            });
+            
+            new Thread(task).start();
+        }
     }
     
     // ==================== ACCIONES GENERALES ====================

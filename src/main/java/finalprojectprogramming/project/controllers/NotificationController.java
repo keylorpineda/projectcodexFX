@@ -75,4 +75,18 @@ public class NotificationController {
         notificationService.delete(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @PostMapping("/send-custom-email")
+    @Operation(summary = "Send custom email notification for a reservation")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<Void> sendCustomEmail(@Valid @RequestBody CustomEmailRequest request) {
+        notificationService.sendCustomEmailToReservation(
+            request.reservationId(), 
+            request.subject(), 
+            request.message()
+        );
+        return ResponseEntity.ok().build();
+    }
+    
+    public record CustomEmailRequest(Long reservationId, String subject, String message) {}
 }

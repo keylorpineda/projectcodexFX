@@ -975,3 +975,23 @@
     -fx-scale-y: 1.05;
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 8, 0, 0, 3);
 }
+
+/* Botón de eliminar permanentemente - Rojo intenso con advertencia */
+.reservation-delete-btn {
+    -fx-background-color: #991b1b;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 12;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 4, 0, 0, 2);
+    -fx-transition: all 0.3s ease;
+}
+
+.reservation-delete-btn:hover {
+    -fx-background-color: #7f1d1d;
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    -fx-effect: dropshadow(three-pass-box, rgba(153,27,27,0.4), 8, 0, 0, 3);
+}

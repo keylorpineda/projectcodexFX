@@ -5,15 +5,21 @@ import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Notification;
 import finalprojectprogramming.project.models.Reservation;
 import finalprojectprogramming.project.models.enums.UserRole;
+import finalprojectprogramming.project.models.enums.NotificationType;
+import finalprojectprogramming.project.models.enums.NotificationStatus;
 import finalprojectprogramming.project.repositories.NotificationRepository;
 import finalprojectprogramming.project.repositories.ReservationRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.mail.EmailService;
+import finalprojectprogramming.project.services.mail.EmailServiceImplementation.MailSendingException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +27,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class NotificationServiceImplementation implements NotificationService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationServiceImplementation.class);
+    
     private final NotificationRepository notificationRepository;
     private final ReservationRepository reservationRepository;
     private final ModelMapper modelMapper;
+    private final EmailService emailService;
 
     public NotificationServiceImplementation(NotificationRepository notificationRepository,
-            ReservationRepository reservationRepository, ModelMapper modelMapper) {
+            ReservationRepository reservationRepository, ModelMapper modelMapper, EmailService emailService) {
         this.notificationRepository = notificationRepository;
         this.reservationRepository = reservationRepository;
         this.modelMapper = modelMapper;
+        this.emailService = emailService;
     }
 
     @Override
@@ -114,6 +124,42 @@ public class NotificationServiceImplementation implements NotificationService {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification with id " + id + " not found"));
         notificationRepository.delete(notification);
+    }
+
+    @Override
+    public void sendCustomEmailToReservation(Long reservationId, String subject, String message) {
+        SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
+        Reservation reservation = getActiveReservation(reservationId);
+        
+        if (reservation.getUser() == null || reservation.getUser().getEmail() == null) {
+            throw new ResourceNotFoundException("Reservation has no associated user or email");
+        }
+        
+        // Crear notificación
+        Notification notification = Notification.builder()
+                .reservation(reservation)
+                .type(NotificationType.REMINDER)
+                .sentTo(reservation.getUser().getEmail())
+                .messageContent(message)
+                .sentAt(LocalDateTime.now())
+                .status(NotificationStatus.SENT)
+                .build();
+        
+        try {
+            // Enviar email personalizado
+            emailService.sendCustomEmail(reservation, subject, message);
+            LOGGER.info("Custom email sent to {} for reservation {}", reservation.getUser().getEmail(), reservationId);
+        } catch (MailSendingException ex) {
+            notification.setStatus(NotificationStatus.FAILED);
+            LOGGER.error("Failed to send custom email for reservation {}", reservationId, ex);
+            throw ex;
+        } finally {
+            // Guardar notificación de todas formas
+            if (reservation.getNotifications() != null) {
+                reservation.getNotifications().add(notification);
+            }
+            notificationRepository.save(notification);
+        }
     }
 
     private Reservation getActiveReservation(Long reservationId) {

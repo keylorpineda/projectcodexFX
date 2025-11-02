@@ -752,12 +752,14 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         reservationActionsColumn.setCellFactory(col -> new TableCell<>() {
             private final Button viewBtn = new Button("👁️ Ver");
             private final Button cancelBtn = new Button("❌ Cancelar");
+            private final Button deleteBtn = new Button("🗑️ Eliminar");
             private final HBox box = new HBox(8);
 
             {
                 // Aplicar clases CSS definidas en user-dashboard.css
                 viewBtn.getStyleClass().add("reservation-view-btn");
                 cancelBtn.getStyleClass().add("reservation-cancel-btn");
+                deleteBtn.getStyleClass().add("reservation-delete-btn");
                 
                 // Tooltips informativos
                 javafx.scene.control.Tooltip viewTooltip = new javafx.scene.control.Tooltip("Ver detalles completos de la reserva");
@@ -767,6 +769,10 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                 javafx.scene.control.Tooltip cancelTooltip = new javafx.scene.control.Tooltip("Cancelar esta reserva");
                 cancelTooltip.setShowDelay(javafx.util.Duration.millis(300));
                 javafx.scene.control.Tooltip.install(cancelBtn, cancelTooltip);
+                
+                javafx.scene.control.Tooltip deleteTooltip = new javafx.scene.control.Tooltip("Eliminar permanentemente esta reserva cancelada");
+                deleteTooltip.setShowDelay(javafx.util.Duration.millis(300));
+                javafx.scene.control.Tooltip.install(deleteBtn, deleteTooltip);
                 
                 box.setAlignment(Pos.CENTER);
 
@@ -778,6 +784,11 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                 cancelBtn.setOnAction(e -> {
                     ReservationDTO res = getTableView().getItems().get(getIndex());
                     handleCancelReservationConfirm(res);
+                });
+                
+                deleteBtn.setOnAction(e -> {
+                    ReservationDTO res = getTableView().getItems().get(getIndex());
+                    handleDeleteReservation(res);
                 });
             }
 
@@ -797,6 +808,11 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                     // Las reservas CONFIRMED solo pueden ser canceladas por admin
                     if ("PENDING".equals(res.status())) {
                         box.getChildren().add(cancelBtn);
+                    }
+                    
+                    // Mostrar botón Eliminar solo si está CANCELED
+                    if ("CANCELED".equals(res.status())) {
+                        box.getChildren().add(deleteBtn);
                     }
                     
                     setGraphic(box);
@@ -1265,11 +1281,20 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             return;
         }
 
+        // Solicitar motivo de cancelación (opcional para usuarios)
+        TextInputDialog motivoDialog = new TextInputDialog();
+        motivoDialog.setTitle("Cancelar Reserva");
+        motivoDialog.setHeaderText("Motivo de cancelación (opcional)");
+        motivoDialog.setContentText("Si deseas, puedes indicar el motivo:");
+        
+        Optional<String> motivoResult = motivoDialog.showAndWait();
+        String motivo = motivoResult.orElse("Cancelada por el usuario");
+
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                // ✅ Usar el método correcto del ReservationController
-                reservationController.cancelReservation(reservation.id(), token);
+                // ✅ Usar el método correcto del ReservationController con motivo
+                reservationController.cancelReservation(reservation.id(), motivo, token);
                 return null;
             }
         };
@@ -1285,6 +1310,78 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
             Throwable ex = task.getException();
             String errorMsg = ex != null ? ex.getMessage() : "Error desconocido";
             showError("Error al cancelar: " + errorMsg);
+            if (ex != null) ex.printStackTrace();
+        });
+
+        new Thread(task).start();
+    }
+
+    /**
+     * Maneja la eliminación permanente de una reserva cancelada
+     */
+    private void handleDeleteReservation(ReservationDTO reservation) {
+        if (!"CANCELED".equals(reservation.status())) {
+            showWarning("Solo se pueden eliminar reservas canceladas");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.WARNING);
+        confirm.setTitle("⚠️ Eliminar Reserva Permanentemente");
+        confirm.setHeaderText("¿Está seguro de eliminar esta reserva?");
+        confirm.setContentText(
+            "Esta acción es IRREVERSIBLE y eliminará permanentemente:\n\n" +
+            "• Reserva ID: " + reservation.id() + "\n" +
+            "• Fecha: " + (reservation.startTime() != null ? reservation.startTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "N/A") + "\n" +
+            "• Estado: " + (reservation.status() != null ? reservation.status() : "N/A") + "\n\n" +
+            "⚠️ Esta operación NO SE PUEDE DESHACER\n" +
+            "⚠️ Los datos serán eliminados permanentemente de la base de datos"
+        );
+
+        ButtonType btnEliminar = new ButtonType("Eliminar Permanentemente", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        confirm.getButtonTypes().setAll(btnEliminar, btnCancelar);
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == btnEliminar) {
+                deleteReservationPermanently(reservation);
+            }
+        });
+    }
+
+    /**
+     * Elimina permanentemente una reserva de la base de datos
+     */
+    private void deleteReservationPermanently(ReservationDTO reservation) {
+        if (sessionManager == null) {
+            showError("No hay sesión activa");
+            return;
+        }
+
+        String token = sessionManager.getAccessToken();
+        if (token == null) {
+            showError("Token inválido");
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                reservationController.deleteReservation(reservation.id(), token);
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            reservationsList.remove(reservation);
+            showSuccess("✅ Reserva eliminada permanentemente de la base de datos");
+            loadInitialData(false);
+            updateDashboardMetrics();
+        });
+
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            String errorMsg = ex != null ? ex.getMessage() : "Error desconocido";
+            showError("Error al eliminar la reserva: " + errorMsg);
             if (ex != null) ex.printStackTrace();
         });
 
@@ -1418,6 +1515,16 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
+    }
+
+    private void showWarning(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Advertencia");
             alert.setHeaderText(null);
             alert.setContentText(message);
             alert.showAndWait();

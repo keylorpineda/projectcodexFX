@@ -9,4 +9,6 @@ public interface EmailService {
     void sendReservationApproved(Reservation reservation);
 
     void sendReservationCanceled(Reservation reservation);
+    
+    void sendCustomEmail(Reservation reservation, String subject, String customMessage);
 }

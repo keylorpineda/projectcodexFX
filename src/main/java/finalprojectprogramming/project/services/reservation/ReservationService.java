@@ -28,4 +28,6 @@ public interface ReservationService {
     ReservationDTO markNoShow(Long id);
 
     void delete(Long id);
+    
+    void hardDelete(Long id);
 }

@@ -65,6 +65,14 @@ public class EmailServiceImplementation implements EmailService {
         send(reservation, subject, preheader, title, intro, "#F56565");
     }
 
+    @Override
+    public void sendCustomEmail(Reservation reservation, String subject, String customMessage) {
+        String preheader = "Mensaje importante sobre tu reserva.";
+        String title = "Notificación de reserva";
+        String intro = customMessage;
+        send(reservation, subject, preheader, title, intro, "#4C51BF");
+    }
+
     private void send(Reservation reservation, String subject, String preheader, String title, String intro,
             String accentColor) {
         User user = reservation.getUser();

@@ -16,4 +16,6 @@ public interface NotificationService {
     List<NotificationDTO> findByReservation(Long reservationId);
 
     void delete(Long id);
+    
+    void sendCustomEmailToReservation(Long reservationId, String subject, String message);
 }

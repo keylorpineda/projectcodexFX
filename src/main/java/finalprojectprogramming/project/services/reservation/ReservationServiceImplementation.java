@@ -321,10 +321,38 @@ public class ReservationServiceImplementation implements ReservationService {
     @Override
     public void delete(Long id) {
         Reservation reservation = getActiveReservation(id);
-        SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
+        
+        // Los usuarios pueden eliminar sus propias reservas canceladas
+        // Los supervisores y admins pueden eliminar cualquier reserva
+        Long ownerId = reservation.getUser() != null ? reservation.getUser().getId() : null;
+        
+        if (reservation.getStatus() == ReservationStatus.CANCELED) {
+            // Si está cancelada, el dueño puede eliminarla
+            SecurityUtils.requireSelfOrAny(ownerId, UserRole.SUPERVISOR, UserRole.ADMIN);
+        } else {
+            // Para otros estados, solo SUPERVISOR o ADMIN
+            SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
+        }
+        
         reservation.setDeletedAt(LocalDateTime.now());
         reservation.setUpdatedAt(LocalDateTime.now());
         reservationRepository.save(reservation);
+    }
+
+    @Override
+    public void hardDelete(Long id) {
+        SecurityUtils.requireAny(UserRole.ADMIN);
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation with id " + id + " not found"));
+        
+        // Solo permitir eliminación física de reservas con estados finales o canceladas
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN && 
+            reservation.getStatus() != ReservationStatus.NO_SHOW &&
+            reservation.getStatus() != ReservationStatus.CANCELED) {
+            throw new BusinessRuleException("Only reservations with CHECKED_IN, NO_SHOW or CANCELED status can be permanently deleted");
+        }
+        
+        reservationRepository.delete(reservation);
     }
 
     private Reservation getActiveReservation(Long id) {

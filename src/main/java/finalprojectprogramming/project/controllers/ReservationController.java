@@ -118,6 +118,14 @@ public ResponseEntity<ReservationDTO> markCheckIn(@PathVariable Long id,
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/permanent")
+    @Operation(summary = "Permanently delete a reservation from database (only for CHECKED_IN or NO_SHOW)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> permanentlyDeleteReservation(@PathVariable Long id) {
+        reservationService.hardDelete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     public record CancellationRequest(String reason) {
     }
 
