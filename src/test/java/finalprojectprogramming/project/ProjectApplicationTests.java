@@ -7,7 +7,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 class ProjectApplicationTests {
 
 	@Test
-	void contextLoads() {
-	}
+    void contextLoads() {
+        // Mantener este smoke test garantiza que el contexto completo de Spring Boot
+        // se levante correctamente antes de ejecutar suites más específicas.
+    }
 
 }
