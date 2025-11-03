@@ -1,20 +1,10 @@
 package finalprojectprogramming.project.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
 @Setter
@@ -29,16 +19,33 @@ public class Rating {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reservation_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id", nullable = false)
     private Reservation reservation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "space_id", nullable = false)
+    private Space space;
 
     @Column(nullable = false)
     private Integer score;
 
-    @Column(columnDefinition = "text")
+    @Column(length = 1000)
     private String comment;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    @Column(name = "helpful_count")
+    private Integer helpfulCount = 0;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean visible = true;
 }

@@ -15,5 +15,15 @@ public interface RatingService {
 
     RatingDTO findByReservation(Long reservationId);
 
+    List<RatingDTO> findBySpace(Long spaceId);
+
+    Double getAverageBySpace(Long spaceId);
+
+    Long getCountBySpace(Long spaceId);
+
+    RatingDTO toggleVisibility(Long id);
+
+    RatingDTO incrementHelpful(Long id);
+
     void delete(Long id);
 }

@@ -150,6 +150,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     @FXML private TableColumn<SpaceDTO, String> colNombreEspacio;
     @FXML private TableColumn<SpaceDTO, String> colTipoEspacio;
     @FXML private TableColumn<SpaceDTO, Integer> colCapacidadEspacio;
+    @FXML private TableColumn<SpaceDTO, String> colCalificacionEspacio;
     @FXML private TableColumn<SpaceDTO, String> colEstadoEspacio;
     @FXML private TableColumn<SpaceDTO, Void> colAccionesEspacio;
     
@@ -560,13 +561,22 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private void configurarTablaEspacios() {
         if (tablaEspacios == null) return;
         
-        // Configurar columnas con lambdas en lugar de PropertyValueFactory
         colNombreEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
         colTipoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().type()));
         colCapacidadEspacio.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().capacity()).asObject());
         colEstadoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().active() ? "Activo" : "Inactivo"));
         
-        // Personalizar columna de estado con estilos
+        if (colCalificacionEspacio != null) {
+            colCalificacionEspacio.setCellValueFactory(cellData -> {
+                Double rating = cellData.getValue().averageRating();
+                Long count = cellData.getValue().reviewCount();
+                if (rating != null && count != null && count > 0) {
+                    return new SimpleStringProperty(String.format("⭐ %.1f (%d)", rating, count));
+                }
+                return new SimpleStringProperty("Sin reseñas");
+            });
+        }
+        
         colEstadoEspacio.setCellFactory(column -> new TableCell<SpaceDTO, String>() {
             @Override
             protected void updateItem(String estado, boolean empty) {

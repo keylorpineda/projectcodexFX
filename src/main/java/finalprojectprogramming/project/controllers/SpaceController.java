@@ -10,6 +10,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +23,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/spaces")
@@ -89,5 +92,15 @@ public class SpaceController {
             @RequestParam(required = false) SpaceType type,
             @RequestParam(required = false) Integer minimumCapacity) {
         return ResponseEntity.ok(spaceService.findAvailableSpaces(startTime, endTime, type, minimumCapacity));
+    }
+
+    @PostMapping(value = "/with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create a new space with an image")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<SpaceDTO> createSpaceWithImage(
+            @RequestPart("space") @Valid SpaceDTO spaceDTO,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        SpaceDTO created = spaceService.createWithImage(spaceDTO, image);
+        return ResponseEntity.created(URI.create("/api/spaces/" + created.getId())).body(created);
     }
 }

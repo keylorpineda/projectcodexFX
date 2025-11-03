@@ -42,18 +42,19 @@ public class RatingServiceImplementation implements RatingService {
         if (reservation.getRating() != null || ratingRepository.findByReservationId(reservation.getId()).isPresent()) {
             throw new BusinessRuleException("Reservation already has a rating");
         }
-        if (reservation.getEndTime() == null || reservation.getEndTime().isAfter(LocalDateTime.now())) {
-            throw new BusinessRuleException("Reservations can only be rated after they have ended");
-        }
-        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
-            throw new BusinessRuleException("Only reservations with attendance confirmed can be rated");
+        if (reservation.getStatus() != ReservationStatus.COMPLETED && reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            throw new BusinessRuleException("Only completed or checked-in reservations can be rated");
         }
 
-        Rating rating = new Rating();
-        rating.setReservation(reservation);
-        rating.setScore(ratingDTO.getScore());
-        rating.setComment(ratingDTO.getComment());
-        rating.setCreatedAt(ratingDTO.getCreatedAt() != null ? ratingDTO.getCreatedAt() : LocalDateTime.now());
+        Rating rating = Rating.builder()
+                .reservation(reservation)
+                .user(reservation.getUser())
+                .space(reservation.getSpace())
+                .score(ratingDTO.getScore())
+                .comment(ratingDTO.getComment())
+                .helpfulCount(0)
+                .visible(true)
+                .build();
 
         reservation.setRating(rating);
 
@@ -116,6 +117,46 @@ public class RatingServiceImplementation implements RatingService {
         ratingRepository.delete(rating);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<RatingDTO> findBySpace(Long spaceId) {
+        return ratingRepository.findBySpaceIdAndVisibleTrueOrderByCreatedAtDesc(spaceId)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getAverageBySpace(Long spaceId) {
+        Double average = ratingRepository.getAverageScoreBySpaceId(spaceId);
+        return average != null ? Math.round(average * 10.0) / 10.0 : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long getCountBySpace(Long spaceId) {
+        return ratingRepository.getRatingCountBySpaceId(spaceId);
+    }
+
+    @Override
+    public RatingDTO toggleVisibility(Long id) {
+        Rating rating = ratingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Rating with id " + id + " not found"));
+        rating.setVisible(!rating.getVisible());
+        Rating saved = ratingRepository.save(rating);
+        return toDto(saved);
+    }
+
+    @Override
+    public RatingDTO incrementHelpful(Long id) {
+        Rating rating = ratingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Rating with id " + id + " not found"));
+        rating.setHelpfulCount(rating.getHelpfulCount() + 1);
+        Rating saved = ratingRepository.save(rating);
+        return toDto(saved);
+    }
+
     private Reservation getActiveReservation(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(
@@ -129,6 +170,9 @@ public class RatingServiceImplementation implements RatingService {
     private RatingDTO toDto(Rating rating) {
         RatingDTO dto = modelMapper.map(rating, RatingDTO.class);
         dto.setReservationId(rating.getReservation() != null ? rating.getReservation().getId() : null);
+        dto.setUserId(rating.getUser() != null ? rating.getUser().getId() : null);
+        dto.setUserName(rating.getUser() != null ? rating.getUser().getName() : null);
+        dto.setSpaceName(rating.getSpace() != null ? rating.getSpace().getName() : null);
         return dto;
     }
 }

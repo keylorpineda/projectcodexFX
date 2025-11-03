@@ -224,18 +224,18 @@
                                 </VBox>
                                 
                                 <VBox spacing="8">
-                                    <Label text="Tipo de espacio"/>
-                                    <ChoiceBox fx:id="spaceTypeChoice" prefWidth="150"/>
+                                    <Label text="Tipo de espacio" styleClass="form-label"/>
+                                    <ChoiceBox fx:id="spaceTypeChoice" prefWidth="150" styleClass="choice-box"/>
                                 </VBox>
                                 
                                 <VBox spacing="8">
-                                    <Label text="Capacidad"/>
-                                    <ChoiceBox fx:id="capacityChoice" prefWidth="150"/>
+                                    <Label text="Capacidad" styleClass="form-label"/>
+                                    <ChoiceBox fx:id="capacityChoice" prefWidth="150" styleClass="choice-box"/>
                                 </VBox>
                                 
                                 <VBox spacing="8">
-                                    <Label text="Fecha"/>
-                                    <DatePicker fx:id="datePicker" prefWidth="150"/>
+                                    <Label text="Fecha" styleClass="form-label"/>
+                                    <DatePicker fx:id="datePicker" prefWidth="150" styleClass="date-picker"/>
                                 </VBox>
                             </HBox>
                             

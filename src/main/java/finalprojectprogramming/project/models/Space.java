@@ -62,7 +62,7 @@ public class Space {
 
     @Builder.Default
     @Column(name = "average_rating")
-    private Float averageRating = 0f;
+    private Double averageRating = 0.0;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

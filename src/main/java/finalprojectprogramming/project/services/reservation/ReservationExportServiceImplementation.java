@@ -187,6 +187,7 @@ public class ReservationExportServiceImplementation implements ReservationExport
             case CANCELED -> "Cancelada";
             case CHECKED_IN -> "En sitio";
             case NO_SHOW -> "Inasistencia";
+            default -> "Desconocido";
         };
     }
 }

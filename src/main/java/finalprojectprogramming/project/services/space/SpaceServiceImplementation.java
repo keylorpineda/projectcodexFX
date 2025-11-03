@@ -7,9 +7,12 @@ import finalprojectprogramming.project.models.Space;
 import finalprojectprogramming.project.models.SpaceImage;
 import finalprojectprogramming.project.models.SpaceSchedule;
 import finalprojectprogramming.project.models.enums.SpaceType;
+import finalprojectprogramming.project.repositories.RatingRepository;
 import finalprojectprogramming.project.repositories.SpaceRepository;
 import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.spaceimage.SpaceImageService;
+import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +29,17 @@ public class SpaceServiceImplementation implements SpaceService {
     private final SpaceRepository spaceRepository;
     private final ModelMapper modelMapper;
     private final SpaceAvailabilityValidator availabilityValidator;
+    private final RatingRepository ratingRepository;
+    private final SpaceImageService spaceImageService;
 
     public SpaceServiceImplementation(SpaceRepository spaceRepository, ModelMapper modelMapper,
-            SpaceAvailabilityValidator availabilityValidator) {
+            SpaceAvailabilityValidator availabilityValidator, RatingRepository ratingRepository,
+            SpaceImageService spaceImageService) {
         this.spaceRepository = spaceRepository;
         this.modelMapper = modelMapper;
         this.availabilityValidator = availabilityValidator;
+        this.ratingRepository = ratingRepository;
+        this.spaceImageService = spaceImageService;
     }
 
     @Override
@@ -56,10 +64,25 @@ public class SpaceServiceImplementation implements SpaceService {
             space.setActive(Boolean.TRUE);
         }
         if (space.getAverageRating() == null) {
-            space.setAverageRating(0f);
+            space.setAverageRating(0.0);
         }
         Space saved = spaceRepository.save(space);
         return toDto(saved);
+    }
+
+    @Override
+    public SpaceDTO createWithImage(SpaceDTO spaceDTO, MultipartFile image) {
+        SecurityUtils.requireAny(UserRole.ADMIN, UserRole.SUPERVISOR);
+        SpaceDTO created = create(spaceDTO);
+        
+        if (image != null && !image.isEmpty()) {
+            try {
+                spaceImageService.upload(created.getId(), image, null, true, 1);
+            } catch (Exception e) {
+            }
+        }
+        
+        return created;
     }
 
     @Override
@@ -192,6 +215,11 @@ public class SpaceServiceImplementation implements SpaceService {
         if (dto.getActive() == null) {
             dto.setActive(Boolean.TRUE.equals(space.getActive()));
         }
+        
+        Double avgRating = ratingRepository.getAverageScoreBySpaceId(space.getId());
+        dto.setAverageRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0);
+        dto.setReviewCount(ratingRepository.getRatingCountBySpaceId(space.getId()));
+        
         return dto;
     }
 

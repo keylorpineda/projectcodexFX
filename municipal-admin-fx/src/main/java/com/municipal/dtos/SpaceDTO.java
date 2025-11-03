@@ -23,7 +23,8 @@ public record SpaceDTO(
         @JsonProperty("active") Boolean active,
         @JsonProperty("maxReservationDuration") Integer maxReservationDuration,
         @JsonProperty("requiresApproval") Boolean requiresApproval,
-        @JsonProperty("averageRating") Float averageRating,
+        @JsonProperty("averageRating") Double averageRating,
+        @JsonProperty("reviewCount") Long reviewCount,
         @JsonProperty("createdAt")
         @JsonDeserialize(using = LocalDateTimeDeserializer.class)
         @JsonSerialize(using = LocalDateTimeSerializer.class)

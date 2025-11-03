@@ -1,10 +1,7 @@
 package finalprojectprogramming.project.dtos;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Positive;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,17 +18,30 @@ public class RatingDTO {
 
     private Long id;
 
-    @NotNull
+    @NotNull(message = "La reservación es requerida")
     @Positive
     private Long reservationId;
 
-    @NotNull
-    @Min(1)
-    @Max(5)
+    @Positive
+    private Long userId;
+
+    private String userName;
+
+    private String spaceName;
+
+    @NotNull(message = "La calificación es requerida")
+    @Min(value = 1, message = "La calificación mínima es 1")
+    @Max(value = 5, message = "La calificación máxima es 5")
     private Integer score;
 
+    @Size(max = 1000, message = "El comentario no puede exceder los 1000 caracteres")
     private String comment;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @PastOrPresent
     private LocalDateTime createdAt;
+
+    private Integer helpfulCount;
+
+    private Boolean visible;
 }

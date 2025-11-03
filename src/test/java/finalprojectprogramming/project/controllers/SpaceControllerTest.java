@@ -32,7 +32,7 @@ class SpaceControllerTest extends BaseControllerTest {
                 .capacity(100)
                 .active(true)
                 .requiresApproval(true)
-                .averageRating(4.5f)
+                .averageRating(4.5)
                 .build();
     }
 

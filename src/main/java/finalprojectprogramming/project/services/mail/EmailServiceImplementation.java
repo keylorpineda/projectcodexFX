@@ -324,6 +324,8 @@ public class EmailServiceImplementation implements EmailService {
             case CANCELED -> "La reserva fue cancelada. Si necesitás reagendar, podés solicitar un nuevo espacio desde la plataforma.";
             case CHECKED_IN -> "El ingreso ya fue registrado en el sistema. Disfrutá del espacio y recordá dejarlo en óptimas condiciones.";
             case NO_SHOW -> "La reserva se marcó como inasistencia. Si fue un error, contactá a la oficina de reservas para regularizar la situación.";
+            case COMPLETED -> "La reserva fue completada exitosamente. Gracias por usar nuestro sistema de reservas.";
+            default -> "Estado de reserva desconocido. Por favor, contactá al equipo de soporte.";
         };
     }
 
@@ -353,6 +355,9 @@ public class EmailServiceImplementation implements EmailService {
             }
             case CANCELED -> {
                 steps.add("Evaluá reagendar en otro horario disponible desde la plataforma de reservas.");
+            }
+            default -> {
+                // Handle any unexpected status values
             }
         }
         steps.add("Recordá que las cancelaciones están sujetas a las restricciones temporales vigentes de la municipalidad.");
@@ -384,6 +389,8 @@ public class EmailServiceImplementation implements EmailService {
             case CANCELED -> "Cancelada";
             case CHECKED_IN -> "Con registro de ingreso";
             case NO_SHOW -> "Marcada como inasistencia";
+            case COMPLETED -> "Completada";
+            default -> "Estado desconocido";
         };
     }
 
@@ -401,6 +408,7 @@ public class EmailServiceImplementation implements EmailService {
             case LABORATORIO -> "Laboratorio";
             case BIBLIOTECA -> "Biblioteca";
             case TEATRO -> "Teatro";
+            default -> "Tipo desconocido";
         };
     }
 

@@ -53,7 +53,9 @@ public class SpaceDTO {
 
     @DecimalMin(value = "0.0")
     @DecimalMax(value = "5.0")
-    private Float averageRating;
+    private Double averageRating;
+
+    private Long reviewCount;
 
     @PastOrPresent
     private LocalDateTime createdAt;
