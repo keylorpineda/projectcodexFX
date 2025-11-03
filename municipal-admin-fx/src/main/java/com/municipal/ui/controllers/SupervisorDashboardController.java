@@ -46,8 +46,10 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -58,6 +60,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Window;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -1506,28 +1510,127 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     }
 
     private void showError(String message, Throwable cause) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            configureDialog(alert);
-            alert.setTitle("Error");
-            alert.setHeaderText("Ocurrió un problema");
-            String detail = cause != null && cause.getMessage() != null
-                    ? message + "\n\nDetalle: " + cause.getMessage()
-                    : message;
-            alert.setContentText(detail);
-            alert.showAndWait();
-        });
+        if (cause != null && cause.getMessage() != null) {
+            showAPIError(message, cause);
+        } else {
+            showStyledAlert("❌ Error", message, Alert.AlertType.ERROR);
+        }
     }
 
     private void showSuccess(String message) {
+        showStyledAlert("✅ Éxito - Ingreso Registrado", message, Alert.AlertType.INFORMATION);
+    }
+    
+    private void showWarning(String message) {
+        showStyledAlert("⚠️ Advertencia", message, Alert.AlertType.WARNING);
+    }
+    
+    /**
+     * Muestra una alerta estilizada con CSS personalizado
+     */
+    private void showStyledAlert(String title, String message, Alert.AlertType type) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            Alert alert = new Alert(type);
             configureDialog(alert);
-            alert.setTitle("Ingreso registrado");
-            alert.setHeaderText("Validación completada");
+            alert.setTitle(title);
+            alert.setHeaderText(null);
             alert.setContentText(message);
+            
+            // Aplicar estilos CSS personalizados
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                getClass().getResource("/com/municipal/reservationsfx/styles/supervisor-dashboard.css").toExternalForm()
+            );
+            
+            // Aplicar clases CSS según el tipo
+            dialogPane.getStyleClass().add("custom-alert");
+            switch (type) {
+                case INFORMATION -> dialogPane.getStyleClass().add("alert-success");
+                case ERROR -> dialogPane.getStyleClass().add("alert-error");
+                case WARNING -> dialogPane.getStyleClass().add("alert-warning");
+                case CONFIRMATION -> dialogPane.getStyleClass().add("alert-info");
+            }
+            
+            // Mejorar el contenido con formato
+            Label contentLabel = new Label(message);
+            contentLabel.setWrapText(true);
+            contentLabel.setMaxWidth(450);
+            contentLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #374151; -fx-line-spacing: 4px;");
+            dialogPane.setContent(contentLabel);
+            
+            // Personalizar botones
+            alert.getButtonTypes().forEach(buttonType -> {
+                ButtonBar.ButtonData buttonData = buttonType.getButtonData();
+                if (buttonData == ButtonBar.ButtonData.CANCEL_CLOSE) {
+                    dialogPane.lookupButton(buttonType).getStyleClass().add("cancel-button");
+                }
+            });
+            
             alert.showAndWait();
         });
+    }
+    
+    /**
+     * Muestra un error de API con detalles técnicos
+     */
+    private void showAPIError(String operation, Throwable error) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            configureDialog(alert);
+            alert.setTitle("❌ Error de API");
+            alert.setHeaderText("Error en: " + operation);
+            
+            // Crear contenedor de error
+            VBox errorContainer = new VBox(12);
+            errorContainer.getStyleClass().add("api-error-container");
+            errorContainer.setMaxWidth(500);
+            
+            // Título del error
+            Label errorTitle = new Label("Detalles del Error:");
+            errorTitle.getStyleClass().add("api-error-title");
+            
+            // Mensaje de error
+            String errorMessage = error != null ? error.getMessage() : "Error desconocido";
+            Label errorLabel = new Label(errorMessage);
+            errorLabel.setWrapText(true);
+            errorLabel.getStyleClass().add("api-error-message");
+            
+            // Código de error (si existe)
+            String errorCode = extractErrorCode(error);
+            if (errorCode != null) {
+                Label codeLabel = new Label("Código: " + errorCode);
+                codeLabel.getStyleClass().add("api-error-code");
+                errorContainer.getChildren().addAll(errorTitle, errorLabel, codeLabel);
+            } else {
+                errorContainer.getChildren().addAll(errorTitle, errorLabel);
+            }
+            
+            // Aplicar estilos
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                getClass().getResource("/com/municipal/reservationsfx/styles/supervisor-dashboard.css").toExternalForm()
+            );
+            dialogPane.getStyleClass().addAll("custom-alert", "alert-error");
+            dialogPane.setContent(errorContainer);
+            
+            alert.showAndWait();
+        });
+    }
+    
+    /**
+     * Extrae el código de error HTTP de una excepción
+     */
+    private String extractErrorCode(Throwable error) {
+        if (error == null) return null;
+        String message = error.getMessage();
+        if (message != null) {
+            if (message.contains("401")) return "401 - No autorizado";
+            if (message.contains("403")) return "403 - Acceso denegado";
+            if (message.contains("404")) return "404 - No encontrado";
+            if (message.contains("500")) return "500 - Error del servidor";
+            if (message.contains("503")) return "503 - Servicio no disponible";
+        }
+        return null;
     }
 
     private void configureDialog(Dialog<?> dialog) {

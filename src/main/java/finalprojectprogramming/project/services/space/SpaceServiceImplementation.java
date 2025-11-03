@@ -172,7 +172,8 @@ public class SpaceServiceImplementation implements SpaceService {
     public void delete(Long id) {
         SecurityUtils.requireAny(UserRole.ADMIN, UserRole.SUPERVISOR);
         Space space = getActiveSpaceOrThrow(id);
-        applyStatusChange(space, false);
+        // Soft delete: marcar como eliminado Y desactivar
+        space.setActive(false);
         space.setDeletedAt(LocalDateTime.now());
         space.setUpdatedAt(LocalDateTime.now());
         spaceRepository.save(space);
@@ -213,11 +214,13 @@ public class SpaceServiceImplementation implements SpaceService {
 
     private void applyStatusChange(Space space, boolean active) {
         space.setActive(active);
+        // Solo limpiar deletedAt si se está activando
+        // NO marcar como eliminado al desactivar (eso es responsabilidad del método delete())
         if (active) {
             space.setDeletedAt(null);
-        } else if (space.getDeletedAt() == null) {
-            space.setDeletedAt(LocalDateTime.now());
         }
+        // Si se está desactivando, solo cambia el campo active
+        // No tocar deletedAt - eso es solo para eliminación real
     }
 
     private Space getActiveSpaceOrThrow(Long id) {

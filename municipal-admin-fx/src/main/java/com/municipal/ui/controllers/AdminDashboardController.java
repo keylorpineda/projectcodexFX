@@ -677,7 +677,26 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : contenedor);
+                if (empty || getIndex() < 0 || getIndex() >= getTableView().getItems().size()) {
+                    setGraphic(null);
+                } else {
+                    SpaceDTO espacio = getTableView().getItems().get(getIndex());
+                    // Actualizar el texto y estilo del botón según el estado del espacio
+                    if (espacio.active()) {
+                        btnEstado.setText("🔴 Desactivar");
+                        btnEstado.getStyleClass().removeAll("admin-btn-activate");
+                        if (!btnEstado.getStyleClass().contains("admin-btn-deactivate")) {
+                            btnEstado.getStyleClass().add("admin-btn-deactivate");
+                        }
+                    } else {
+                        btnEstado.setText("✅ Activar");
+                        btnEstado.getStyleClass().removeAll("admin-btn-deactivate");
+                        if (!btnEstado.getStyleClass().contains("admin-btn-activate")) {
+                            btnEstado.getStyleClass().add("admin-btn-activate");
+                        }
+                    }
+                    setGraphic(contenedor);
+                }
             }
         });
     }
@@ -2378,6 +2397,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
         
+        // Si ya tenemos datos cargados en memoria, filtrar localmente para mejor performance
+        if (listaEspacios != null && !listaEspacios.isEmpty()) {
+            System.out.println("📊 Filtrando espacios localmente. Total en listaEspacios: " + listaEspacios.size());
+            filtrarEspaciosLocal();
+            return;
+        }
+        
+        // Si no hay datos en memoria, cargar desde la API con filtros
         String busqueda = txtBuscarEspacio != null ? txtBuscarEspacio.getText().trim() : "";
         String tipoSeleccionado = cmbTipoEspacio != null ? cmbTipoEspacio.getValue() : "Todos los tipos";
         String estadoSeleccionado = cmbEstadoEspacio != null ? cmbEstadoEspacio.getValue() : "Todos los estados";
@@ -2387,20 +2414,20 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             ? tipoSeleccionado : null;
         final String location = (!busqueda.isEmpty()) ? busqueda : null;
         final Boolean active;
-        if ("Disponible".equalsIgnoreCase(estadoSeleccionado)) {
+        if ("Activo".equalsIgnoreCase(estadoSeleccionado)) {
             active = true;
-        } else if ("Ocupado".equalsIgnoreCase(estadoSeleccionado) || "Inactivo".equalsIgnoreCase(estadoSeleccionado)) {
+        } else if ("Inactivo".equalsIgnoreCase(estadoSeleccionado)) {
             active = false;
         } else {
+            // "Todos los estados" - mostrar tanto activos como inactivos
             active = null;
         }
         
-        System.out.println("� Filtrando espacios con API: type=" + type + ", location=" + location + ", active=" + active);
+        System.out.println("🔍 Filtrando espacios con API: type=" + type + ", location=" + location + ", active=" + active);
         
         String token = obtenerToken();
         if (token == null) {
-            System.out.println("⚠️ No hay token, usando filtrado local");
-            filtrarEspaciosLocal();
+            System.out.println("⚠️ No hay token, no se puede filtrar");
             return;
         }
         
@@ -2452,17 +2479,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 })
                 .filter(e -> {
                     if ("Todos los estados".equals(estadoSeleccionado)) {
-                        return true;
+                        return true; // Mostrar todos los espacios (activos e inactivos)
                     }
-                    boolean activo = e.active() == null || Boolean.TRUE.equals(e.active());
-                    String estado = activo ? "Disponible" : "Inactivo";
-                    if ("Disponible".equalsIgnoreCase(estadoSeleccionado)) {
+                    boolean activo = e.active() != null && Boolean.TRUE.equals(e.active());
+                    if ("Activo".equalsIgnoreCase(estadoSeleccionado)) {
                         return activo;
                     }
-                    if ("Ocupado".equalsIgnoreCase(estadoSeleccionado)) {
+                    if ("Inactivo".equalsIgnoreCase(estadoSeleccionado)) {
                         return !activo;
                     }
-                    return estado.equalsIgnoreCase(estadoSeleccionado);
+                    return true;
                 })
                 .collect(Collectors.toList())
         );
@@ -2831,9 +2857,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         ejecutarOperacionAsync(
                 () -> spaceController.changeStatus(espacio.id(), nuevoEstado, token),
                 dto -> {
+                    // Invalidar caché para que el próximo refresh obtenga datos actualizados
+                    DataCache.invalidateSpaces();
                     // El DTO ya viene del servidor, solo actualizar listas
                     actualizarEspacioEnListas(dto);
-                    mostrarExito(nuevoEstado ? "Espacio activado" : "Espacio desactivado");
+                    mostrarAlertaEstilizada(
+                        nuevoEstado ? "✅ Éxito - Espacio Activado" : "✅ Éxito - Espacio Desactivado",
+                        "El espacio '" + dto.name() + "' ahora está " + (nuevoEstado ? "activo" : "inactivo") + ".\nEl cambio se reflejará en la tabla.",
+                        Alert.AlertType.INFORMATION
+                    );
                 },
                 "Actualizando espacio...",
                 "No se pudo actualizar el estado del espacio");
@@ -3108,12 +3140,19 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         pausarAutoRefresh();
         
         Dialog<SpaceInputDTO> dialog = new Dialog<>();
-        dialog.setTitle(espacio == null ? "Agregar espacio" : "Editar espacio");
+        dialog.setTitle(espacio == null ? "✨ Agregar Espacio" : "✏️ Editar Espacio");
         dialog.setHeaderText(espacio == null
-                ? "Completa la información del nuevo espacio."
-                : "Actualiza la información del espacio seleccionado.");
+                ? "Completa la información del nuevo espacio"
+                : "Actualiza la información del espacio seleccionado");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
         dialog.setResizable(true);
+        
+        // Aplicar estilos CSS mejorados
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getStylesheets().add(
+            getClass().getResource("/com/municipal/reservationsfx/styles/admin-dashboard.css").toExternalForm()
+        );
+        dialogPane.getStyleClass().add("enhanced-form-dialog");
         
         // Reanudar auto-refresh al cerrar el diálogo
         dialog.setOnHidden(event -> reanudarAutoRefresh());
@@ -3523,12 +3562,19 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         pausarAutoRefresh();
         
         Dialog<UserInputDTO> dialog = new Dialog<>();
-        dialog.setTitle(usuario == null ? "Agregar usuario" : "Editar usuario");
+        dialog.setTitle(usuario == null ? "👤 Agregar Usuario" : "✏️ Editar Usuario");
         dialog.setHeaderText(usuario == null
-                ? "Completa los datos del nuevo usuario."
-                : "Actualiza los datos del usuario seleccionado.");
+                ? "Completa los datos del nuevo usuario"
+                : "Actualiza los datos del usuario seleccionado");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
         dialog.setResizable(false);
+        
+        // Aplicar estilos CSS mejorados
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getStylesheets().add(
+            getClass().getResource("/com/municipal/reservationsfx/styles/admin-dashboard.css").toExternalForm()
+        );
+        dialogPane.getStyleClass().add("enhanced-form-dialog");
         
         // Reanudar auto-refresh al cerrar el diálogo
         dialog.setOnHidden(event -> reanudarAutoRefresh());
@@ -3694,10 +3740,71 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         if (espacioActualizado == null || espacioActualizado.id() == null) {
             return;
         }
+        // Actualizar en la lista principal
         reemplazarEspacio(listaEspacios, espacioActualizado);
-        reemplazarEspacio(listaEspaciosFiltrados, espacioActualizado);
-        filtrarEspacios();
+        
+        // Aplicar filtros localmente sin llamar a la API
+        aplicarFiltrosEspaciosLocal(espacioActualizado);
+        
+        // Refrescar la tabla
+        Platform.runLater(() -> {
+            if (tablaEspacios != null) {
+                tablaEspacios.refresh();
+            }
+        });
+        
+        // Actualizar dashboard
         cargarDatosDashboard();
+    }
+    
+    /**
+     * Aplica los filtros actuales localmente para determinar si un espacio debe mostrarse
+     */
+    private void aplicarFiltrosEspaciosLocal(SpaceDTO espacio) {
+        String busqueda = txtBuscarEspacio != null ? txtBuscarEspacio.getText().toLowerCase() : "";
+        String tipoSeleccionado = cmbTipoEspacio != null ? cmbTipoEspacio.getValue() : "Todos los tipos";
+        String estadoSeleccionado = cmbEstadoEspacio != null ? cmbEstadoEspacio.getValue() : "Todos los estados";
+        
+        // Verificar si el espacio cumple con los filtros actuales
+        boolean cumpleFiltros = true;
+        
+        // Filtro de búsqueda
+        if (!busqueda.isEmpty()) {
+            String nombre = espacio.name() != null ? espacio.name().toLowerCase() : "";
+            cumpleFiltros = nombre.contains(busqueda);
+        }
+        
+        // Filtro de tipo
+        if (cumpleFiltros && !"Todos los tipos".equals(tipoSeleccionado)) {
+            String tipo = espacio.type() != null ? espacio.type() : "";
+            boolean esExterior = TIPOS_EXTERIOR.contains(tipo.toUpperCase());
+            if ("Interior".equalsIgnoreCase(tipoSeleccionado)) {
+                cumpleFiltros = !esExterior;
+            } else if ("Exterior".equalsIgnoreCase(tipoSeleccionado)) {
+                cumpleFiltros = esExterior;
+            } else {
+                cumpleFiltros = tipo.equalsIgnoreCase(tipoSeleccionado);
+            }
+        }
+        
+        // Filtro de estado
+        if (cumpleFiltros && !"Todos los estados".equals(estadoSeleccionado)) {
+            boolean activo = espacio.active() != null && Boolean.TRUE.equals(espacio.active());
+            if ("Activo".equalsIgnoreCase(estadoSeleccionado)) {
+                cumpleFiltros = activo;
+            } else if ("Inactivo".equalsIgnoreCase(estadoSeleccionado)) {
+                cumpleFiltros = !activo;
+            }
+        }
+        
+        // Actualizar la lista filtrada
+        if (cumpleFiltros) {
+            // Si cumple los filtros, agregarlo o actualizarlo en la lista filtrada
+            reemplazarEspacio(listaEspaciosFiltrados, espacio);
+        } else {
+            // Si no cumple los filtros, quitarlo de la lista filtrada
+            listaEspaciosFiltrados.removeIf(e -> e.id() != null && e.id().equals(espacio.id()));
+        }
     }
 
     private void reemplazarEspacio(ObservableList<SpaceDTO> lista, SpaceDTO actualizado) {
@@ -4278,12 +4385,8 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     private void manejarErrorOperacion(Throwable error, String contexto) {
-        String mensaje = construirMensajeError(error);
-        if (contexto == null || contexto.isBlank()) {
-            mostrarError(mensaje);
-        } else {
-            mostrarError(contexto + ": " + mensaje);
-        }
+        // Usar el nuevo método de mostrar errores de API con detalles técnicos
+        mostrarErrorAPI(contexto != null ? contexto : "Operación", error);
     }
 
     private UserDTO encontrarUsuarioActual() {
@@ -4570,19 +4673,126 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
     
     private void mostrarError(String mensaje) {
-        mostrarAlerta("Error", mensaje, Alert.AlertType.ERROR);
+        mostrarAlertaEstilizada("❌ Error", mensaje, Alert.AlertType.ERROR);
     }
     
     private void mostrarExito(String mensaje) {
-        mostrarAlerta("Éxito", mensaje, Alert.AlertType.INFORMATION);
+        mostrarAlertaEstilizada("✅ Éxito", mensaje, Alert.AlertType.INFORMATION);
     }
     
     private void mostrarAdvertencia(String mensaje) {
-        mostrarAlerta("Advertencia", mensaje, Alert.AlertType.WARNING);
+        mostrarAlertaEstilizada("⚠️ Advertencia", mensaje, Alert.AlertType.WARNING);
     }
     
     private void mostrarInformacion(String titulo, String mensaje) {
-        mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
+        mostrarAlertaEstilizada("ℹ️ " + titulo, mensaje, Alert.AlertType.INFORMATION);
+    }
+    
+    /**
+     * Muestra una alerta estilizada con CSS personalizado
+     */
+    private void mostrarAlertaEstilizada(String titulo, String mensaje, Alert.AlertType tipo) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(tipo);
+            alert.setTitle(titulo);
+            alert.setHeaderText(null);
+            alert.setContentText(mensaje);
+            
+            // Aplicar estilos CSS personalizados
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                getClass().getResource("/com/municipal/reservationsfx/styles/admin-dashboard.css").toExternalForm()
+            );
+            
+            // Aplicar clases CSS según el tipo
+            dialogPane.getStyleClass().add("custom-alert");
+            switch (tipo) {
+                case INFORMATION -> dialogPane.getStyleClass().add("alert-success");
+                case ERROR -> dialogPane.getStyleClass().add("alert-error");
+                case WARNING -> dialogPane.getStyleClass().add("alert-warning");
+                case CONFIRMATION -> dialogPane.getStyleClass().add("alert-info");
+            }
+            
+            // Mejorar el contenido con formato
+            Label contentLabel = new Label(mensaje);
+            contentLabel.setWrapText(true);
+            contentLabel.setMaxWidth(450);
+            contentLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #374151; -fx-line-spacing: 4px;");
+            dialogPane.setContent(contentLabel);
+            
+            // Personalizar botones
+            alert.getButtonTypes().forEach(buttonType -> {
+                javafx.scene.control.ButtonBar.ButtonData buttonData = buttonType.getButtonData();
+                if (buttonData == javafx.scene.control.ButtonBar.ButtonData.CANCEL_CLOSE) {
+                    dialogPane.lookupButton(buttonType).getStyleClass().add("cancel-button");
+                }
+            });
+            
+            alert.showAndWait();
+        });
+    }
+    
+    /**
+     * Muestra un error de API con detalles técnicos
+     */
+    private void mostrarErrorAPI(String operacion, Throwable error) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("❌ Error de API");
+            alert.setHeaderText("Error en: " + operacion);
+            
+            // Crear contenedor de error
+            VBox errorContainer = new VBox(12);
+            errorContainer.getStyleClass().add("api-error-container");
+            errorContainer.setMaxWidth(500);
+            
+            // Título del error
+            Label errorTitle = new Label("Detalles del Error:");
+            errorTitle.getStyleClass().add("api-error-title");
+            
+            // Mensaje de error
+            String errorMessage = error != null ? error.getMessage() : "Error desconocido";
+            Label errorLabel = new Label(errorMessage);
+            errorLabel.setWrapText(true);
+            errorLabel.getStyleClass().add("api-error-message");
+            
+            // Código de error (si existe)
+            String errorCode = extraerCodigoError(error);
+            if (errorCode != null) {
+                Label codeLabel = new Label("Código: " + errorCode);
+                codeLabel.getStyleClass().add("api-error-code");
+                errorContainer.getChildren().addAll(errorTitle, errorLabel, codeLabel);
+            } else {
+                errorContainer.getChildren().addAll(errorTitle, errorLabel);
+            }
+            
+            // Aplicar estilos
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                getClass().getResource("/com/municipal/reservationsfx/styles/admin-dashboard.css").toExternalForm()
+            );
+            dialogPane.getStyleClass().addAll("custom-alert", "alert-error");
+            dialogPane.setContent(errorContainer);
+            
+            alert.showAndWait();
+        });
+    }
+    
+    /**
+     * Extrae el código de error HTTP de una excepción
+     */
+    private String extraerCodigoError(Throwable error) {
+        if (error == null) return null;
+        String mensaje = error.getMessage();
+        if (mensaje != null) {
+            // Buscar patrones comunes de códigos HTTP
+            if (mensaje.contains("401")) return "401 - No autorizado";
+            if (mensaje.contains("403")) return "403 - Acceso denegado";
+            if (mensaje.contains("404")) return "404 - No encontrado";
+            if (mensaje.contains("500")) return "500 - Error del servidor";
+            if (mensaje.contains("503")) return "503 - Servicio no disponible";
+        }
+        return null;
     }
     
     /**

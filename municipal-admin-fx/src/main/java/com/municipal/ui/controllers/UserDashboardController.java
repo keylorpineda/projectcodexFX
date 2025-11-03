@@ -1704,33 +1704,125 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     // ==================== UTILITIES ====================
 
     private void showError(String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Error");
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        showStyledAlert("❌ Error", message, Alert.AlertType.ERROR);
     }
 
     private void showWarning(String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Advertencia");
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        showStyledAlert("⚠️ Advertencia", message, Alert.AlertType.WARNING);
     }
 
     private void showSuccess(String message) {
+        showStyledAlert("✅ Éxito", message, Alert.AlertType.INFORMATION);
+    }
+    
+    private void showInfo(String title, String message) {
+        showStyledAlert("ℹ️ " + title, message, Alert.AlertType.INFORMATION);
+    }
+    
+    /**
+     * Muestra una alerta estilizada con CSS personalizado
+     */
+    private void showStyledAlert(String title, String message, Alert.AlertType type) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Éxito");
+            Alert alert = new Alert(type);
+            alert.setTitle(title);
             alert.setHeaderText(null);
             alert.setContentText(message);
+            
+            // Aplicar estilos CSS personalizados
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                getClass().getResource("/com/municipal/reservationsfx/styles/user-dashboard.css").toExternalForm()
+            );
+            
+            // Aplicar clases CSS según el tipo
+            dialogPane.getStyleClass().add("custom-alert");
+            switch (type) {
+                case INFORMATION -> dialogPane.getStyleClass().add("alert-success");
+                case ERROR -> dialogPane.getStyleClass().add("alert-error");
+                case WARNING -> dialogPane.getStyleClass().add("alert-warning");
+                case CONFIRMATION -> dialogPane.getStyleClass().add("alert-info");
+            }
+            
+            // Mejorar el contenido con formato
+            Label contentLabel = new Label(message);
+            contentLabel.setWrapText(true);
+            contentLabel.setMaxWidth(450);
+            contentLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #374151; -fx-line-spacing: 4px;");
+            dialogPane.setContent(contentLabel);
+            
+            // Personalizar botones
+            alert.getButtonTypes().forEach(buttonType -> {
+                javafx.scene.control.ButtonBar.ButtonData buttonData = buttonType.getButtonData();
+                if (buttonData == javafx.scene.control.ButtonBar.ButtonData.CANCEL_CLOSE) {
+                    dialogPane.lookupButton(buttonType).getStyleClass().add("cancel-button");
+                }
+            });
+            
             alert.showAndWait();
         });
+    }
+    
+    /**
+     * Muestra un error de API con detalles técnicos
+     */
+    private void showAPIError(String operation, Throwable error) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("❌ Error de API");
+            alert.setHeaderText("Error en: " + operation);
+            
+            // Crear contenedor de error
+            VBox errorContainer = new VBox(12);
+            errorContainer.getStyleClass().add("api-error-container");
+            errorContainer.setMaxWidth(500);
+            
+            // Título del error
+            Label errorTitle = new Label("Detalles del Error:");
+            errorTitle.getStyleClass().add("api-error-title");
+            
+            // Mensaje de error
+            String errorMessage = error != null ? error.getMessage() : "Error desconocido";
+            Label errorLabel = new Label(errorMessage);
+            errorLabel.setWrapText(true);
+            errorLabel.getStyleClass().add("api-error-message");
+            
+            // Código de error (si existe)
+            String errorCode = extractErrorCode(error);
+            if (errorCode != null) {
+                Label codeLabel = new Label("Código: " + errorCode);
+                codeLabel.getStyleClass().add("api-error-code");
+                errorContainer.getChildren().addAll(errorTitle, errorLabel, codeLabel);
+            } else {
+                errorContainer.getChildren().addAll(errorTitle, errorLabel);
+            }
+            
+            // Aplicar estilos
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                getClass().getResource("/com/municipal/reservationsfx/styles/user-dashboard.css").toExternalForm()
+            );
+            dialogPane.getStyleClass().addAll("custom-alert", "alert-error");
+            dialogPane.setContent(errorContainer);
+            
+            alert.showAndWait();
+        });
+    }
+    
+    /**
+     * Extrae el código de error HTTP de una excepción
+     */
+    private String extractErrorCode(Throwable error) {
+        if (error == null) return null;
+        String message = error.getMessage();
+        if (message != null) {
+            if (message.contains("401")) return "401 - No autorizado";
+            if (message.contains("403")) return "403 - Acceso denegado";
+            if (message.contains("404")) return "404 - No encontrado";
+            if (message.contains("500")) return "500 - Error del servidor";
+            if (message.contains("503")) return "503 - Servicio no disponible";
+        }
+        return null;
     }
 
     // ==================== QR CODES SECTION ====================
