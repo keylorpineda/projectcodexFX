@@ -26,6 +26,8 @@ class SpaceImageServiceImplementationTest {
     private ModelMapper mapper;
     private ImageStorageService storage;
     private SpaceImageServiceImplementation service;
+    private finalprojectprogramming.project.services.auditlog.AuditLogService auditLogService;
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {
@@ -33,7 +35,9 @@ class SpaceImageServiceImplementationTest {
         spaceRepo = Mockito.mock(SpaceRepository.class);
     mapper = Mockito.mock(ModelMapper.class);
     storage = Mockito.mock(ImageStorageService.class);
-    service = new SpaceImageServiceImplementation(repo, spaceRepo, mapper, storage);
+    auditLogService = Mockito.mock(finalprojectprogramming.project.services.auditlog.AuditLogService.class);
+    objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    service = new SpaceImageServiceImplementation(repo, spaceRepo, mapper, storage, auditLogService, objectMapper);
         when(mapper.map(any(SpaceImage.class), eq(SpaceImageDTO.class))).thenAnswer(i -> new SpaceImageDTO());
     }
 

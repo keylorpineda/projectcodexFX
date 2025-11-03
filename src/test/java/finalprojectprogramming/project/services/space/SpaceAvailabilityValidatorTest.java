@@ -161,4 +161,20 @@ class SpaceAvailabilityValidatorTest {
         assertThatThrownBy(() -> validator.assertAvailability(s, st, en, null))
                 .hasMessageContaining("duration exceeds");
     }
+
+    @Test
+    void schedule_with_null_day_and_null_times_is_not_within_schedule() {
+        Space s = baseSpace();
+        SpaceSchedule sch = new SpaceSchedule();
+        sch.setDayOfWeek(null);
+        sch.setOpenTime(null);
+        sch.setCloseTime(null);
+        s.getSchedules().add(sch);
+
+        LocalDateTime st = LocalDate.now().atTime(9, 0);
+        LocalDateTime en = LocalDate.now().atTime(10, 0);
+
+        // No schedule day match and times null -> not within schedule -> not available
+        assertThat(validator.isAvailable(s, st, en, null)).isFalse();
+    }
 }

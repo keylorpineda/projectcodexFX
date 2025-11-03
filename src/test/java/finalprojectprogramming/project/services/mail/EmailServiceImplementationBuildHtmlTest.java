@@ -24,7 +24,8 @@ class EmailServiceImplementationBuildHtmlTest {
     void setup() {
         JavaMailSender mailSender = mock(JavaMailSender.class);
         MailConfig mailConfig = new MailConfig();
-        service = new EmailServiceImplementation(mailSender, mailConfig);
+        finalprojectprogramming.project.services.qr.QRCodeService qr = mock(finalprojectprogramming.project.services.qr.QRCodeService.class);
+        service = new EmailServiceImplementation(mailSender, mailConfig, qr);
     }
 
     @Test
@@ -54,14 +55,15 @@ class EmailServiceImplementationBuildHtmlTest {
         r.setNotes("Traer documento de identidad.\nLlegar 10 min antes.");
         r.setCancellationReason("Por mantenimiento");
 
-        String html = ReflectionTestUtils.invokeMethod(
+    String html = ReflectionTestUtils.invokeMethod(
                 service,
                 "buildHtml",
                 r,
                 "Preheader",
                 "Título",
                 "Introducción",
-                "#123456"
+        "#123456",
+        "cid-77"
         );
 
     assertThat(html)

@@ -60,8 +60,8 @@ class ReservationNotificationServiceImplementationTest {
     @Test
     void notifyReservationCreated_sends_and_saves_success() {
         Reservation r = reservationWithUser("p@q.com");
-        service.notifyReservationCreated(r);
-        verify(emailService).sendReservationCreated(r);
+    service.notifyReservationCreated(r);
+    verify(emailService).sendReservationPending(r);
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(repo).save(captor.capture());
         Notification saved = captor.getValue();
@@ -87,7 +87,7 @@ class ReservationNotificationServiceImplementationTest {
     @Test
     void notifyReservationApproved_calls_email() {
         Reservation r = reservationWithUser("p@q.com");
-        assertThatCode(() -> service.notifyReservationApproved(r)).doesNotThrowAnyException();
-        verify(emailService).sendReservationApproved(r);
+    assertThatCode(() -> service.notifyReservationApproved(r)).doesNotThrowAnyException();
+    verify(emailService).sendReservationConfirmed(r);
     }
 }

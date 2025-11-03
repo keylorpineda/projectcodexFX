@@ -23,12 +23,16 @@ class SettingServiceImplementationTest {
     private SettingRepository repository;
     private ModelMapper modelMapper;
     private SettingServiceImplementation service;
+    private finalprojectprogramming.project.services.auditlog.AuditLogService auditLogService;
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        repository = mock(SettingRepository.class);
-        modelMapper = new ModelMapper();
-        service = new SettingServiceImplementation(repository, modelMapper);
+    repository = mock(SettingRepository.class);
+    modelMapper = new ModelMapper();
+    auditLogService = mock(finalprojectprogramming.project.services.auditlog.AuditLogService.class);
+    objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    service = new SettingServiceImplementation(repository, modelMapper, auditLogService, objectMapper);
     }
 
     @Test

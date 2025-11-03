@@ -1,5 +1,6 @@
 package finalprojectprogramming.project.services.user;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import finalprojectprogramming.project.dtos.UserInputDTO;
 import finalprojectprogramming.project.dtos.UserOutputDTO;
 import finalprojectprogramming.project.exceptions.BusinessRuleException;
@@ -10,6 +11,7 @@ import finalprojectprogramming.project.models.User;
 import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.repositories.UserRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.transformers.GenericMapperFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,8 @@ class UserServiceImplementationTest {
     private UserRepository repository;
     private GenericMapperFactory mapperFactory;
     private ModelMapper modelMapper;
+    private AuditLogService auditLogService;
+    private ObjectMapper objectMapper;
     private UserServiceImplementation service;
 
     @BeforeEach
@@ -35,7 +39,9 @@ class UserServiceImplementationTest {
         repository = mock(UserRepository.class);
         modelMapper = new ModelMapper();
         mapperFactory = new GenericMapperFactory(modelMapper);
-        service = new UserServiceImplementation(repository, mapperFactory, modelMapper);
+        auditLogService = mock(AuditLogService.class);
+        objectMapper = new ObjectMapper();
+        service = new UserServiceImplementation(repository, mapperFactory, modelMapper, auditLogService, objectMapper);
     }
 
     @Test

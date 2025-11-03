@@ -143,6 +143,13 @@ class GlobalExceptionHandlerTest {
         assertThat(r2.getBody()).isNotNull();
         assertThat(r2.getBody().getMessage()).contains("Malformed request payload");
 
+    // Mapping exception with empty path -> generic message (no 'near')
+    JsonMappingException jmEmpty = new JsonMappingException((com.fasterxml.jackson.core.JsonParser) null, "msg");
+    HttpMessageNotReadableException hmrEmpty = new HttpMessageNotReadableException("", jmEmpty, null);
+    ResponseEntity<ApiError> r2b = handler.handleBadRequest(hmrEmpty, request);
+    assertThat(r2b.getBody()).isNotNull();
+    assertThat(r2b.getBody().getMessage()).isEqualTo("Malformed request payload");
+
         // Missing parameter
         MissingServletRequestParameterException miss = new MissingServletRequestParameterException("q", "String");
         ResponseEntity<ApiError> r3 = handler.handleBadRequest(miss, request);
@@ -151,11 +158,19 @@ class GlobalExceptionHandlerTest {
 
         // Type mismatch (mocked para evitar construir MethodParameter)
         MethodArgumentTypeMismatchException mismatch = mock(MethodArgumentTypeMismatchException.class);
-    when(mismatch.getRequiredType()).thenAnswer(x -> Integer.class);
+        when(mismatch.getRequiredType()).thenAnswer(x -> Integer.class);
         when(mismatch.getName()).thenReturn("age");
         ResponseEntity<ApiError> r4 = handler.handleBadRequest(mismatch, request);
         assertThat(r4.getBody()).isNotNull();
         assertThat(r4.getBody().getMessage()).contains("age");
+
+        // Type mismatch when requiredType is null → "unknown"
+        MethodArgumentTypeMismatchException mismatchUnknown = mock(MethodArgumentTypeMismatchException.class);
+        when(mismatchUnknown.getRequiredType()).thenReturn(null);
+        when(mismatchUnknown.getName()).thenReturn("flag");
+        ResponseEntity<ApiError> r4b = handler.handleBadRequest(mismatchUnknown, request);
+        assertThat(r4b.getBody()).isNotNull();
+        assertThat(r4b.getBody().getMessage()).contains("flag");
 
         // Request IDs
         HttpServletRequest withIds = mock(HttpServletRequest.class);
@@ -164,5 +179,64 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiError> r5 = handler.handleGenericException(new RuntimeException("x"), withIds);
         assertThat(r5.getBody()).isNotNull();
         assertThat(r5.getBody().getRequestId()).isEqualTo("RID");
+
+        // Fallback to X-Correlation-Id when X-Request-Id is blank
+        HttpServletRequest withCorrelation = mock(HttpServletRequest.class);
+        when(withCorrelation.getRequestURI()).thenReturn("/y");
+        when(withCorrelation.getHeader("X-Request-Id")).thenReturn(" ");
+        when(withCorrelation.getHeader("X-Correlation-Id")).thenReturn("CID-123");
+        ResponseEntity<ApiError> r6 = handler.handleGenericException(new RuntimeException("x"), withCorrelation);
+        assertThat(r6.getBody()).isNotNull();
+        assertThat(r6.getBody().getRequestId()).isEqualTo("CID-123");
+    }
+
+    @Test
+    void badRequest_invalidFormat_with_null_value_and_non_enum_target() {
+        InvalidFormatException inv = InvalidFormatException.from(null, "bad", null, String.class);
+        HttpMessageNotReadableException hmr = new HttpMessageNotReadableException("", inv, null);
+
+        ResponseEntity<ApiError> res = handler.handleBadRequest(hmr, request);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getMessage()).contains("Invalid value for");
+    }
+
+    @Test
+    void badRequest_else_branch_uses_resolveMessage() {
+        Exception ex = new Exception("  some message.  ");
+        ResponseEntity<ApiError> res = handler.handleBadRequest(ex, request);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getMessage()).isEqualTo("some message");
+    }
+
+    @Test
+    void constraintViolation_builds_validation_errors() {
+    @SuppressWarnings("unchecked")
+    jakarta.validation.ConstraintViolation<Object> cv = (jakarta.validation.ConstraintViolation<Object>) mock(jakarta.validation.ConstraintViolation.class);
+        jakarta.validation.Path path = mock(jakarta.validation.Path.class);
+        jakarta.validation.Path.Node node = mock(jakarta.validation.Path.Node.class);
+        when(node.getName()).thenReturn("field");
+        when(node.getIndex()).thenReturn(-1);
+        when(path.iterator()).thenReturn(java.util.List.of(node).iterator());
+        when(cv.getPropertyPath()).thenReturn(path);
+        when(cv.getMessage()).thenReturn("must not be blank");
+
+        jakarta.validation.ConstraintViolationException cve = new jakarta.validation.ConstraintViolationException(java.util.Set.of(cv));
+
+        ResponseEntity<ApiError> res = handler.handleConstraintViolation(cve, request);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getValidationErrors()).isNotEmpty();
+    }
+
+    @Test
+    void customValidation_returns_payload_errors() {
+        var errors = java.util.List.of(new finalprojectprogramming.project.exceptions.api.ApiValidationError("f", "bad"));
+        var vex = new ValidationException("invalid", errors);
+        ResponseEntity<ApiError> res = handler.handleCustomValidation(vex, request);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getCode()).isEqualTo("VALIDATION_ERROR");
+        assertThat(res.getBody().getValidationErrors()).hasSize(1);
     }
 }
