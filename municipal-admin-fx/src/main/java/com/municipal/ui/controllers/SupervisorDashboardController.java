@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
+import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -94,6 +95,7 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     // Secciones
     @FXML private VBox dashboardSection;
     @FXML private VBox scanQRSection;
+    @FXML private VBox attendeeCounterSection;
     @FXML private VBox controlSection;
     
     // Usuario info
@@ -128,6 +130,16 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     @FXML private Label spacesInUseCountLabel;
     @FXML private Label spacesInUseTimeLabel;
     @FXML private FlowPane spacesInUsePane;
+    
+    // Attendee Counter Section
+    @FXML private Label counterReservationUser;
+    @FXML private Label counterReservationSpace;
+    @FXML private Label counterReservationTime;
+    @FXML private Label attendeeCountDisplay;
+    @FXML private Label attendeeLimit;
+    @FXML private Button decrementButton;
+    @FXML private Button incrementButton;
+    @FXML private Button finishCountButton;
     
     // Campos antiguos (mantener compatibilidad)
     @FXML private Label lblSupervisorName;
@@ -164,6 +176,11 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     private QRScanner qrScanner;
     private volatile boolean isScanningQR = false;
     private Timeline autoRefreshTimeline;
+    
+    // Estado del contador de asistentes
+    private int currentAttendeeCount = 0;
+    private int maxAttendees = 1;
+    private ReservationDTO currentReservation = null;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -571,40 +588,32 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         task.setOnSucceeded(event -> {
             ReservationDTO updated = task.getValue();
             
+            // Guardar la reserva actualizada
+            currentReservation = updated;
+            
             // Obtener información del espacio
             String spaceName = getSpaceName(updated.spaceId(), token);
             
-            // Obtener nombre de usuario del session manager
-            String userName = sessionManager.getUserDisplayName() != null ? 
-                sessionManager.getUserDisplayName() : "Usuario";
+            // Obtener nombre de usuario
+            String userName = getUserName(updated.userId(), token);
             
-            showValidationMessage(
-                String.format("✅ Check-in exitoso\n\n" +
-                    "Usuario: %s\n" +
-                    "Espacio: %s\n" +
-                    "Horario: %s - %s\n" +
-                    "Estado: ASISTIÓ",
-                    userName,
-                    spaceName,
-                    updated.startTime().format(TIME_FORMAT),
-                    updated.endTime().format(TIME_FORMAT)
-                ),
-                "success"
-            );
+            // Inicializar el contador
+            currentAttendeeCount = updated.attendeeRecords() != null ? updated.attendeeRecords().size() : 1;
+            maxAttendees = updated.attendees() != null ? updated.attendees() : 1;
             
             // Limpiar el campo de texto
             if (qrCodeField != null) {
                 qrCodeField.clear();
             }
             
-            // Recargar reservas si estamos en la vista antigua
+            // Recargar reservas
             loadReservations();
             
-            // Auto-navegar a la sección de Control después de 2 segundos
+            // Navegar a la sección del contador con animación suave
             Platform.runLater(() -> {
                 try {
-                    Thread.sleep(2000);
-                    showControl();
+                    Thread.sleep(500);
+                    showAttendeeCounter(updated, userName, spaceName);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1967,5 +1976,91 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         private boolean isBlank(String value) {
             return value == null || value.trim().isEmpty();
         }
+    }
+    
+    // ============================
+    // ATTENDEE COUNTER METHODS
+    // ============================
+    
+    /**
+     * Muestra la sección del contador de asistentes
+     */
+    private void showAttendeeCounter(ReservationDTO reservation, String userName, String spaceName) {
+        if (counterReservationUser != null) {
+            counterReservationUser.setText("Usuario: " + userName);
+        }
+        if (counterReservationSpace != null) {
+            counterReservationSpace.setText("Espacio: " + spaceName);
+        }
+        if (counterReservationTime != null) {
+            counterReservationTime.setText(String.format("Horario: %s - %s",
+                    reservation.startTime().format(TIME_FORMAT),
+                    reservation.endTime().format(TIME_FORMAT)));
+        }
+        updateCounterDisplay();
+        if (attendeeLimit != null) {
+            attendeeLimit.setText("Máximo: " + maxAttendees + " personas");
+        }
+        showSection(attendeeCounterSection);
+    }
+    
+    @FXML
+    private void handleIncrementAttendee() {
+        if (currentAttendeeCount < maxAttendees) {
+            currentAttendeeCount++;
+            updateCounterDisplay();
+            playCounterAnimation(incrementButton);
+        }
+    }
+    
+    @FXML
+    private void handleDecrementAttendee() {
+        if (currentAttendeeCount > 0) {
+            currentAttendeeCount--;
+            updateCounterDisplay();
+            playCounterAnimation(decrementButton);
+        }
+    }
+    
+    @FXML
+    private void handleBackToScan() {
+        currentAttendeeCount = 0;
+        currentReservation = null;
+        showScanQR();
+    }
+    
+    @FXML
+    private void handleFinishCount() {
+        if (currentReservation == null) return;
+        int finalCount = currentAttendeeCount;
+        currentAttendeeCount = 0;
+        currentReservation = null;
+        showValidationMessage("✅ Control finalizado: " + finalCount + " asistentes", "success");
+        Platform.runLater(() -> {
+            try { Thread.sleep(2000); showScanQR(); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        });
+    }
+    
+    private void updateCounterDisplay() {
+        if (attendeeCountDisplay != null) {
+            attendeeCountDisplay.setText(String.valueOf(currentAttendeeCount));
+        }
+    }
+    
+    private void playCounterAnimation(Button button) {
+        if (button == null) return;
+        ScaleTransition scaleUp = new ScaleTransition(javafx.util.Duration.millis(100), button);
+        scaleUp.setToX(1.15);
+        scaleUp.setToY(1.15);
+        ScaleTransition scaleDown = new ScaleTransition(javafx.util.Duration.millis(100), button);
+        scaleDown.setToX(1.0);
+        scaleDown.setToY(1.0);
+        scaleUp.setOnFinished(e -> scaleDown.play());
+        scaleUp.play();
+    }
+    
+    private String getUserName(Long userId, String token) {
+        return userId != null ? "Usuario #" + userId : "Usuario desconocido";
     }
 }

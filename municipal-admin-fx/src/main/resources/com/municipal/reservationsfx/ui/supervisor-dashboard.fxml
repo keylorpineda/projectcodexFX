@@ -234,7 +234,68 @@
                     </ScrollPane>
                 </VBox>
                 
-                <!-- SECCIÓN 3: ESPACIOS EN USO -->
+                <!-- SECCIÓN 3: CONTADOR DE ASISTENTES -->
+                <VBox fx:id="attendeeCounterSection" styleClass="content-section" spacing="24" visible="false">
+                    <padding>
+                        <Insets top="32" right="40" bottom="32" left="40"/>
+                    </padding>
+                    
+                    <!-- Header con info de la reserva -->
+                    <VBox spacing="16" styleClass="counter-header">
+                        <Label text="Control de Asistencia" styleClass="section-header"/>
+                        <HBox spacing="16" alignment="CENTER_LEFT">
+                            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                <Label fx:id="counterReservationUser" text="Usuario: --" styleClass="counter-info-label"/>
+                                <Label fx:id="counterReservationSpace" text="Espacio: --" styleClass="counter-info-label"/>
+                                <Label fx:id="counterReservationTime" text="Horario: --" styleClass="counter-info-label"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+                    
+                    <!-- Contador principal -->
+                    <VBox spacing="32" alignment="CENTER" styleClass="counter-main">
+                        <padding>
+                            <Insets top="40" right="40" bottom="40" left="40"/>
+                        </padding>
+                        
+                        <!-- Display del contador -->
+                        <VBox spacing="8" alignment="CENTER">
+                            <Label text="Total de Asistentes" styleClass="counter-label"/>
+                            <Label fx:id="attendeeCountDisplay" text="0" styleClass="counter-display"/>
+                        </VBox>
+                        
+                        <!-- Botones de control -->
+                        <HBox spacing="24" alignment="CENTER">
+                            <Button fx:id="decrementButton" text="−" styleClass="counter-button, counter-minus"
+                                    onAction="#handleDecrementAttendee" prefWidth="120" prefHeight="120">
+                                <cursor><Cursor fx:constant="HAND"/></cursor>
+                            </Button>
+                            
+                            <Button fx:id="incrementButton" text="+" styleClass="counter-button, counter-plus"
+                                    onAction="#handleIncrementAttendee" prefWidth="120" prefHeight="120">
+                                <cursor><Cursor fx:constant="HAND"/></cursor>
+                            </Button>
+                        </HBox>
+                        
+                        <!-- Límite de asistentes -->
+                        <Label fx:id="attendeeLimit" text="Máximo: -- personas" styleClass="counter-limit"/>
+                        
+                        <!-- Botones de acción -->
+                        <HBox spacing="16" alignment="CENTER">
+                            <Button text="🔙 Volver a Escanear" styleClass="secondary-button"
+                                    onAction="#handleBackToScan" prefWidth="200">
+                                <cursor><Cursor fx:constant="HAND"/></cursor>
+                            </Button>
+                            
+                            <Button fx:id="finishCountButton" text="✅ Finalizar Control" styleClass="primary-button-large"
+                                    onAction="#handleFinishCount" prefWidth="200">
+                                <cursor><Cursor fx:constant="HAND"/></cursor>
+                            </Button>
+                        </HBox>
+                    </VBox>
+                </VBox>
+                
+                <!-- SECCIÓN 4: ESPACIOS EN USO -->
                 <VBox fx:id="controlSection" styleClass="content-section" spacing="24" visible="false">
                     <padding>
                         <Insets top="32" right="40" bottom="32" left="40"/>
