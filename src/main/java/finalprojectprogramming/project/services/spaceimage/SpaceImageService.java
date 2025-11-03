@@ -2,6 +2,7 @@ package finalprojectprogramming.project.services.spaceimage;
 
 import finalprojectprogramming.project.dtos.SpaceImageDTO;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface SpaceImageService {
 
@@ -14,6 +15,8 @@ public interface SpaceImageService {
     List<SpaceImageDTO> findAll();
 
     List<SpaceImageDTO> findBySpace(Long spaceId);
+
+    SpaceImageDTO upload(Long spaceId, MultipartFile file, String description, Boolean active, Integer displayOrder);
 
     void delete(Long id);
 }

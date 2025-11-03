@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.web.multipart.MultipartFile;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,6 +47,27 @@ class SpaceImageControllerTest extends BaseControllerTest {
                 .andExpect(header().string("Location", "/api/space-images/20"));
 
         verify(spaceImageService).create(any(SpaceImageDTO.class));
+    }
+
+    @Test
+    void uploadSpaceImageReturnsCreated() throws Exception {
+        SpaceImageDTO dto = buildSpaceImageDto();
+        when(spaceImageService.upload(eq(3L), any(MultipartFile.class), eq("Main hall"), eq(true), eq(1)))
+                .thenReturn(dto);
+
+        LinkedMultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("spaceId", "3");
+        params.add("description", "Main hall");
+        params.add("active", "true");
+        params.add("displayOrder", "1");
+
+        MockMultipartFile file = new MockMultipartFile("file", "image.png", "image/png", "data".getBytes());
+
+        performMultipart("/api/space-images/upload", file, params)
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/space-images/20"));
+
+        verify(spaceImageService).upload(eq(3L), any(MultipartFile.class), eq("Main hall"), eq(true), eq(1));
     }
 
     @Test
