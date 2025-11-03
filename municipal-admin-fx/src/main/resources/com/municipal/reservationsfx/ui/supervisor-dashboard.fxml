@@ -72,7 +72,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="📊" styleClass="nav-icon"/>
-                <Label text="Panel de inicio"/>
+                <Label text="Panel de inicio" styleClass="nav-label"/>
                 <cursor><Cursor fx:constant="HAND"/></cursor>
             </HBox>
 
@@ -81,7 +81,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="📱" styleClass="nav-icon"/>
-                <Label text="Escanear QR"/>
+                <Label text="Escanear QR" styleClass="nav-label"/>
                 <cursor><Cursor fx:constant="HAND"/></cursor>
             </HBox>
 
@@ -90,7 +90,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="🏟️" styleClass="nav-icon"/>
-                <Label text="Espacios en Uso"/>
+                <Label text="Espacios en Uso" styleClass="nav-label"/>
                 <cursor><Cursor fx:constant="HAND"/></cursor>
             </HBox>
 
@@ -103,7 +103,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="⎋" styleClass="nav-icon"/>
-                <Label text="Cerrar Sesión"/>
+                <Label text="Cerrar Sesión" styleClass="nav-label"/>
                 <cursor><Cursor fx:constant="HAND"/></cursor>
             </HBox>
         </VBox>

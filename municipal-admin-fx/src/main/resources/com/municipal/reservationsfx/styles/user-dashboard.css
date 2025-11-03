@@ -98,7 +98,8 @@
 }
 
 /* Labels inside nav-item HBox */
-.nav-item Label {
+.nav-item Label,
+.nav-label {
     -fx-text-fill: #4b5563;
     -fx-font-size: 14px;
     -fx-font-weight: 500;
@@ -122,7 +123,8 @@
     -fx-border-width: 0;
 }
 
-.nav-item.active Label {
+.nav-item.active Label,
+.nav-item.active .nav-label {
     -fx-text-fill: #2563eb;
     -fx-font-weight: 600;
 }
@@ -139,7 +141,8 @@
 }
 
 /* Logout button special styling */
-.nav-item-logout Label {
+.nav-item-logout Label,
+.nav-item-logout .nav-label {
     -fx-text-fill: #dc2626;
 }
 

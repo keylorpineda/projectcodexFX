@@ -61,7 +61,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="📊" styleClass="nav-icon"/>
-                <Label text="Panel de inicio"/>
+                <Label text="Panel de inicio" styleClass="nav-label"/>
             </HBox>
 
             <HBox fx:id="navSpacesButton" styleClass="nav-item" onMouseClicked="#handleNavigateSpaces" alignment="CENTER_LEFT" spacing="12">
@@ -69,7 +69,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="🏢" styleClass="nav-icon"/>
-                <Label text="Espacios disponibles"/>
+                <Label text="Espacios disponibles" styleClass="nav-label"/>
             </HBox>
 
             <HBox fx:id="navMyReservationsButton" styleClass="nav-item" onMouseClicked="#handleNavigateMyReservations" alignment="CENTER_LEFT" spacing="12">
@@ -77,7 +77,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="📅" styleClass="nav-icon"/>
-                <Label text="Mis reservas"/>
+                <Label text="Mis reservas" styleClass="nav-label"/>
             </HBox>
 
             <HBox fx:id="navMyQRCodesButton" styleClass="nav-item" onMouseClicked="#handleNavigateMyQRCodes" alignment="CENTER_LEFT" spacing="12">
@@ -85,7 +85,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="📱" styleClass="nav-icon"/>
-                <Label text="Mis códigos QR"/>
+                <Label text="Mis códigos QR" styleClass="nav-label"/>
             </HBox>
 
             <HBox fx:id="navReportsButton" styleClass="nav-item" onMouseClicked="#handleNavigateReports" alignment="CENTER_LEFT" spacing="12">
@@ -93,7 +93,7 @@
                     <Insets top="12" right="20" bottom="12" left="20"/>
                 </padding>
                 <Label text="📈" styleClass="nav-icon"/>
-                <Label text="Reportes personales"/>
+                <Label text="Reportes personales" styleClass="nav-label"/>
             </HBox>
 
             <Region VBox.vgrow="ALWAYS"/>
@@ -219,7 +219,7 @@
                             
                             <HBox spacing="16" alignment="CENTER_LEFT">
                                 <VBox spacing="8" HBox.hgrow="ALWAYS">
-                                    <Label text="Buscar espacio"/>
+                                    <Label text="Buscar espacio" styleClass="form-label"/>
                                     <TextField fx:id="searchSpaceField" promptText="Nombre del espacio..." styleClass="search-field"/>
                                 </VBox>
                                 

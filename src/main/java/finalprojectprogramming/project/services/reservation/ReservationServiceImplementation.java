@@ -298,6 +298,18 @@ public class ReservationServiceImplementation implements ReservationService {
         ZonedDateTime windowStart = startTimeZoned.minusMinutes(30);
         ZonedDateTime windowEnd = startTimeZoned.plusMinutes(30);
         
+        // DEBUG: Logs para depuración de zona horaria
+        System.out.println("=== DEBUG CHECK-IN TEMPORAL WINDOW ===");
+        System.out.println("Reservation ID: " + reservation.getId());
+        System.out.println("Reservation startTime (LocalDateTime): " + reservation.getStartTime());
+        System.out.println("Current time (ZonedDateTime CR): " + now);
+        System.out.println("Start time zoned (CR): " + startTimeZoned);
+        System.out.println("Window start: " + windowStart);
+        System.out.println("Window end: " + windowEnd);
+        System.out.println("Is before window? " + now.isBefore(windowStart));
+        System.out.println("Is after window? " + now.isAfter(windowEnd));
+        System.out.println("=====================================");
+        
         if (now.isBefore(windowStart)) {
             long minutesUntil = java.time.Duration.between(now, windowStart).toMinutes();
             throw new BusinessRuleException(

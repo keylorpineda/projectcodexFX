@@ -1358,13 +1358,20 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                     java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase()
                 );
                 
-                // ✅ Crear ReservationDTO con QR único
+                // ✅ IMPORTANTE: Convertir fechas de Costa Rica a UTC antes de enviar al backend
+                // El backend guarda las fechas en UTC en la base de datos
+                LocalDateTime startDateTimeUtc = com.municipal.utils.DateTimeUtils.costaRicaToUtc(startDateTime);
+                LocalDateTime endDateTimeUtc = com.municipal.utils.DateTimeUtils.costaRicaToUtc(endDateTime);
+                
+                System.out.println("   🌍 Fecha LOCAL (CR): " + startDateTime + " → UTC: " + startDateTimeUtc);
+                
+                // ✅ Crear ReservationDTO con QR único Y fechas en UTC
                 ReservationDTO newReservation = new ReservationDTO(
                     null,              // id
                     userId,            // userId
                     space.id(),        // spaceId
-                    startDateTime,     // startTime
-                    endDateTime,       // endTime
+                    startDateTimeUtc,  // startTime (EN UTC)
+                    endDateTimeUtc,    // endTime (EN UTC)
                     "PENDING",         // status (será convertido a enum en backend)
                     uniqueQR,          // qrCode (único para cada reserva)
                     null,              // canceledAt

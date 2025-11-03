@@ -91,7 +91,8 @@
     -fx-spacing: 12;
 }
 
-.nav-item Label {
+.nav-item Label,
+.nav-label {
     -fx-text-fill: #4b5563;
     -fx-font-size: 14px;
     -fx-font-weight: 500;
@@ -108,7 +109,8 @@
     -fx-border-width: 0;
 }
 
-.nav-item.active Label {
+.nav-item.active Label,
+.nav-item.active .nav-label {
     -fx-text-fill: #1976d2;
     -fx-font-weight: 600;
 }
@@ -130,7 +132,8 @@
     -fx-spacing: 12;
 }
 
-.logout-item Label {
+.logout-item Label,
+.logout-item .nav-label {
     -fx-text-fill: #dc2626;
     -fx-font-size: 14px;
     -fx-font-weight: 500;

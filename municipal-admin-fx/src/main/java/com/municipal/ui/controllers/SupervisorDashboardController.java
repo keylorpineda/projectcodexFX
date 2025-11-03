@@ -500,7 +500,9 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             return;
         }
         
-        // Verificar ventana temporal
+        // ⚠️ VALIDACIÓN TEMPORAL DESHABILITADA - Dejar que el backend valide
+        // El backend tiene la lógica correcta con la zona horaria de Costa Rica
+        /*
         if (now.isBefore(windowStart)) {
             long minutesUntil = java.time.Duration.between(now, windowStart).toMinutes();
             showValidationMessage(
@@ -520,8 +522,9 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
             );
             return;
         }
+        */
         
-        // Ventana válida, proceder con el check-in
+        // Proceder directamente con el check-in
         performCheckIn(reservation, qrCode, token);
     }
     
@@ -531,12 +534,31 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
     private void performCheckIn(ReservationDTO reservation, String qrCode, String token) {
         showValidationMessage("🔄 Registrando ingreso...", "info");
         
-        // Crear el payload de check-in
+        // Obtener el nombre completo del usuario del session manager
+        String fullName = sessionManager.getUserDisplayName() != null ? 
+            sessionManager.getUserDisplayName() : "Supervisor Sistema";
+        
+        // Separar nombre y apellido (si hay espacio, sino usar el mismo valor para ambos)
+        String firstName = fullName;
+        String lastName = fullName;
+        
+        if (fullName.contains(" ")) {
+            String[] parts = fullName.split(" ", 2);
+            firstName = parts[0];
+            lastName = parts.length > 1 ? parts[1] : parts[0];
+        }
+        
+        // Generar un ID de asistente automático basado en el userId del supervisor
+        // Formato: SUP-{userId} (ej: SUP-1, SUP-2, etc.)
+        String attendeeIdNumber = sessionManager.getUserId() != null ? 
+            "SUP-" + sessionManager.getUserId() : "SUP-SYSTEM";
+        
+        // Crear el payload de check-in con datos del supervisor
         ReservationCheckInRequest payload = new ReservationCheckInRequest(
             qrCode,
-            sessionManager.getUserId() != null ? sessionManager.getUserId().toString() : "supervisor",
-            sessionManager.getUserDisplayName() != null ? sessionManager.getUserDisplayName() : "Supervisor",
-            ""
+            attendeeIdNumber,
+            firstName,
+            lastName
         );
         
         Task<ReservationDTO> task = new Task<>() {
@@ -591,7 +613,33 @@ public class SupervisorDashboardController implements Initializable, SessionAwar
         
         task.setOnFailed(event -> {
             Throwable error = task.getException();
-            String message = error != null ? error.getMessage() : "Error al registrar check-in";
+            String message = "Error al registrar check-in";
+            
+            // Extraer mensaje específico de ApiClientException
+            if (error instanceof com.municipal.exceptions.ApiClientException) {
+                com.municipal.exceptions.ApiClientException apiError = 
+                    (com.municipal.exceptions.ApiClientException) error;
+                String responseBody = apiError.getResponseBody();
+                
+                // Intentar extraer el mensaje del JSON de error
+                if (responseBody != null && !responseBody.isEmpty()) {
+                    try {
+                        // Parsear JSON simple para obtener el mensaje
+                        if (responseBody.contains("\"message\"")) {
+                            int start = responseBody.indexOf("\"message\"") + 11;
+                            int end = responseBody.indexOf("\"", start);
+                            if (end > start) {
+                                message = responseBody.substring(start, end);
+                            }
+                        }
+                    } catch (Exception e) {
+                        message = "Error " + apiError.getStatusCode() + ": " + responseBody;
+                    }
+                }
+            } else if (error != null && error.getMessage() != null) {
+                message = error.getMessage();
+            }
+            
             showValidationMessage("❌ " + message, "error");
         });
         
