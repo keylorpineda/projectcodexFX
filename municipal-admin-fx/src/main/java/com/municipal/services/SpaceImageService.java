@@ -6,8 +6,13 @@ import com.municipal.dtos.SpaceImageDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.utils.MultipartBodyPublisher;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 
 public class SpaceImageService {
@@ -49,6 +54,43 @@ public class SpaceImageService {
 
     public void delete(Long imageId, String bearerToken) {
         apiClient.delete("/api/space-images/" + imageId, bearerToken);
+    }
+
+    public byte[] downloadImage(Long imageId, String bearerToken) {
+        try {
+            SpaceImageDTO image = apiClient.get("/api/space-images/" + imageId, bearerToken, 
+                new TypeReference<SpaceImageDTO>() {});
+            if (image == null || image.imageUrl() == null || image.imageUrl().isBlank()) {
+                return null;
+            }
+
+            String imageUrl = resolveImageUrl(image.imageUrl());
+            
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(imageUrl))
+                    .timeout(Duration.ofSeconds(30))
+                    .GET();
+            
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                requestBuilder.header("Authorization", "Bearer " + bearerToken);
+            }
+
+            HttpResponse<byte[]> response = apiClient.getHttpClient().send(
+                    requestBuilder.build(),
+                    HttpResponse.BodyHandlers.ofByteArray()
+            );
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return response.body();
+            }
+            
+            throw new ApiClientException(response.statusCode(), "Failed to download image");
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new ApiClientException(500, "Failed to download image: " + e.getMessage(), e);
+        }
     }
 
     public String resolveImageUrl(String imageUrl) {

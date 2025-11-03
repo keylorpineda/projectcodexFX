@@ -1,15 +1,20 @@
 package finalprojectprogramming.project.services.spaceimage;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import finalprojectprogramming.project.dtos.SpaceImageDTO;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Space;
 import finalprojectprogramming.project.models.SpaceImage;
 import finalprojectprogramming.project.repositories.SpaceImageRepository;
 import finalprojectprogramming.project.repositories.SpaceRepository;
+import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.services.storage.ImageStorageService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -24,13 +29,18 @@ public class SpaceImageServiceImplementation implements SpaceImageService {
     private final SpaceRepository spaceRepository;
     private final ModelMapper modelMapper;
     private final ImageStorageService imageStorageService;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     public SpaceImageServiceImplementation(SpaceImageRepository spaceImageRepository, SpaceRepository spaceRepository,
-            ModelMapper modelMapper, ImageStorageService imageStorageService) {
+            ModelMapper modelMapper, ImageStorageService imageStorageService, AuditLogService auditLogService,
+            ObjectMapper objectMapper) {
         this.spaceImageRepository = spaceImageRepository;
         this.spaceRepository = spaceRepository;
         this.modelMapper = modelMapper;
         this.imageStorageService = imageStorageService;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -47,6 +57,13 @@ public class SpaceImageServiceImplementation implements SpaceImageService {
                 : LocalDateTime.now());
 
         SpaceImage saved = spaceImageRepository.save(spaceImage);
+        
+        // Auditoría: Imagen de espacio creada
+        recordAudit("SPACE_IMAGE_CREATED", saved, details -> {
+            details.put("imageUrl", saved.getImageUrl());
+            details.put("displayOrder", saved.getDisplayOrder());
+        });
+        
         return toDto(saved);
     }
 
@@ -76,6 +93,19 @@ public class SpaceImageServiceImplementation implements SpaceImageService {
         }
 
         SpaceImage saved = spaceImageRepository.save(spaceImage);
+        
+        // Auditoría: Imagen de espacio actualizada
+        recordAudit("SPACE_IMAGE_UPDATED", saved, details -> {
+            if (spaceImageDTO.getActive() != null) {
+                details.put("activeChanged", true);
+                details.put("active", saved.getActive());
+            }
+            if (spaceImageDTO.getDisplayOrder() != null) {
+                details.put("orderChanged", true);
+                details.put("displayOrder", saved.getDisplayOrder());
+            }
+        });
+        
         return toDto(saved);
     }
 
@@ -118,6 +148,14 @@ public class SpaceImageServiceImplementation implements SpaceImageService {
         spaceImage.setUploadedAt(LocalDateTime.now());
 
         SpaceImage saved = spaceImageRepository.save(spaceImage);
+        
+        // Auditoría: Imagen subida
+        recordAudit("SPACE_IMAGE_UPLOADED", saved, details -> {
+            details.put("fileName", file.getOriginalFilename());
+            details.put("fileSize", file.getSize());
+            details.put("imageUrl", saved.getImageUrl());
+        });
+        
         return toDto(saved);
     }
 
@@ -125,6 +163,12 @@ public class SpaceImageServiceImplementation implements SpaceImageService {
     public void delete(Long id) {
         SpaceImage spaceImage = spaceImageRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Space image with id " + id + " not found"));
+        
+        // Auditoría: Imagen de espacio eliminada
+        recordAudit("SPACE_IMAGE_DELETED", spaceImage, details -> {
+            details.put("imageUrl", spaceImage.getImageUrl());
+        });
+        
         imageStorageService.delete(spaceImage.getImageUrl());
         spaceImageRepository.delete(spaceImage);
     }
@@ -142,5 +186,35 @@ public class SpaceImageServiceImplementation implements SpaceImageService {
         SpaceImageDTO dto = modelMapper.map(spaceImage, SpaceImageDTO.class);
         dto.setSpaceId(spaceImage.getSpace() != null ? spaceImage.getSpace().getId() : null);
         return dto;
+    }
+    
+    /**
+     * Registra un evento de auditoría para acciones de imágenes de espacio
+     */
+    private void recordAudit(String action, SpaceImage spaceImage, Consumer<ObjectNode> detailsCustomizer) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+            actorId = null;
+        }
+        
+        ObjectNode details = objectMapper.createObjectNode();
+        details.put("imageId", spaceImage.getId());
+        if (spaceImage.getSpace() != null) {
+            details.put("spaceId", spaceImage.getSpace().getId());
+            details.put("spaceName", spaceImage.getSpace().getName());
+        }
+        details.put("active", spaceImage.getActive());
+        if (spaceImage.getDescription() != null) {
+            details.put("hasDescription", true);
+        }
+        
+        if (detailsCustomizer != null) {
+            detailsCustomizer.accept(details);
+        }
+        
+        String entityId = spaceImage.getId() != null ? spaceImage.getId().toString() : null;
+        auditLogService.logEvent(actorId, action, entityId, details);
     }
 }

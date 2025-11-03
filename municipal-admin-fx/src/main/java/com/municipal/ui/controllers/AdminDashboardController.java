@@ -16,10 +16,13 @@ import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.responses.BinaryFileResponse;
 import com.municipal.session.SessionManager;
+import com.municipal.ui.components.ImageCarousel;
 import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
 import com.municipal.ui.navigation.ViewLifecycle;
+import com.municipal.ui.utils.ImageCache;
+import com.municipal.utils.DataCache;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
@@ -48,6 +51,7 @@ import javafx.util.Duration;
 import javafx.scene.control.Alert.AlertType;
 import javafx.stage.FileChooser;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -74,6 +78,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Controlador completo para el Panel de Administración
@@ -248,17 +255,19 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private ObservableList<ReservationDTO> listaReservasFiltradas;
     private CurrentWeatherDTO climaActual;
     private Timeline climaTimeline;
-    private Timeline datosTimeline;
+    private Timeline autoRefreshTimeline;
     private boolean panelNotificacionesVisible;
     private boolean panelPerfilVisible;
     private boolean datosCargando;
     private boolean datosInicialesCargados;
-
+    private boolean autoRefreshEnabled = true;
+    private ProgressIndicator smallLoadingIndicator;
+    
     private static final String LOGIN_VIEW_ID = "login";
     private static final double PANEL_SLIDE_OFFSET = 360;
     private static final Duration PANEL_ANIMATION_DURATION = Duration.millis(260);
     private static final Duration CLIMA_REFRESH_INTERVAL = Duration.minutes(10); // Actualización del clima cada 10 minutos
-    private static final Duration DATA_REFRESH_INTERVAL = Duration.seconds(30); // Actualización cada 30 segundos
+    private static final Duration AUTO_REFRESH_INTERVAL = Duration.seconds(5); // Auto-refresh cada 5 segundos
     private static final List<String> TIPOS_ESPACIO = List.of(
             "SALA",
             "CANCHA",
@@ -1421,16 +1430,28 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         Task<DatosIniciales> task = new Task<>() {
             @Override
-            protected DatosIniciales call() {
+            protected DatosIniciales call() throws Exception {
                 List<String> warnings = new ArrayList<>();
-
-                List<SpaceDTO> espacios = cargarEspaciosDesdeApi(token, warnings);
-                List<UserDTO> usuarios = cargarUsuariosDesdeApi(token, warnings);
-                List<ReservationDTO> reservas = cargarReservasDesdeApi(token, warnings);
                 
-                // ✅ El clima se actualiza por separado cada 10 minutos mediante climaTimeline
-                // No necesitamos cargarlo aquí cada 30 segundos
-                CurrentWeatherDTO clima = climaActual; // Usar el clima ya cargado
+                // ✅ OPTIMIZACIÓN: Cargar datos en paralelo con timeout de 2 segundos
+                CompletableFuture<List<SpaceDTO>> espaciosFuture = CompletableFuture.supplyAsync(() -> 
+                    cargarEspaciosOptimizado(token, warnings));
+                
+                CompletableFuture<List<UserDTO>> usuariosFuture = CompletableFuture.supplyAsync(() -> 
+                    cargarUsuariosOptimizado(token, warnings));
+                
+                CompletableFuture<List<ReservationDTO>> reservasFuture = CompletableFuture.supplyAsync(() -> 
+                    cargarReservasOptimizado(token, warnings));
+                
+                // Esperar todas las operaciones con timeout de 2 segundos
+                CompletableFuture.allOf(espaciosFuture, usuariosFuture, reservasFuture)
+                    .get(2, TimeUnit.SECONDS);
+                
+                List<SpaceDTO> espacios = espaciosFuture.get();
+                List<UserDTO> usuarios = usuariosFuture.get();
+                List<ReservationDTO> reservas = reservasFuture.get();
+                
+                CurrentWeatherDTO clima = climaActual; // El clima se actualiza por separado
 
                 return new DatosIniciales(espacios, usuarios, reservas, clima, warnings);
             }
@@ -1495,6 +1516,99 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
+    }
+    
+    /**
+     * Carga espacios usando cache si está disponible y válido (< 2 segundos)
+     */
+    private List<SpaceDTO> cargarEspaciosOptimizado(String token, List<String> warnings) {
+        // Intentar obtener desde cache
+        List<SpaceDTO> cached = DataCache.getCachedSpaces();
+        if (cached != null && !cached.isEmpty()) {
+            System.out.println("✓ Espacios obtenidos desde caché");
+            return cached;
+        }
+        
+        // Si no hay cache válido, cargar desde API
+        try {
+            List<SpaceDTO> espacios = spaceController.loadSpaces(token);
+            if (espacios == null) {
+                return Collections.emptyList();
+            }
+            List<SpaceDTO> filtered = espacios.stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            
+            // Almacenar en cache
+            DataCache.cacheSpaces(filtered);
+            System.out.println("✓ " + filtered.size() + " espacios cargados y cacheados");
+            return filtered;
+        } catch (Exception exception) {
+            warnings.add("No se pudieron cargar los espacios: " + construirMensajeError(exception));
+            return Collections.emptyList();
+        }
+    }
+    
+    /**
+     * Carga usuarios usando cache si está disponible y válido (< 2 segundos)
+     */
+    private List<UserDTO> cargarUsuariosOptimizado(String token, List<String> warnings) {
+        // Intentar obtener desde cache
+        List<UserDTO> cached = DataCache.getCachedUsers();
+        if (cached != null && !cached.isEmpty()) {
+            System.out.println("✓ Usuarios obtenidos desde caché");
+            return cached;
+        }
+        
+        // Si no hay cache válido, cargar desde API
+        try {
+            List<UserDTO> usuarios = userController.loadUsers(token);
+            if (usuarios == null) {
+                return Collections.emptyList();
+            }
+            List<UserDTO> filtered = usuarios.stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            
+            // Almacenar en cache
+            DataCache.cacheUsers(filtered);
+            System.out.println("✓ " + filtered.size() + " usuarios cargados y cacheados");
+            return filtered;
+        } catch (Exception exception) {
+            warnings.add("No se pudieron cargar los usuarios: " + construirMensajeError(exception));
+            return Collections.emptyList();
+        }
+    }
+    
+    /**
+     * Carga reservas usando cache si está disponible y válido (< 2 segundos)
+     */
+    private List<ReservationDTO> cargarReservasOptimizado(String token, List<String> warnings) {
+        // Intentar obtener desde cache
+        List<ReservationDTO> cached = DataCache.getCachedReservations();
+        if (cached != null && !cached.isEmpty()) {
+            System.out.println("✓ Reservas obtenidas desde caché");
+            return cached;
+        }
+        
+        // Si no hay cache válido, cargar desde API
+        try {
+            List<ReservationDTO> reservas = reservationController.loadReservations(token);
+            if (reservas == null) {
+                return Collections.emptyList();
+            }
+            List<ReservationDTO> filtered = reservas.stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            
+            // Almacenar en cache
+            DataCache.cacheReservations(filtered);
+            System.out.println("✓ " + filtered.size() + " reservas cargadas y cacheadas");
+            return filtered;
+        } catch (Exception exception) {
+            warnings.add("No se pudieron cargar las reservas: " + construirMensajeError(exception));
+            return Collections.emptyList();
+        }
     }
 
     private List<SpaceDTO> cargarEspaciosDesdeApi(String token, List<String> warnings) {
@@ -1758,17 +1872,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         loadWeather();
     }
 
+    /**
+     * Inicia el sistema de auto-refresh cada 5 segundos
+     * Solo actualiza si la vista está visible y activa
+     */
     private void iniciarActualizacionDatos() {
-        if (datosTimeline != null) {
-            datosTimeline.stop();
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
         }
-        datosTimeline = new Timeline(new KeyFrame(DATA_REFRESH_INTERVAL, event -> {
-            if (!datosCargando) {
+        
+        autoRefreshTimeline = new Timeline(new KeyFrame(AUTO_REFRESH_INTERVAL, event -> {
+            if (!datosCargando && autoRefreshEnabled && contenedorPrincipal != null && contenedorPrincipal.isVisible()) {
+                // Actualización silenciosa en background
                 cargarDatosIniciales(false);
             }
         }));
-        datosTimeline.setCycleCount(Timeline.INDEFINITE);
-        datosTimeline.play();
+        autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        autoRefreshTimeline.play();
+        System.out.println("✓ Auto-refresh activado (cada 5 segundos)");
     }
 
     private void iniciarActualizacionClima() {
@@ -1782,15 +1903,32 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     private void detenerActualizaciones() {
-        if (datosTimeline != null) {
-            datosTimeline.stop();
-            datosTimeline = null;
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+            autoRefreshTimeline = null;
+            System.out.println("✓ Auto-refresh detenido");
         }
         if (climaTimeline != null) {
             climaTimeline.stop();
             climaTimeline = null;
         }
         datosInicialesCargados = false;
+    }
+    
+    /**
+     * Pausa el auto-refresh (útil cuando se está editando datos)
+     */
+    private void pausarAutoRefresh() {
+        autoRefreshEnabled = false;
+        System.out.println("⏸ Auto-refresh pausado");
+    }
+    
+    /**
+     * Reanuda el auto-refresh
+     */
+    private void reanudarAutoRefresh() {
+        autoRefreshEnabled = true;
+        System.out.println("▶ Auto-refresh reanudado");
     }
 
     private void recargarClima(boolean notifySuccess) {
@@ -2881,46 +3019,126 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     private void mostrarFormularioEspacio(SpaceDTO espacio) {
+        // Pausar auto-refresh mientras se edita
+        pausarAutoRefresh();
+        
         Dialog<SpaceInputDTO> dialog = new Dialog<>();
         dialog.setTitle(espacio == null ? "Agregar espacio" : "Editar espacio");
         dialog.setHeaderText(espacio == null
                 ? "Completa la información del nuevo espacio."
                 : "Actualiza la información del espacio seleccionado.");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
-        dialog.setResizable(false);
+        dialog.setResizable(true);
+        
+        // Reanudar auto-refresh al cerrar el diálogo
+        dialog.setOnHidden(event -> reanudarAutoRefresh());
 
         TextField txtNombre = new TextField();
         txtNombre.setPromptText("Nombre del espacio");
-        txtNombre.getStyleClass().add("form-field");
+        txtNombre.getStyleClass().add("config-input");
 
         ComboBox<String> cmbTipo = new ComboBox<>(FXCollections.observableArrayList(TIPOS_ESPACIO));
         cmbTipo.setPromptText("Tipo de espacio");
-        cmbTipo.getStyleClass().add("form-field");
+        cmbTipo.getStyleClass().add("config-combo");
 
         Spinner<Integer> spCapacidad = new Spinner<>(1, 500, 10);
         spCapacidad.setEditable(true);
-        spCapacidad.getStyleClass().add("form-field");
+        spCapacidad.getStyleClass().add("config-spinner");
 
         TextField txtUbicacion = new TextField();
         txtUbicacion.setPromptText("Ubicación");
-        txtUbicacion.getStyleClass().add("form-field");
+        txtUbicacion.getStyleClass().add("config-input");
 
-        // ✅ Spinner de duración en HORAS (1-12 horas, se convertirá a minutos al guardar)
         Spinner<Integer> spMaxDuracion = new Spinner<>(1, 12, 2);
         spMaxDuracion.setEditable(true);
-        spMaxDuracion.getStyleClass().add("form-field");
+        spMaxDuracion.getStyleClass().add("config-spinner");
 
         CheckBox chkRequiereAprobacion = new CheckBox("Requiere aprobación");
         CheckBox chkActivo = new CheckBox("Activo");
         chkActivo.setSelected(true);
-        chkRequiereAprobacion.getStyleClass().add("form-check");
-        chkActivo.getStyleClass().add("form-check");
+        chkRequiereAprobacion.getStyleClass().add("config-checkbox");
+        chkActivo.getStyleClass().add("config-checkbox");
 
         TextArea txtDescripcion = new TextArea();
         txtDescripcion.setPromptText("Descripción del espacio");
         txtDescripcion.setWrapText(true);
-        txtDescripcion.setPrefRowCount(4);
-        txtDescripcion.getStyleClass().addAll("form-field", "form-textarea");
+        txtDescripcion.setPrefRowCount(3);
+        txtDescripcion.getStyleClass().add("config-input");
+
+        ObservableList<Path> imagenesSeleccionadas = FXCollections.observableArrayList();
+        ListView<Path> listaImagenes = new ListView<>(imagenesSeleccionadas);
+        listaImagenes.setPrefHeight(120);
+        listaImagenes.getStyleClass().add("image-list");
+        
+        listaImagenes.setCellFactory(lv -> new ListCell<Path>() {
+            private final ImageView preview = new ImageView();
+            private final Label nameLabel = new Label();
+            private final Label sizeLabel = new Label();
+            private final Button removeBtn = new Button("✕");
+            private final HBox content = new HBox(10);
+            
+            {
+                preview.setFitWidth(60);
+                preview.setFitHeight(60);
+                preview.setPreserveRatio(true);
+                preview.getStyleClass().add("image-preview");
+                
+                VBox info = new VBox(4, nameLabel, sizeLabel);
+                info.getStyleClass().add("image-info");
+                
+                removeBtn.getStyleClass().addAll("admin-btn-base", "admin-btn-delete", "btn-small");
+                removeBtn.setOnAction(e -> {
+                    Path path = getItem();
+                    if (path != null) {
+                        imagenesSeleccionadas.remove(path);
+                    }
+                });
+                
+                content.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(info, Priority.ALWAYS);
+                content.getChildren().addAll(preview, info, removeBtn);
+                content.getStyleClass().add("image-list-item");
+            }
+            
+            @Override
+            protected void updateItem(Path path, boolean empty) {
+                super.updateItem(path, empty);
+                if (empty || path == null) {
+                    setGraphic(null);
+                } else {
+                    nameLabel.setText(path.getFileName().toString());
+                    try {
+                        long bytes = Files.size(path);
+                        sizeLabel.setText(formatearTamanoArchivo(bytes));
+                        Image img = new Image(path.toUri().toString(), 60, 60, true, true);
+                        preview.setImage(img);
+                    } catch (IOException e) {
+                        sizeLabel.setText("Error");
+                        preview.setImage(null);
+                    }
+                    setGraphic(content);
+                }
+            }
+        });
+
+        Button btnAgregarImagen = new Button("📷 Agregar imágenes");
+        btnAgregarImagen.getStyleClass().addAll("admin-btn-base", "admin-btn-view");
+        btnAgregarImagen.setMaxWidth(Double.MAX_VALUE);
+        btnAgregarImagen.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Seleccionar imágenes");
+            chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp")
+            );
+            java.util.List<File> files = chooser.showOpenMultipleDialog(dialog.getOwner());
+            if (files != null && !files.isEmpty()) {
+                for (File file : files) {
+                    if (!imagenesSeleccionadas.contains(file.toPath())) {
+                        imagenesSeleccionadas.add(file.toPath());
+                    }
+                }
+            }
+        });
 
         if (espacio != null) {
             txtNombre.setText(espacio.name());
@@ -2941,25 +3159,47 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         GridPane grid = new GridPane();
         grid.getStyleClass().add("form-grid");
-        grid.setHgap(18);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(20, 20, 10, 20));
-        grid.setPrefWidth(440);
+        grid.setHgap(15);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(15));
+        grid.setPrefWidth(500);
 
-        grid.add(crearEtiquetaFormulario("Nombre"), 0, 0);
-        grid.add(txtNombre, 1, 0);
-        grid.add(crearEtiquetaFormulario("Tipo"), 0, 1);
-        grid.add(cmbTipo, 1, 1);
-        grid.add(crearEtiquetaFormulario("Capacidad"), 0, 2);
-        grid.add(spCapacidad, 1, 2);
-        grid.add(crearEtiquetaFormulario("Ubicación"), 0, 3);
-        grid.add(txtUbicacion, 1, 3);
-        grid.add(crearEtiquetaFormulario("Duración máx. (horas)"), 0, 4);
-        grid.add(spMaxDuracion, 1, 4);
-        grid.add(chkRequiereAprobacion, 0, 5);
-        grid.add(chkActivo, 1, 5);
-        grid.add(crearEtiquetaFormulario("Descripción"), 0, 6);
-        grid.add(txtDescripcion, 1, 6);
+        int row = 0;
+        grid.add(crearEtiquetaFormulario("Nombre *"), 0, row);
+        grid.add(txtNombre, 1, row++);
+        
+        grid.add(crearEtiquetaFormulario("Tipo *"), 0, row);
+        grid.add(cmbTipo, 1, row++);
+        
+        grid.add(crearEtiquetaFormulario("Capacidad"), 0, row);
+        grid.add(spCapacidad, 1, row++);
+        
+        grid.add(crearEtiquetaFormulario("Ubicación"), 0, row);
+        grid.add(txtUbicacion, 1, row++);
+        
+        grid.add(crearEtiquetaFormulario("Duración máx. (horas)"), 0, row);
+        grid.add(spMaxDuracion, 1, row++);
+        
+        HBox checkBoxes = new HBox(20, chkRequiereAprobacion, chkActivo);
+        checkBoxes.setAlignment(Pos.CENTER_LEFT);
+        grid.add(checkBoxes, 0, row++, 2, 1);
+        
+        grid.add(crearEtiquetaFormulario("Descripción"), 0, row);
+        grid.add(txtDescripcion, 1, row++);
+
+        if (espacio == null) {
+            VBox imageSection = new VBox(8);
+            imageSection.getStyleClass().add("image-section");
+            Label lblImagenes = crearEtiquetaFormulario("Imágenes (opcional)");
+            lblImagenes.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            imageSection.getChildren().addAll(
+                lblImagenes,
+                new Label("Selecciona imágenes para el espacio (máx. 5)"),
+                btnAgregarImagen,
+                listaImagenes
+            );
+            grid.add(imageSection, 0, row++, 2, 1);
+        }
 
         GridPane.setHgrow(txtNombre, Priority.ALWAYS);
         GridPane.setHgrow(cmbTipo, Priority.ALWAYS);
@@ -2968,8 +3208,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         GridPane.setHgrow(spMaxDuracion, Priority.ALWAYS);
         GridPane.setHgrow(txtDescripcion, Priority.ALWAYS);
 
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().setPrefWidth(520);
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        scrollPane.getStyleClass().add("form-scroll");
+        scrollPane.setPrefViewportHeight(600);
+        
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.getDialogPane().setPrefWidth(600);
+        dialog.getDialogPane().setPrefHeight(700);
 
         aplicarEstilosDialogo(dialog);
 
@@ -3013,10 +3259,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             );
         });
 
-        dialog.showAndWait().ifPresent(input -> guardarEspacio(espacio, input));
+        dialog.showAndWait().ifPresent(input -> guardarEspacio(espacio, input, imagenesSeleccionadas));
     }
 
-    private void guardarEspacio(SpaceDTO espacioOriginal, SpaceInputDTO input) {
+    private void guardarEspacio(SpaceDTO espacioOriginal, SpaceInputDTO input, ObservableList<Path> imagenes) {
         String token = obtenerToken();
         if (token == null) {
             return;
@@ -3029,7 +3275,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                         listaEspacios.add(dto);
                         filtrarEspacios();
                         cargarDatosDashboard();
-                        mostrarExito("Espacio creado correctamente");
+                        
+                        if (imagenes != null && !imagenes.isEmpty()) {
+                            subirImagenesParaEspacio(dto.id(), imagenes, token);
+                        } else {
+                            mostrarExito("Espacio creado correctamente");
+                        }
                     },
                     "Creando espacio...",
                     "No se pudo crear el espacio");
@@ -3043,6 +3294,62 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     "Actualizando espacio...",
                     "No se pudo actualizar el espacio");
         }
+    }
+
+    private void subirImagenesParaEspacio(Long spaceId, ObservableList<Path> imagenes, String token) {
+        if (imagenes == null || imagenes.isEmpty()) {
+            return;
+        }
+
+        mostrarIndicadorCarga("Subiendo " + imagenes.size() + " imagen(es)...");
+
+        Task<Integer> task = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                int exitosas = 0;
+                for (int i = 0; i < imagenes.size(); i++) {
+                    Path imagen = imagenes.get(i);
+                    try {
+                        spaceImageController.uploadImage(
+                            spaceId,
+                            imagen,
+                            "Imagen " + (i + 1),
+                            i,
+                            true,
+                            token
+                        );
+                        exitosas++;
+                    } catch (Exception e) {
+                        System.err.println("Error subiendo imagen " + imagen.getFileName() + ": " + e.getMessage());
+                    }
+                }
+                return exitosas;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            ocultarIndicadorCarga();
+            int exitosas = task.getValue();
+            if (exitosas == imagenes.size()) {
+                mostrarExito(String.format("Espacio creado con %d imagen(es)", exitosas));
+            } else if (exitosas > 0) {
+                mostrarAdvertencia(String.format("Espacio creado. Se subieron %d de %d imágenes", 
+                    exitosas, imagenes.size()));
+            } else {
+                mostrarAdvertencia("Espacio creado pero no se pudieron subir las imágenes");
+            }
+            cargarDatosIniciales(false);
+        });
+
+        task.setOnFailed(e -> {
+            ocultarIndicadorCarga();
+            mostrarError("Error al subir imágenes: " + 
+                (task.getException() != null ? task.getException().getMessage() : "Error desconocido"));
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     // ==================== ACCIONES DE USUARIOS ====================
@@ -3127,6 +3434,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     private void mostrarFormularioUsuario(UserDTO usuario) {
+        // Pausar auto-refresh mientras se edita
+        pausarAutoRefresh();
+        
         Dialog<UserInputDTO> dialog = new Dialog<>();
         dialog.setTitle(usuario == null ? "Agregar usuario" : "Editar usuario");
         dialog.setHeaderText(usuario == null
@@ -3134,6 +3444,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 : "Actualiza los datos del usuario seleccionado.");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
         dialog.setResizable(false);
+        
+        // Reanudar auto-refresh al cerrar el diálogo
+        dialog.setOnHidden(event -> reanudarAutoRefresh());
 
         TextField txtNombre = new TextField();
         txtNombre.setPromptText("Nombre completo");

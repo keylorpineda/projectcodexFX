@@ -1,5 +1,7 @@
 package finalprojectprogramming.project.services.rating;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import finalprojectprogramming.project.dtos.RatingDTO;
 import finalprojectprogramming.project.exceptions.BusinessRuleException;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
@@ -10,8 +12,10 @@ import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.repositories.RatingRepository;
 import finalprojectprogramming.project.repositories.ReservationRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -24,12 +28,17 @@ public class RatingServiceImplementation implements RatingService {
     private final RatingRepository ratingRepository;
     private final ReservationRepository reservationRepository;
     private final ModelMapper modelMapper;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     public RatingServiceImplementation(RatingRepository ratingRepository,
-            ReservationRepository reservationRepository, ModelMapper modelMapper) {
+            ReservationRepository reservationRepository, ModelMapper modelMapper,
+            AuditLogService auditLogService, ObjectMapper objectMapper) {
         this.ratingRepository = ratingRepository;
         this.reservationRepository = reservationRepository;
         this.modelMapper = modelMapper;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -59,6 +68,14 @@ public class RatingServiceImplementation implements RatingService {
         reservation.setRating(rating);
 
         Rating saved = ratingRepository.save(rating);
+        
+        // Auditoría: Reseña creada
+        recordAudit("RATING_CREATED", saved, details -> {
+            details.put("score", saved.getScore());
+            details.put("reservationId", reservation.getId());
+            details.put("hasComment", saved.getComment() != null && !saved.getComment().isEmpty());
+        });
+        
         return toDto(saved);
     }
 
@@ -78,6 +95,17 @@ public class RatingServiceImplementation implements RatingService {
         }
 
         Rating saved = ratingRepository.save(rating);
+        
+        // Auditoría: Reseña actualizada
+        recordAudit("RATING_UPDATED", saved, details -> {
+            if (ratingDTO.getScore() != null) {
+                details.put("scoreChanged", ratingDTO.getScore());
+            }
+            if (ratingDTO.getComment() != null) {
+                details.put("commentChanged", true);
+            }
+        });
+        
         return toDto(saved);
     }
 
@@ -114,6 +142,15 @@ public class RatingServiceImplementation implements RatingService {
         if (reservation != null) {
             reservation.setRating(null);
         }
+        
+        // Auditoría: Reseña eliminada
+        recordAudit("RATING_DELETED", rating, details -> {
+            details.put("score", rating.getScore());
+            if (reservation != null) {
+                details.put("reservationId", reservation.getId());
+            }
+        });
+        
         ratingRepository.delete(rating);
     }
 
@@ -143,8 +180,16 @@ public class RatingServiceImplementation implements RatingService {
     public RatingDTO toggleVisibility(Long id) {
         Rating rating = ratingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Rating with id " + id + " not found"));
-        rating.setVisible(!rating.getVisible());
+        boolean newVisibility = !rating.getVisible();
+        rating.setVisible(newVisibility);
         Rating saved = ratingRepository.save(rating);
+        
+        // Auditoría: Visibilidad de reseña cambiada
+        recordAudit("RATING_VISIBILITY_CHANGED", saved, details -> {
+            details.put("visible", newVisibility);
+            details.put("score", saved.getScore());
+        });
+        
         return toDto(saved);
     }
 
@@ -174,5 +219,36 @@ public class RatingServiceImplementation implements RatingService {
         dto.setUserName(rating.getUser() != null ? rating.getUser().getName() : null);
         dto.setSpaceName(rating.getSpace() != null ? rating.getSpace().getName() : null);
         return dto;
+    }
+    
+    /**
+     * Registra un evento de auditoría para acciones de rating/reseña
+     */
+    private void recordAudit(String action, Rating rating, Consumer<ObjectNode> detailsCustomizer) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+            actorId = null;
+        }
+        
+        ObjectNode details = objectMapper.createObjectNode();
+        details.put("ratingId", rating.getId());
+        if (rating.getUser() != null) {
+            details.put("userId", rating.getUser().getId());
+        }
+        if (rating.getSpace() != null) {
+            details.put("spaceId", rating.getSpace().getId());
+            details.put("spaceName", rating.getSpace().getName());
+        }
+        details.put("score", rating.getScore());
+        details.put("visible", rating.getVisible());
+        
+        if (detailsCustomizer != null) {
+            detailsCustomizer.accept(details);
+        }
+        
+        String entityId = rating.getId() != null ? rating.getId().toString() : null;
+        auditLogService.logEvent(actorId, action, entityId, details);
     }
 }

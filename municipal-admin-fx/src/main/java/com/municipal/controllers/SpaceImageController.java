@@ -33,4 +33,8 @@ public class SpaceImageController {
     public String resolveImageUrl(SpaceImageDTO image) {
         return image != null ? spaceImageService.resolveImageUrl(image.imageUrl()) : null;
     }
+
+    public byte[] downloadImage(Long imageId, String bearerToken) {
+        return spaceImageService.downloadImage(imageId, bearerToken);
+    }
 }

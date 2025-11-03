@@ -1,5 +1,7 @@
 package finalprojectprogramming.project.services.notification;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import finalprojectprogramming.project.dtos.NotificationDTO;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Notification;
@@ -10,12 +12,14 @@ import finalprojectprogramming.project.models.enums.NotificationStatus;
 import finalprojectprogramming.project.repositories.NotificationRepository;
 import finalprojectprogramming.project.repositories.ReservationRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.services.mail.EmailService;
 import finalprojectprogramming.project.services.mail.EmailServiceImplementation.MailSendingException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -33,13 +37,18 @@ public class NotificationServiceImplementation implements NotificationService {
     private final ReservationRepository reservationRepository;
     private final ModelMapper modelMapper;
     private final EmailService emailService;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     public NotificationServiceImplementation(NotificationRepository notificationRepository,
-            ReservationRepository reservationRepository, ModelMapper modelMapper, EmailService emailService) {
+            ReservationRepository reservationRepository, ModelMapper modelMapper, EmailService emailService,
+            AuditLogService auditLogService, ObjectMapper objectMapper) {
         this.notificationRepository = notificationRepository;
         this.reservationRepository = reservationRepository;
         this.modelMapper = modelMapper;
         this.emailService = emailService;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -123,6 +132,13 @@ public class NotificationServiceImplementation implements NotificationService {
         SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification with id " + id + " not found"));
+        
+        // Auditoría: Notificación eliminada
+        recordAudit("NOTIFICATION_DELETED", notification, details -> {
+            details.put("type", notification.getType().name());
+            details.put("sentTo", notification.getSentTo());
+        });
+        
         notificationRepository.delete(notification);
     }
 
@@ -149,6 +165,13 @@ public class NotificationServiceImplementation implements NotificationService {
             // Enviar email personalizado
             emailService.sendCustomEmail(reservation, subject, message);
             LOGGER.info("Custom email sent to {} for reservation {}", reservation.getUser().getEmail(), reservationId);
+            
+            // Auditoría: Email personalizado enviado
+            recordAudit("CUSTOM_EMAIL_SENT", notification, details -> {
+                details.put("subject", subject);
+                details.put("recipientEmail", reservation.getUser().getEmail());
+                details.put("reservationId", reservationId);
+            });
         } catch (MailSendingException ex) {
             notification.setStatus(NotificationStatus.FAILED);
             LOGGER.error("Failed to send custom email for reservation {}", reservationId, ex);
@@ -176,5 +199,31 @@ public class NotificationServiceImplementation implements NotificationService {
         NotificationDTO dto = modelMapper.map(notification, NotificationDTO.class);
         dto.setReservationId(notification.getReservation() != null ? notification.getReservation().getId() : null);
         return dto;
+    }
+    
+    /**
+     * Registra un evento de auditoría para acciones de notificaciones
+     */
+    private void recordAudit(String action, Notification notification, Consumer<ObjectNode> detailsCustomizer) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+            actorId = null;
+        }
+        
+        ObjectNode details = objectMapper.createObjectNode();
+        details.put("notificationId", notification.getId());
+        if (notification.getReservation() != null) {
+            details.put("reservationId", notification.getReservation().getId());
+        }
+        details.put("status", notification.getStatus().name());
+        
+        if (detailsCustomizer != null) {
+            detailsCustomizer.accept(details);
+        }
+        
+        String entityId = notification.getId() != null ? notification.getId().toString() : null;
+        auditLogService.logEvent(actorId, action, entityId, details);
     }
 }

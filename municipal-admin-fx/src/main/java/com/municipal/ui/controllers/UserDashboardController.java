@@ -2,16 +2,19 @@ package com.municipal.ui.controllers;
 
 import com.municipal.controllers.ReservationController;
 import com.municipal.controllers.SpaceController;
+import com.municipal.controllers.SpaceImageController;
 import com.municipal.controllers.WeatherController;
 import com.municipal.dtos.ReservationDTO;
 import com.municipal.dtos.SpaceDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.responses.BinaryFileResponse;
 import com.municipal.session.SessionManager;
+import com.municipal.ui.components.ImageCarousel;
 import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
 import com.municipal.ui.navigation.ViewLifecycle;
+import com.municipal.ui.utils.ImageCache;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -24,11 +27,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -51,6 +57,7 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     private FlowController flowController;
     private ReservationController reservationController;
     private SpaceController spaceController;
+    private SpaceImageController spaceImageController;
     private WeatherController weatherController;
 
     // ==================== FXML - HEADER ====================
@@ -185,9 +192,9 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     public void initialize() {
         System.out.println("🔄 UserDashboardController - initialize() llamado");
         
-        // ✅ Inicializar controladores usando constructores sin parámetros
         this.reservationController = new ReservationController();
         this.spaceController = new SpaceController();
+        this.spaceImageController = new SpaceImageController();
         this.weatherController = new WeatherController();
         
         // Configurar UI
@@ -1024,6 +1031,21 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         card.setPadding(new Insets(20));
         card.setPrefWidth(280);
 
+        if (space.imageIds() != null && !space.imageIds().isEmpty()) {
+            ImageCarousel carousel = new ImageCarousel(240, 160);
+            carousel.getStyleClass().add("space-card-carousel");
+            loadSpaceImages(space, carousel);
+            card.getChildren().add(carousel);
+        } else {
+            StackPane placeholder = new StackPane();
+            placeholder.setPrefSize(240, 160);
+            placeholder.getStyleClass().add("space-card-placeholder");
+            Label noImageLabel = new Label("Sin imagen");
+            noImageLabel.getStyleClass().add("no-image-label");
+            placeholder.getChildren().add(noImageLabel);
+            card.getChildren().add(placeholder);
+        }
+
         Label nameLabel = new Label(space.name());
         nameLabel.getStyleClass().add("space-card-title");
 
@@ -1038,7 +1060,6 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         Label capacityLabel = new Label("👥 Capacidad: " + space.capacity() + " personas");
         capacityLabel.getStyleClass().add("space-detail");
 
-        // ✅ Usar active en lugar de available
         boolean isAvailable = space.active();
         String status = isAvailable ? "✓ Disponible" : "✖ No disponible";
         Label availabilityLabel = new Label(status);
@@ -1052,6 +1073,57 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
 
         card.getChildren().addAll(nameLabel, typeBox, capacityLabel, availabilityLabel, reserveBtn);
         return card;
+    }
+
+    private void loadSpaceImages(SpaceDTO space, ImageCarousel carousel) {
+        if (space.imageIds() == null || space.imageIds().isEmpty()) {
+            return;
+        }
+
+        String token = sessionManager != null ? sessionManager.getAccessToken() : null;
+
+        Task<List<Image>> task = new Task<>() {
+            @Override
+            protected List<Image> call() throws Exception {
+                List<Image> images = new ArrayList<>();
+                ImageCache cache = ImageCache.getInstance();
+
+                for (Long imageId : space.imageIds()) {
+                    if (cache.contains(imageId)) {
+                        images.add(cache.get(imageId));
+                    } else {
+                        try {
+                            byte[] imageData = spaceImageController.downloadImage(imageId, token);
+                            if (imageData != null && imageData.length > 0) {
+                                ByteArrayInputStream bis = new ByteArrayInputStream(imageData);
+                                Image image = new Image(bis);
+                                cache.put(imageId, image);
+                                images.add(image);
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Error loading image " + imageId + ": " + e.getMessage());
+                        }
+                    }
+                }
+                return images;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            List<Image> images = task.getValue();
+            if (images != null && !images.isEmpty()) {
+                Platform.runLater(() -> carousel.setImages(images));
+            }
+        });
+
+        task.setOnFailed(e -> {
+            System.err.println("Failed to load images for space " + space.id() + ": " + 
+                (task.getException() != null ? task.getException().getMessage() : "Unknown error"));
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private String getSpaceIcon(String type) {

@@ -1,5 +1,7 @@
 package finalprojectprogramming.project.services.user;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import finalprojectprogramming.project.dtos.UserInputDTO;
 import finalprojectprogramming.project.dtos.UserOutputDTO;
 import finalprojectprogramming.project.models.AuditLog;
@@ -10,11 +12,13 @@ import finalprojectprogramming.project.models.User;
 import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.repositories.UserRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.transformers.GenericMapperFactory;
 import finalprojectprogramming.project.transformers.InputOutputMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -27,12 +31,16 @@ public class UserServiceImplementation implements UserService {
     private final UserRepository userRepository;
     private final InputOutputMapper<UserInputDTO, User, UserOutputDTO> userMapper;
     private final ModelMapper modelMapper;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     public UserServiceImplementation(UserRepository userRepository, GenericMapperFactory mapperFactory,
-            ModelMapper modelMapper) {
+            ModelMapper modelMapper, AuditLogService auditLogService, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.userMapper = mapperFactory.createInputOutputMapper(UserInputDTO.class, User.class, UserOutputDTO.class);
         this.modelMapper = modelMapper;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -57,6 +65,13 @@ public class UserServiceImplementation implements UserService {
         user.setDeletedAt(null);
 
         User saved = userRepository.save(user);
+        
+        // Auditoría: Usuario creado
+        recordAudit("USER_CREATED", saved, details -> {
+            details.put("email", saved.getEmail());
+            details.put("role", saved.getRole() != null ? saved.getRole().name() : "USER");
+        });
+        
         return toOutput(saved);
     }
 
@@ -70,6 +85,18 @@ public class UserServiceImplementation implements UserService {
         modelMapper.map(inputDTO, existing);
         existing.setUpdatedAt(LocalDateTime.now());
         User saved = userRepository.save(existing);
+        
+        // Auditoría: Usuario actualizado
+        recordAudit("USER_UPDATED", saved, details -> {
+            details.put("email", saved.getEmail());
+            if (inputDTO.getName() != null) {
+                details.put("nameChanged", true);
+            }
+            if (inputDTO.getRole() != null) {
+                details.put("roleChanged", inputDTO.getRole().name());
+            }
+        });
+        
         return toOutput(saved);
     }
 
@@ -100,6 +127,42 @@ public class UserServiceImplementation implements UserService {
         existing.setDeletedAt(LocalDateTime.now());
         existing.setUpdatedAt(LocalDateTime.now());
         userRepository.save(existing);
+        
+        // Auditoría: Usuario eliminado (soft delete)
+        recordAudit("USER_DELETED", existing, details -> {
+            details.put("email", existing.getEmail());
+            details.put("softDelete", true);
+        });
+    }
+    
+    /**
+     * Registra un evento de auditoría para acciones de usuario
+     */
+    private void recordAudit(String action, User user, Consumer<ObjectNode> detailsCustomizer) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+            // Si no hay usuario autenticado, se registra como null
+            actorId = null;
+        }
+        
+        ObjectNode details = objectMapper.createObjectNode();
+        details.put("userId", user.getId());
+        if (user.getName() != null) {
+            details.put("userName", user.getName());
+        }
+        if (user.getEmail() != null) {
+            details.put("userEmail", user.getEmail());
+        }
+        details.put("active", user.getActive() != null ? user.getActive() : false);
+        
+        if (detailsCustomizer != null) {
+            detailsCustomizer.accept(details);
+        }
+        
+        String entityId = user.getId() != null ? user.getId().toString() : null;
+        auditLogService.logEvent(actorId, action, entityId, details);
     }
 
      private void validateUniqueEmail(String email, Long currentId) {

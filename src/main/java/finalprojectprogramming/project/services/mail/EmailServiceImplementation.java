@@ -6,7 +6,11 @@ import finalprojectprogramming.project.models.Space;
 import finalprojectprogramming.project.models.enums.SpaceType;
 import finalprojectprogramming.project.models.User;
 import finalprojectprogramming.project.models.enums.ReservationStatus;
+import finalprojectprogramming.project.services.qr.QRCodeService;
+import jakarta.activation.DataSource;
 import jakarta.mail.MessagingException;
+import jakarta.mail.util.ByteArrayDataSource;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -40,10 +44,12 @@ public class EmailServiceImplementation implements EmailService {
 
     private final JavaMailSender mailSender;
     private final MailConfig mailConfig;
+    private final QRCodeService qrCodeService;
 
-    public EmailServiceImplementation(JavaMailSender mailSender, MailConfig mailConfig) {
+    public EmailServiceImplementation(JavaMailSender mailSender, MailConfig mailConfig, QRCodeService qrCodeService) {
         this.mailSender = mailSender;
         this.mailConfig = mailConfig;
+        this.qrCodeService = qrCodeService;
     }
 
     @Override
@@ -88,7 +94,21 @@ public class EmailServiceImplementation implements EmailService {
             LOGGER.warn("Skipping email for reservation {} because it has no recipient email configured", reservation.getId());
             return;
         }
-        String htmlBody = buildHtml(reservation, preheader, title, intro, accentColor);
+        
+        // Generar imagen QR si existe código
+        String qrImageCid = null;
+        byte[] qrImageBytes = null;
+        if (StringUtils.hasText(reservation.getQrCode())) {
+            try {
+                qrImageBytes = qrCodeService.generateQRCodeImage(reservation.getQrCode(), 250, 250);
+                qrImageCid = "qr-code-" + reservation.getId();
+            } catch (IOException e) {
+                LOGGER.warn("Failed to generate QR code image for reservation {}", reservation.getId(), e);
+            }
+        }
+        
+        String htmlBody = buildHtml(reservation, preheader, title, intro, accentColor, qrImageCid);
+        
         try {
             var message = mailSender.createMimeMessage();
             var helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
@@ -106,15 +126,23 @@ public class EmailServiceImplementation implements EmailService {
                 helper.setFrom(fromAddress);
             }
             helper.setText(htmlBody, true);
+            
+            // Adjuntar imagen QR como recurso embebido
+            if (qrImageBytes != null && qrImageCid != null) {
+                DataSource qrDataSource = new ByteArrayDataSource(qrImageBytes, "image/png");
+                helper.addInline(qrImageCid, qrDataSource);
+            }
+            
             mailSender.send(message);
-            LOGGER.info("Reservation email '{}' sent to {}", subject, user.getEmail());
+            LOGGER.info("Reservation email '{}' sent to {} (QR included: {})", subject, user.getEmail(), qrImageCid != null);
         } catch (MessagingException | MailException ex) {
             LOGGER.error("Error sending reservation email to {}", user.getEmail(), ex);
             throw new MailSendingException("Error sending email", ex);
         }
     }
 
-    private String buildHtml(Reservation reservation, String preheader, String title, String intro, String accentColor) {
+    private String buildHtml(Reservation reservation, String preheader, String title, String intro, String accentColor, 
+            String qrImageCid) {
         Space space = reservation.getSpace();
         String spaceName = sanitize(space != null ? space.getName() : "Espacio municipal");
         String location = sanitize(space != null ? nullSafe(space.getLocation()) : "Por definir");
@@ -165,8 +193,32 @@ public class EmailServiceImplementation implements EmailService {
                 .append("<p style=\"color:#4c5d73;font-size:16px;line-height:1.6;margin:0 auto 24px;max-width:460px;\">")
                 .append(formatMultiline(normalizedIntro))
                 .append("</p>")
-                .append("</div>")
-                .append("<div style=\"background:").append(accentColor).append("0F;border-radius:16px;padding:22px;margin-bottom:28px;\">")
+                .append("</div>");
+        
+        // Sección del código QR (destacada) - SOLO si existe QR
+        if (qrImageCid != null && StringUtils.hasText(qrCode)) {
+            builder.append("<div style=\"background:linear-gradient(135deg, ").append(accentColor).append("0A 0%, ")
+                    .append(accentColor).append("20 100%);border-radius:20px;padding:32px;margin-bottom:32px;text-align:center;border:3px solid ")
+                    .append(accentColor).append("30;\">")
+                    .append("<div style=\"display:inline-block;padding:8px 16px;border-radius:999px;background:")
+                    .append(accentColor).append(";color:#ffffff;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;\">")
+                    .append("✓ Tu código QR")
+                    .append("</div>")
+                    .append("<div style=\"background:#ffffff;border-radius:16px;padding:24px;display:inline-block;box-shadow:0 8px 24px rgba(0,0,0,0.08);\">")
+                    .append("<img src=\"cid:").append(qrImageCid).append("\" alt=\"Código QR\" style=\"display:block;width:250px;height:250px;margin:0 auto;\"/>")
+                    .append("</div>")
+                    .append("<p style=\"margin:20px 0 8px;font-size:14px;font-weight:700;color:#0f235f;letter-spacing:0.5px;\">Código de reserva</p>")
+                    .append("<p style=\"margin:0;font-size:20px;font-weight:800;color:")
+                    .append(accentColor).append(";font-family:'Courier New',monospace;letter-spacing:2px;\">")
+                    .append(escape(qrCode))
+                    .append("</p>")
+                    .append("<p style=\"margin:16px auto 0;font-size:13px;color:#4c5d73;max-width:400px;line-height:1.5;\">")
+                    .append("📱 Presentá este código QR al ingresar al espacio o mostrá el código alfanumérico")
+                    .append("</p>")
+                    .append("</div>");
+        }
+        
+        builder.append("<div style=\"background:").append(accentColor).append("0F;border-radius:16px;padding:22px;margin-bottom:28px;\">")
                 .append("<h2 style=\"margin:0 0 8px;font-size:20px;color:").append(accentColor).append(";text-transform:uppercase;letter-spacing:1px;\">Estado actual</h2>")
                 .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#1f2a44;\">")
                 .append(formatMultiline(statusSummary))
@@ -184,9 +236,7 @@ public class EmailServiceImplementation implements EmailService {
         if (StringUtils.hasText(checkInLine)) {
             builder.append(detailRow("Ingreso registrado", checkInLine));
         }
-        if (StringUtils.hasText(qrCode)) {
-            builder.append(detailRow("Código QR", qrCode));
-        }
+        // No mostrar código QR aquí ya que está en la sección destacada
         builder.append("</div>")
                 .append("<div style=\"background:#f5f7ff;border-radius:16px;padding:24px;\">")
                 .append("<h3 style=\"margin:0 0 16px;color:#0f235f;font-size:18px;\">Información del espacio</h3>")
@@ -202,7 +252,7 @@ public class EmailServiceImplementation implements EmailService {
                 .append("</div>");
         if (StringUtils.hasText(notes)) {
             builder.append("<div style=\"background:#fef7e5;border-radius:14px;padding:22px;margin-bottom:28px;border:1px solid #f6d78f;\">")
-                    .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#8b6a11;\">Notas adicionales</h3>")
+                    .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#8b6a11;\">📝 Notas adicionales</h3>")
                     .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#5b4607;\">")
                     .append(formatMultiline(notes))
                     .append("</p>")
@@ -210,7 +260,7 @@ public class EmailServiceImplementation implements EmailService {
         }
         if (isCanceled && StringUtils.hasText(cancellationReason)) {
             builder.append("<div style=\"background:#fee9ec;border-radius:14px;padding:22px;margin-bottom:28px;border:1px solid #f8b7c1;\">")
-                    .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#a30b2f;\">Motivo de cancelación</h3>")
+                    .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#a30b2f;\">⚠️ Motivo de cancelación</h3>")
                     .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#781125;\">")
                     .append(formatMultiline(cancellationReason))
                     .append("</p>")
@@ -218,7 +268,7 @@ public class EmailServiceImplementation implements EmailService {
         }
         if (!nextSteps.isEmpty()) {
             builder.append("<div style=\"background:#eef3ff;border-radius:16px;padding:24px;margin-bottom:28px;\">")
-                    .append("<h3 style=\"margin:0 0 14px;font-size:18px;color:#1f2a44;\">Próximos pasos recomendados</h3>")
+                    .append("<h3 style=\"margin:0 0 14px;font-size:18px;color:#1f2a44;\">📋 Próximos pasos recomendados</h3>")
                     .append("<ul style=\"margin:0;padding-left:20px;color:#1f2a44;font-size:15px;line-height:1.6;\">");
             for (String step : nextSteps) {
                 builder.append("<li style=\"margin-bottom:8px;\">")
@@ -228,7 +278,7 @@ public class EmailServiceImplementation implements EmailService {
             builder.append("</ul></div>");
         }
         builder.append("<div style=\"border-radius:16px;padding:24px;background:#0f235f;color:#ffffff;\">")
-                .append("<h2 style=\"margin:0;font-size:22px;\">¿Necesitas ayuda?</h2>")
+                .append("<h2 style=\"margin:0;font-size:22px;\">💬 ¿Necesitas ayuda?</h2>")
                 .append("<p style=\"margin:12px 0 0;font-size:15px;line-height:1.6;color:#d9e2ff;\">")
                 .append("Respondé este correo o contactá a la Oficina de Reservas de la Municipalidad de Pérez Zeledón.")
                 .append("</p>")

@@ -1,5 +1,7 @@
 package finalprojectprogramming.project.services.space;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import finalprojectprogramming.project.dtos.SpaceDTO;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Reservation;
@@ -11,12 +13,14 @@ import finalprojectprogramming.project.repositories.RatingRepository;
 import finalprojectprogramming.project.repositories.SpaceRepository;
 import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.services.spaceimage.SpaceImageService;
 import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -31,15 +35,19 @@ public class SpaceServiceImplementation implements SpaceService {
     private final SpaceAvailabilityValidator availabilityValidator;
     private final RatingRepository ratingRepository;
     private final SpaceImageService spaceImageService;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     public SpaceServiceImplementation(SpaceRepository spaceRepository, ModelMapper modelMapper,
             SpaceAvailabilityValidator availabilityValidator, RatingRepository ratingRepository,
-            SpaceImageService spaceImageService) {
+            SpaceImageService spaceImageService, AuditLogService auditLogService, ObjectMapper objectMapper) {
         this.spaceRepository = spaceRepository;
         this.modelMapper = modelMapper;
         this.availabilityValidator = availabilityValidator;
         this.ratingRepository = ratingRepository;
         this.spaceImageService = spaceImageService;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -67,6 +75,14 @@ public class SpaceServiceImplementation implements SpaceService {
             space.setAverageRating(0.0);
         }
         Space saved = spaceRepository.save(space);
+        
+        // Auditoría: Espacio creado
+        recordAudit("SPACE_CREATED", saved, details -> {
+            details.put("name", saved.getName());
+            details.put("type", saved.getType() != null ? saved.getType().name() : "UNKNOWN");
+            details.put("capacity", saved.getCapacity());
+        });
+        
         return toDto(saved);
     }
 
@@ -119,6 +135,18 @@ public class SpaceServiceImplementation implements SpaceService {
         }
         space.setUpdatedAt(LocalDateTime.now());
         Space saved = spaceRepository.save(space);
+        
+        // Auditoría: Espacio actualizado
+        recordAudit("SPACE_UPDATED", saved, details -> {
+            details.put("name", saved.getName());
+            if (spaceDTO.getActive() != null) {
+                details.put("activeChanged", spaceDTO.getActive());
+            }
+            if (spaceDTO.getCapacity() != null) {
+                details.put("capacityChanged", spaceDTO.getCapacity());
+            }
+        });
+        
         return toDto(saved);
     }
 
@@ -148,6 +176,12 @@ public class SpaceServiceImplementation implements SpaceService {
         space.setDeletedAt(LocalDateTime.now());
         space.setUpdatedAt(LocalDateTime.now());
         spaceRepository.save(space);
+        
+        // Auditoría: Espacio eliminado (soft delete)
+        recordAudit("SPACE_DELETED", space, details -> {
+            details.put("name", space.getName());
+            details.put("softDelete", true);
+        });
     }
 
     @Override
@@ -226,5 +260,36 @@ public class SpaceServiceImplementation implements SpaceService {
     void validateSpaceAvailability(Space space, LocalDateTime startTime, LocalDateTime endTime,
             Long reservationIdToIgnore) {
         availabilityValidator.assertAvailability(space, startTime, endTime, reservationIdToIgnore);
+    }
+    
+    /**
+     * Registra un evento de auditoría para acciones de espacio
+     */
+    private void recordAudit(String action, Space space, Consumer<ObjectNode> detailsCustomizer) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+            // Si no hay usuario autenticado, se registra como null
+            actorId = null;
+        }
+        
+        ObjectNode details = objectMapper.createObjectNode();
+        details.put("spaceId", space.getId());
+        if (space.getName() != null) {
+            details.put("spaceName", space.getName());
+        }
+        if (space.getType() != null) {
+            details.put("type", space.getType().name());
+        }
+        details.put("capacity", space.getCapacity() != null ? space.getCapacity() : 0);
+        details.put("active", space.getActive() != null ? space.getActive() : false);
+        
+        if (detailsCustomizer != null) {
+            detailsCustomizer.accept(details);
+        }
+        
+        String entityId = space.getId() != null ? space.getId().toString() : null;
+        auditLogService.logEvent(actorId, action, entityId, details);
     }
 }
