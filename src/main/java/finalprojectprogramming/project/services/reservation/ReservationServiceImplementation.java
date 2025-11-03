@@ -292,18 +292,18 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         
         // ✅ Validar ventana temporal: 30 minutos antes y 30 minutos después del inicio
-        // Usar zona horaria de Costa Rica explícitamente
-        ZonedDateTime now = ZonedDateTime.now(COSTA_RICA_ZONE);
-        ZonedDateTime startTimeZoned = reservation.getStartTime().atZone(COSTA_RICA_ZONE);
-        ZonedDateTime windowStart = startTimeZoned.minusMinutes(30);
-        ZonedDateTime windowEnd = startTimeZoned.plusMinutes(30);
+        // Como PostgreSQL guarda en UTC y LocalDateTime no tiene zona horaria,
+        // comparamos directamente los LocalDateTime sin conversión
+        LocalDateTime now = LocalDateTime.now(COSTA_RICA_ZONE);
+        LocalDateTime startTime = reservation.getStartTime();
+        LocalDateTime windowStart = startTime.minusMinutes(30);
+        LocalDateTime windowEnd = startTime.plusMinutes(30);
         
         // DEBUG: Logs para depuración de zona horaria
         System.out.println("=== DEBUG CHECK-IN TEMPORAL WINDOW ===");
         System.out.println("Reservation ID: " + reservation.getId());
-        System.out.println("Reservation startTime (LocalDateTime): " + reservation.getStartTime());
-        System.out.println("Current time (ZonedDateTime CR): " + now);
-        System.out.println("Start time zoned (CR): " + startTimeZoned);
+        System.out.println("Current time (LocalDateTime CR): " + now);
+        System.out.println("Reservation startTime (LocalDateTime): " + startTime);
         System.out.println("Window start: " + windowStart);
         System.out.println("Window end: " + windowEnd);
         System.out.println("Is before window? " + now.isBefore(windowStart));
@@ -357,19 +357,18 @@ public class ReservationServiceImplementation implements ReservationService {
             throw new BusinessRuleException("Attendee last name is required");
         }
 
-        // Usar zona horaria de Costa Rica para el timestamp de check-in
-        LocalDateTime checkInTimestamp = now.toLocalDateTime();
+        // Timestamp del check-in (ya es hora de Costa Rica)
         ReservationAttendee attendee = ReservationAttendee.builder()
                 .reservation(reservation)
                 .idNumber(requestedIdNumber)
                 .firstName(firstName)
                 .lastName(lastName)
-                .checkInAt(checkInTimestamp)
+                .checkInAt(now)
                 .build();
         attendeeRecords.add(attendee);
         reservation.setStatus(ReservationStatus.CHECKED_IN);
-        reservation.setCheckinAt(checkInTimestamp);
-        reservation.setUpdatedAt(checkInTimestamp);
+        reservation.setCheckinAt(now);
+        reservation.setUpdatedAt(now);
         Reservation saved = reservationRepository.save(reservation);
         recordAudit("RESERVATION_CHECKED_IN", saved, details -> {
             details.put("checkInAt", saved.getCheckinAt() != null ? saved.getCheckinAt().toString() : null);
