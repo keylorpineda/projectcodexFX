@@ -1,18 +1,18 @@
 package finalprojectprogramming.project.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import finalprojectprogramming.project.security.AppUserDetailsService;
-import finalprojectprogramming.project.security.jwt.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.http.MediaType;
+import org.junit.jupiter.api.BeforeEach;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.test.context.support.WithMockUser;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,8 +28,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 
-@AutoConfigureMockMvc(addFilters = false)
-@WithMockUser
 public abstract class BaseControllerTest {
 
     @Autowired
@@ -38,11 +36,16 @@ public abstract class BaseControllerTest {
     @Autowired
     protected ObjectMapper objectMapper;
 
+    // Nota: no registramos JwtAuthFilter en slices MVC; la cadena de seguridad de pruebas
+    // permite todas las peticiones y desactiva CSRF para evitar dependencias de seguridad.
     @MockBean
-    private JwtService jwtService;
+    protected finalprojectprogramming.project.security.jwt.JwtService jwtService;
 
     @MockBean
-    private AppUserDetailsService appUserDetailsService;
+    protected finalprojectprogramming.project.security.AppUserDetailsService appUserDetailsService;
+
+    @MockBean
+    protected finalprojectprogramming.project.security.jwt.JwtAuthFilter jwtAuthFilter;
 
     protected ResultActions performPost(String url, Object body) throws Exception {
         return mockMvc.perform(withJsonBody(post(url), body));
@@ -61,7 +64,7 @@ public abstract class BaseControllerTest {
     }
 
     protected ResultActions performDelete(String url) throws Exception {
-        return mockMvc.perform(delete(url).contentType(MediaType.APPLICATION_JSON));
+        return mockMvc.perform(delete(url).with(csrf()).contentType(MediaType.APPLICATION_JSON));
     }
 
     protected ResultActions performMultipart(String url, MockMultipartFile file, MultiValueMap<String, String> parameters)
@@ -80,11 +83,25 @@ public abstract class BaseControllerTest {
 
     private MockHttpServletRequestBuilder withJsonBody(MockHttpServletRequestBuilder builder, Object body) throws Exception {
         return builder
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body));
     }
 
-    @Configuration
+    @BeforeEach
+    void passThroughJwtFilter() throws Exception {
+        // El filtro JWT mockeado no toca el SecurityContext ni valida tokens;
+        // siempre delega al resto de la cadena para que @WithMockUser funcione.
+        doAnswer(invocation -> {
+            jakarta.servlet.ServletRequest req = invocation.getArgument(0);
+            jakarta.servlet.ServletResponse res = invocation.getArgument(1);
+            jakarta.servlet.FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(req, res);
+            return null;
+        }).when(jwtAuthFilter).doFilter(any(), any(), any());
+    }
+
+    @TestConfiguration
     @EnableMethodSecurity
     static class TestMethodSecurityConfig {
         @Bean

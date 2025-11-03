@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
@@ -52,12 +51,14 @@ public class JwtService {
         Date issuedAt = Date.from(issuedAtInstant);
         Date expiration = Date.from(issuedAtInstant.plusMillis(expirationMs));
 
+        // Build token by first setting registered claims, then merging any extra custom claims.
+        // Using addClaims avoids overwriting registered claims like 'sub', 'iat', and 'exp'.
         return Jwts.builder()
-                .setClaims(extraClaims)
                 .setSubject(subject)
                 .setIssuedAt(issuedAt)
                 .setExpiration(expiration)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .addClaims(extraClaims == null ? Map.of() : extraClaims)
+                .signWith(getSigningKey())
                 .compact();
     }
 
@@ -86,6 +87,8 @@ public class JwtService {
         try {
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(getSigningKey())
+                    // Use the same clock used for issuing tokens to ensure deterministic tests
+                    .setClock(() -> Date.from(clock.instant()))
                     .build()
                     .parseClaimsJws(token)
                     .getBody();

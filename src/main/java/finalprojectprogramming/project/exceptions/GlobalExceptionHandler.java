@@ -26,6 +26,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -77,6 +78,15 @@ public class GlobalExceptionHandler {
         }
 
         return buildResponse(HttpStatus.UNAUTHORIZED, HttpStatus.UNAUTHORIZED.name(), message, request, null);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        String message = resolveMessage(ex.getMessage());
+        if (message == null || message.isBlank()) {
+            message = "Access denied";
+        }
+        return buildResponse(HttpStatus.FORBIDDEN, HttpStatus.FORBIDDEN.name(), message, request, null);
     }
 
     @ExceptionHandler(ValidationException.class)

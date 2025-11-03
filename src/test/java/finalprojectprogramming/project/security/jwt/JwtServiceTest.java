@@ -33,13 +33,14 @@ class JwtServiceTest {
         assertThat(service.extractExpiration(token))
                 .isEqualTo(Date.from(clock.instant().plusMillis(3_600_000L)));
 
-        Key signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(BASE64_SECRET));
-        Object scope = Jwts.parserBuilder()
-                .setSigningKey(signingKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .get("scope");
+    Key signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(BASE64_SECRET));
+    Object scope = Jwts.parserBuilder()
+        .setSigningKey(signingKey)
+        .setClock(() -> Date.from(clock.instant()))
+        .build()
+        .parseClaimsJws(token)
+        .getBody()
+        .get("scope");
         assertThat(scope).isEqualTo("admin");
     }
 

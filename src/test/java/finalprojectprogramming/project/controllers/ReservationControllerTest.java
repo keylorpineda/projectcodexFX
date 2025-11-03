@@ -9,6 +9,7 @@ import finalprojectprogramming.project.services.reservation.ReservationService;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -16,10 +17,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ReservationController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(BaseControllerTest.TestMethodSecurityConfig.class)
 class ReservationControllerTest extends BaseControllerTest {
 
@@ -124,12 +127,12 @@ class ReservationControllerTest extends BaseControllerTest {
     void markCheckInDelegatesToService() throws Exception {
         ReservationDTO dto = buildReservationDto();
         ReservationCheckInRequest request = new ReservationCheckInRequest("QR-123", "123", "John", "Doe");
-        when(reservationService.markCheckIn(5L, request)).thenReturn(dto);
+    when(reservationService.markCheckIn(eq(5L), any(ReservationCheckInRequest.class))).thenReturn(dto);
 
         performPost("/api/reservations/5/check-in", request)
                 .andExpect(status().isOk());
 
-        verify(reservationService).markCheckIn(5L, request);
+    verify(reservationService).markCheckIn(eq(5L), any(ReservationCheckInRequest.class));
     }
 
     @Test

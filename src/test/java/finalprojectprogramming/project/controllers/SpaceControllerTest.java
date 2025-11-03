@@ -17,8 +17,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(SpaceController.class)
-@Import(BaseControllerTest.TestMethodSecurityConfig.class)
+@WebMvcTest(value = SpaceController.class)
+@Import({BaseControllerTest.TestMethodSecurityConfig.class})
 class SpaceControllerTest extends BaseControllerTest {
 
     @MockBean

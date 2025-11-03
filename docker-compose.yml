@@ -26,6 +26,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Establece RUN_TESTS=true para ejecutar las pruebas y fallar el build si alguna rompe.
+        # Puedes sobrescribir con `RUN_TESTS=true docker compose build app` o usando un .env
+        RUN_TESTS: "${RUN_TESTS:-false}"
     image: project-app
     restart: on-failure
     depends_on:

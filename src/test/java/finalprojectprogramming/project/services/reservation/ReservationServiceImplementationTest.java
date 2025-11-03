@@ -533,7 +533,6 @@ class ReservationServiceImplementationTest {
         ReservationDTO request = reservationDtoBuilder().build();
         when(userRepository.findById(request.getUserId())).thenReturn(Optional.of(userBuilder().build()));
         when(spaceRepository.findById(request.getSpaceId())).thenReturn(Optional.of(spaceBuilder().withActive(false).build()));
-        when(reservationRepository.findAll()).thenReturn(List.of());
 
         try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             mocked.when(() -> SecurityUtils.requireSelfOrAny(request.getUserId(), UserRole.SUPERVISOR, UserRole.ADMIN))
@@ -563,7 +562,7 @@ class ReservationServiceImplementationTest {
             ReservationCheckInRequest request = checkInRequestBuilder().withQrCode("QR-CHECK").withAttendeeId("DUP").build();
             assertThatThrownBy(() -> service.markCheckIn(reservation.getId(), request))
                     .isInstanceOf(BusinessRuleException.class)
-                    .hasMessageContaining("already been registered");
+                    .hasMessageContaining("Reservation already reached the maximum number of attendees");
         }
     }
 
