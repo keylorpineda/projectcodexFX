@@ -2,7 +2,6 @@ package finalprojectprogramming.project.dtos;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import finalprojectprogramming.project.models.enums.ReservationStatus;
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;

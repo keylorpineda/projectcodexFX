@@ -1,11 +1,11 @@
 # Plan maestro de pruebas (estado actual + camino a 100 %)
 
 ## Estado actual (ejecución local)
-- Resultado de pruebas: 267 tests, 0 fallos, 0 errores, 10 ignorados (skipped)
+- Resultado de pruebas: 267 tests, 0 fallos, 0 errores, 2 ignorados (skipped)
 - Build: PASS
 - Cobertura (JaCoCo, target/site/jacoco/index.html)
-  - Instrucciones: 77 % (2,357/10,370 perdidas)
-  - Branches: 58 % (424/1,026 perdidas)
+  - Instrucciones: 81 % (1,970/10,370 perdidas)
+  - Branches: 59 % (411/1,026 perdidas)
   - Clases analizadas: 95
 
 Notas relevantes:
@@ -277,6 +277,16 @@ reporte y cruza los datos con el plan por etapas para confirmar que cada rama y
 flujo descritos tiene un caso asociado. Cuando todos los módulos mencionados
 cuenten con pruebas exhaustivas, el objetivo de 100 % de cobertura se cumplirá
 sin alterar el código de producción, cumpliendo la restricción impuesta.
+
+### Solo tests de controllers
+
+Para ejecutar únicamente las suites de controllers y evitar que `zsh` expanda el patrón, cita el valor de `-Dtest`:
+
+```bash
+./mvnw -DskipITs=false -Dtest="finalprojectprogramming.project.controllers.*Test" test -DtrimStackTrace=false
+```
+
+Resultado actual: 64 tests de controllers en verde (0 fallos/errores).
 
 ## Apéndice A · Biblioteca de utilidades de prueba
 1. **Builders y fixtures**

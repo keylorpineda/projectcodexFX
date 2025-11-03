@@ -6,6 +6,7 @@ public class InputOutputMapperImplementation<I, D, O> implements InputOutputMapp
 
     private final ModelMapper modelMapper;
     private final Class<D> middleClass;
+    @SuppressWarnings("unused")
     private final Class<I> inputClass;
     private final Class<O> outputClass;
 

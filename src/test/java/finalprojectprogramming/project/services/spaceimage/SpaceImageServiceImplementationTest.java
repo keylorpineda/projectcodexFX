@@ -117,4 +117,37 @@ class SpaceImageServiceImplementationTest {
         in.setSpaceId(1L);
         assertThatThrownBy(() -> service.create(in)).isInstanceOf(ResourceNotFoundException.class);
     }
+
+    @Test
+    void upload_stores_file_and_applies_defaults() {
+        when(spaceRepo.findById(5L)).thenReturn(Optional.of(active(5L)));
+        when(storage.store(eq(5L), any())).thenReturn("/stored/url.png");
+        when(repo.save(any(SpaceImage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SpaceImageDTO out = service.upload(5L, Mockito.mock(org.springframework.web.multipart.MultipartFile.class),
+                null, null, null);
+
+        assertThat(out).isNotNull();
+        verify(storage).store(eq(5L), any());
+        verify(repo).save(any(SpaceImage.class));
+    }
+
+    @Test
+    void delete_throws_when_not_found_and_does_not_delete_storage() {
+        when(repo.findById(99L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.delete(99L)).isInstanceOf(ResourceNotFoundException.class);
+        verify(storage, never()).delete(any());
+    }
+
+    @Test
+    void update_throws_when_not_found() {
+        when(repo.findById(77L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.update(77L, new SpaceImageDTO())).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void findById_throws_when_not_found() {
+        when(repo.findById(88L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.findById(88L)).isInstanceOf(ResourceNotFoundException.class);
+    }
 }

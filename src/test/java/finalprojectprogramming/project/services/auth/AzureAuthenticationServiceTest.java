@@ -57,7 +57,7 @@ class AzureAuthenticationServiceTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existingUser));
         when(userRepository.save(existingUser)).thenReturn(existingUser);
         Date expiration = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
-        when(jwtService.generateToken(any(Map.class), eq(EMAIL))).thenReturn("jwt-token");
+    when(jwtService.generateToken(org.mockito.ArgumentMatchers.<Map<String, Object>>any(), eq(EMAIL))).thenReturn("jwt-token");
         when(jwtService.extractExpiration("jwt-token")).thenReturn(expiration);
 
         AuthResponseDTO response = service.authenticate(ACCESS_TOKEN);
@@ -72,7 +72,8 @@ class AzureAuthenticationServiceTest {
         assertThat(response.getRole()).isEqualTo(existingUser.getRole().name());
         assertThat(response.getName()).isEqualTo(existingUser.getName());
 
-        ArgumentCaptor<Map<String, Object>> claimsCaptor = ArgumentCaptor.forClass(Map.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> claimsCaptor = (ArgumentCaptor<Map<String, Object>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(Map.class);
         verify(jwtService).generateToken(claimsCaptor.capture(), eq(EMAIL));
         Map<String, Object> claims = claimsCaptor.getValue();
         assertThat(claims.get("uid")).isEqualTo(existingUser.getId());
@@ -95,7 +96,7 @@ class AzureAuthenticationServiceTest {
             persisted.setId(77L);
             return persisted;
         });
-        when(jwtService.generateToken(any(Map.class), eq(EMAIL))).thenReturn("jwt-token");
+    when(jwtService.generateToken(org.mockito.ArgumentMatchers.<Map<String, Object>>any(), eq(EMAIL))).thenReturn("jwt-token");
         when(jwtService.extractExpiration("jwt-token")).thenReturn(null);
 
         AuthResponseDTO response = service.authenticate(ACCESS_TOKEN);
@@ -118,7 +119,8 @@ class AzureAuthenticationServiceTest {
         assertThat(saved.getApprovedReservations()).isNotNull();
         assertThat(saved.getAuditLogs()).isNotNull();
 
-        ArgumentCaptor<Map<String, Object>> claimsCaptor = ArgumentCaptor.forClass(Map.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> claimsCaptor = (ArgumentCaptor<Map<String, Object>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(Map.class);
         verify(jwtService).generateToken(claimsCaptor.capture(), eq(EMAIL));
         assertThat(claimsCaptor.getValue().get("newUser")).isEqualTo(true);
         assertThat(claimsCaptor.getValue().get("profileComplete")).isEqualTo(true);

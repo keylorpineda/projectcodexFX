@@ -1,7 +1,6 @@
 package finalprojectprogramming.project.models;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import finalprojectprogramming.project.models.ReservationAttendee;
 import finalprojectprogramming.project.models.enums.ReservationStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

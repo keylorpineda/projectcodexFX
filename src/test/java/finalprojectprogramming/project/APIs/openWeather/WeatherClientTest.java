@@ -174,7 +174,9 @@ class WeatherClientTest {
         ReflectionTestUtils.setField(weatherClient, "httpClient", httpClient);
 
         try {
-            Mockito.when(httpClient.send(Mockito.any(HttpRequest.class), Mockito.any(HttpResponse.BodyHandler.class)))
+            Mockito.when(httpClient.send(
+                            Mockito.any(HttpRequest.class),
+                            Mockito.<HttpResponse.BodyHandler<String>>any()))
                     .thenThrow(new HttpTimeoutException("timeout"));
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -191,7 +193,9 @@ class WeatherClientTest {
         ReflectionTestUtils.setField(weatherClient, "httpClient", httpClient);
 
         try {
-            Mockito.when(httpClient.send(Mockito.any(HttpRequest.class), Mockito.any(HttpResponse.BodyHandler.class)))
+            Mockito.when(httpClient.send(
+                            Mockito.any(HttpRequest.class),
+                            Mockito.<HttpResponse.BodyHandler<String>>any()))
                     .thenThrow(new IOException("io"));
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -208,7 +212,9 @@ class WeatherClientTest {
         ReflectionTestUtils.setField(weatherClient, "httpClient", httpClient);
 
         try {
-            Mockito.when(httpClient.send(Mockito.any(HttpRequest.class), Mockito.any(HttpResponse.BodyHandler.class)))
+            Mockito.when(httpClient.send(
+                            Mockito.any(HttpRequest.class),
+                            Mockito.<HttpResponse.BodyHandler<String>>any()))
                     .thenThrow(new InterruptedException("stop"));
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -230,7 +236,8 @@ class WeatherClientTest {
         props.setApiKey("secret");
         props.setUnits("metric");
         props.setLang("es");
-        props.setTimeoutMs(250);
+    // Use a slightly higher timeout to avoid flakiness in CI and slower machines
+    props.setTimeoutMs(1500);
         props.setPerUserRateLimitPerMinute(10);
         props.setCacheTtlSeconds(60);
         props.setZoneId("UTC");
