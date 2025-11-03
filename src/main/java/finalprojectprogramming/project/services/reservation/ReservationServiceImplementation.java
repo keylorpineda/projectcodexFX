@@ -70,11 +70,11 @@ public class ReservationServiceImplementation implements ReservationService {
     }
 
     /**
-     * Obtiene la hora actual en la zona horaria de Costa Rica.
-     * Usa este método en lugar de LocalDateTime.now() para evitar problemas de zona horaria.
+     * Obtiene la hora actual.
+     * Asumimos que el sistema está configurado en la zona horaria correcta.
      */
     private LocalDateTime nowCostaRica() {
-        return ZonedDateTime.now(COSTA_RICA_ZONE).toLocalDateTime();
+        return LocalDateTime.now();
     }
 
     @Override
@@ -83,15 +83,12 @@ public class ReservationServiceImplementation implements ReservationService {
         
         // ✅ VALIDACIÓN: Mínimo 60 minutos de anticipación
         // Las reservas deben hacerse con anticipación para que un administrador las confirme
-        // Usamos ZonedDateTime con zona horaria explícita de Costa Rica
-        ZonedDateTime now = ZonedDateTime.now(COSTA_RICA_ZONE);
+        // Asumimos que todas las fechas están en la misma referencia temporal (hora de Costa Rica)
+        LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = reservationDTO.getStartTime();
         if (startTime != null) {
-            // Convertir LocalDateTime a ZonedDateTime para comparación correcta
-            ZonedDateTime zonedStartTime = startTime.atZone(COSTA_RICA_ZONE);
-            
             // Validar que la hora de inicio sea al menos 60 minutos en el futuro
-            long minutesUntilStart = java.time.Duration.between(now, zonedStartTime).toMinutes();
+            long minutesUntilStart = java.time.Duration.between(now, startTime).toMinutes();
             if (minutesUntilStart < 60) {
                 throw new BusinessRuleException(
                     "Las reservas deben hacerse con al menos 60 minutos de anticipación. " +
@@ -120,8 +117,8 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setApprovedBy(resolveApproverForCreation(space, reservationDTO.getApprovedByUserId()));
         reservation.setCanceledAt(null);
         reservation.setCheckinAt(null);
-        reservation.setCreatedAt(now.toLocalDateTime());
-        reservation.setUpdatedAt(now.toLocalDateTime());
+        reservation.setCreatedAt(now);
+        reservation.setUpdatedAt(now);
         reservation.setDeletedAt(null);
         if (reservation.getNotifications() == null) {
             reservation.setNotifications(new ArrayList<>());
@@ -292,9 +289,9 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         
         // ✅ Validar ventana temporal: 30 minutos antes y 30 minutos después del inicio
-        // Como PostgreSQL guarda en UTC y LocalDateTime no tiene zona horaria,
-        // comparamos directamente los LocalDateTime sin conversión
-        LocalDateTime now = LocalDateTime.now(COSTA_RICA_ZONE);
+        // Usar LocalDateTime directamente sin conversiones de zona horaria
+        // Asumimos que todas las fechas (guardadas y actuales) están en la misma referencia temporal
+        LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = reservation.getStartTime();
         LocalDateTime windowStart = startTime.minusMinutes(30);
         LocalDateTime windowEnd = startTime.plusMinutes(30);
@@ -302,7 +299,7 @@ public class ReservationServiceImplementation implements ReservationService {
         // DEBUG: Logs para depuración de zona horaria
         System.out.println("=== DEBUG CHECK-IN TEMPORAL WINDOW ===");
         System.out.println("Reservation ID: " + reservation.getId());
-        System.out.println("Current time (LocalDateTime CR): " + now);
+        System.out.println("Current time (LocalDateTime): " + now);
         System.out.println("Reservation startTime (LocalDateTime): " + startTime);
         System.out.println("Window start: " + windowStart);
         System.out.println("Window end: " + windowEnd);
