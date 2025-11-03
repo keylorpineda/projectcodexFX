@@ -1324,6 +1324,13 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
 
         LocalDateTime startDateTime = LocalDateTime.of(data.date(), data.startTime());
         LocalDateTime endDateTime = LocalDateTime.of(data.date(), data.endTime());
+        LocalDateTime now = LocalDateTime.now();
+
+        // ✅ VALIDACIÓN: Mínimo 60 minutos de anticipación
+        if (startDateTime.isBefore(now.plusMinutes(60))) {
+            showError("Las reservas deben hacerse con al menos 60 minutos de anticipación");
+            return;
+        }
 
         // 🔍 DEBUG: Verificar las fechas que se están enviando
         System.out.println("═══════════════════════════════════════════");
@@ -1335,9 +1342,8 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         System.out.println("   ⏰ Hora fin: " + data.endTime());
         System.out.println("   📅 LocalDateTime inicio: " + startDateTime);
         System.out.println("   📅 LocalDateTime fin: " + endDateTime);
-        System.out.println("   🕐 Fecha/hora actual: " + LocalDateTime.now());
-        System.out.println("   ✅ ¿Inicio es futuro?: " + startDateTime.isAfter(LocalDateTime.now()));
-        System.out.println("   ✅ ¿Fin es futuro?: " + endDateTime.isAfter(LocalDateTime.now()));
+        System.out.println("   🕐 Fecha/hora actual: " + now);
+        System.out.println("   ✅ ¿Inicio es futuro (+60 min)?: " + startDateTime.isAfter(now.plusMinutes(60)));
         System.out.println("═══════════════════════════════════════════");
 
         Task<ReservationDTO> task = new Task<>() {

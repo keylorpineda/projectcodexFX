@@ -3957,8 +3957,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
      * Esto desbloquea el código QR para que pueda ser escaneado
      */
     private void aprobarReserva(ReservationDTO reserva) {
-        if (!"Pendiente".equals(reserva.status())) {
-            mostrarAdvertencia("Esta ReservationDTO no está pendiente de aprobación.\nEstado actual: " + reserva.status());
+        // ✅ Corrección: comparar con "PENDING" en inglés (como viene del backend)
+        if (!"PENDING".equalsIgnoreCase(reserva.status())) {
+            mostrarAdvertencia("Esta reserva no está pendiente de aprobación.\nEstado actual: " + reserva.status());
             return;
         }
         
@@ -4208,16 +4209,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
     /**
      * Elimina permanentemente una ReservationDTO de la base de datos
-     * Solo disponible para reservas con estado CHECKED_IN, NO_SHOW o CANCELED
+     * ✅ ADMIN puede eliminar CUALQUIER reserva sin restricciones
      */
     private void eliminarReservaPermanente(ReservationDTO reserva) {
-        String estado = reserva.status();
-        
-        // Validar que solo se puedan eliminar reservas finalizadas o canceladas
-        if (!"En sitio".equals(estado) && !"Inasistencia".equals(estado) && !"Cancelada".equals(estado)) {
-            mostrarAdvertencia("Solo se pueden eliminar reservas con asistencia confirmada, inasistencia registrada o canceladas");
-            return;
-        }
+        // ✅ Sin validación de estado - ADMIN tiene control total
         
         // Buscar usuario y espacio por ID
         UserDTO usuario = listaUsuarios.stream()
@@ -4237,7 +4232,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             "• Usuario: " + (usuario != null ? usuario.name() : "N/A") + "\n" +
             "• Espacio: " + (espacio != null ? espacio.name() : "N/A") + "\n" +
             "• Fecha: " + reserva.startTime().toLocalDate() + "\n" +
-            "• Estado: " + estado + "\n\n" +
+            "• Estado: " + reserva.status() + "\n\n" +
             "⚠️ Esta operación NO SE PUEDE DESHACER\n" +
             "⚠️ Los datos serán eliminados permanentemente de la base de datos"
         );

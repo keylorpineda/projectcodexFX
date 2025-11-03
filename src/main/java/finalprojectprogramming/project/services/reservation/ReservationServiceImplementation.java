@@ -67,6 +67,14 @@ public class ReservationServiceImplementation implements ReservationService {
     @Override
     public ReservationDTO create(ReservationDTO reservationDTO) {
         SecurityUtils.requireSelfOrAny(reservationDTO.getUserId(), UserRole.SUPERVISOR, UserRole.ADMIN);
+        
+        // ✅ VALIDACIÓN: Mínimo 60 minutos de anticipación
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = reservationDTO.getStartTime();
+        if (startTime != null && startTime.isBefore(now.plusMinutes(60))) {
+            throw new BusinessRuleException("Las reservas deben hacerse con al menos 60 minutos de anticipación");
+        }
+        
         User user = getUser(reservationDTO.getUserId());
         Space space = getSpace(reservationDTO.getSpaceId());
         availabilityValidator.assertAvailability(space, reservationDTO.getStartTime(), reservationDTO.getEndTime(),
@@ -87,7 +95,6 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setApprovedBy(resolveApproverForCreation(space, reservationDTO.getApprovedByUserId()));
         reservation.setCanceledAt(null);
         reservation.setCheckinAt(null);
-        LocalDateTime now = LocalDateTime.now();
         reservation.setCreatedAt(now);
         reservation.setUpdatedAt(now);
         reservation.setDeletedAt(null);
@@ -199,7 +206,14 @@ public class ReservationServiceImplementation implements ReservationService {
         if (reservation.getStatus() == ReservationStatus.CANCELED) {
             return toDto(reservation);
         }
-        cancellationPolicy.assertCancellationAllowed(reservation);
+        
+        // ✅ CORRECCIÓN: Solo validar política si NO es ADMIN
+        // Los ADMIN pueden cancelar en cualquier momento
+        boolean isAdmin = SecurityUtils.hasAny(UserRole.ADMIN);
+        if (!isAdmin) {
+            cancellationPolicy.assertCancellationAllowed(reservation);
+        }
+        
         reservation.setStatus(ReservationStatus.CANCELED);
         reservation.setCancellationReason(cancellationReason);
         reservation.setCanceledAt(LocalDateTime.now());
@@ -375,12 +389,8 @@ public class ReservationServiceImplementation implements ReservationService {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation with id " + id + " not found"));
         
-        // Solo permitir eliminación física de reservas con estados finales o canceladas
-        if (reservation.getStatus() != ReservationStatus.CHECKED_IN && 
-            reservation.getStatus() != ReservationStatus.NO_SHOW &&
-            reservation.getStatus() != ReservationStatus.CANCELED) {
-            throw new BusinessRuleException("Only reservations with CHECKED_IN, NO_SHOW or CANCELED status can be permanently deleted");
-        }
+        // ✅ ADMIN puede eliminar permanentemente CUALQUIER reserva sin restricciones
+        // Ya no validamos estados - ADMIN tiene control total
         
         reservationRepository.delete(reservation);
         recordAudit("RESERVATION_HARD_DELETED", reservation, details -> {
@@ -494,29 +504,34 @@ public class ReservationServiceImplementation implements ReservationService {
     }
 
     private void recordAudit(String action, Reservation reservation, Consumer<ObjectNode> detailsCustomizer) {
-        Long actorId = null;
         try {
-            actorId = SecurityUtils.getCurrentUserId();
-        } catch (AuthenticationCredentialsNotFoundException ignored) {
-            actorId = null;
-        }
+            Long actorId = null;
+            try {
+                actorId = SecurityUtils.getCurrentUserId();
+            } catch (AuthenticationCredentialsNotFoundException ignored) {
+                actorId = null;
+            }
 
-        ObjectNode details = objectMapper.createObjectNode();
-        details.put("reservationId", reservation.getId());
-        if (reservation.getUser() != null) {
-            details.put("userId", reservation.getUser().getId());
-        }
-        if (reservation.getSpace() != null) {
-            details.put("spaceId", reservation.getSpace().getId());
-        }
-        if (reservation.getStatus() != null) {
-            details.put("status", reservation.getStatus().name());
-        }
-        if (detailsCustomizer != null) {
-            detailsCustomizer.accept(details);
-        }
+            ObjectNode details = objectMapper.createObjectNode();
+            details.put("reservationId", reservation.getId());
+            if (reservation.getUser() != null) {
+                details.put("userId", reservation.getUser().getId());
+            }
+            if (reservation.getSpace() != null) {
+                details.put("spaceId", reservation.getSpace().getId());
+            }
+            if (reservation.getStatus() != null) {
+                details.put("status", reservation.getStatus().name());
+            }
+            if (detailsCustomizer != null) {
+                detailsCustomizer.accept(details);
+            }
 
-        String entityId = reservation.getId() != null ? reservation.getId().toString() : null;
-        auditLogService.logEvent(actorId, action, entityId, details);
+            String entityId = reservation.getId() != null ? reservation.getId().toString() : null;
+            auditLogService.logEvent(actorId, action, entityId, details);
+        } catch (Exception e) {
+            // ❌ Error al registrar audit log - no romper la operación principal
+            System.err.println("❌ Error al registrar audit log para acción " + action + ": " + e.getMessage());
+        }
     }
 }

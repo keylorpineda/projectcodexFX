@@ -33,7 +33,12 @@ public class AuditLogServiceImplementation implements AuditLogService {
     public AuditLogDTO create(AuditLogDTO auditLogDTO) {
         AuditLog auditLog = new AuditLog();
         if (auditLogDTO.getUserId() != null) {
-            auditLog.setUser(getUser(auditLogDTO.getUserId()));
+            try {
+                auditLog.setUser(getUser(auditLogDTO.getUserId()));
+            } catch (Exception e) {
+                // Usuario no encontrado - continuar sin usuario
+                auditLog.setUser(null);
+            }
         }
         auditLog.setAction(auditLogDTO.getAction());
         auditLog.setEntityId(auditLogDTO.getEntityId());
@@ -46,14 +51,22 @@ public class AuditLogServiceImplementation implements AuditLogService {
 
     @Override
     public void logEvent(Long userId, String action, String entityId, JsonNode details) {
-        AuditLogDTO dto = AuditLogDTO.builder()
-                .userId(userId)
-                .action(action)
-                .entityId(entityId)
-                .details(details)
-                .timestamp(LocalDateTime.now())
-                .build();
-        create(dto);
+        try {
+            System.out.println("✅ Guardando audit log: action=" + action + ", userId=" + userId + ", entityId=" + entityId);
+            AuditLogDTO dto = AuditLogDTO.builder()
+                    .userId(userId)
+                    .action(action)
+                    .entityId(entityId)
+                    .details(details)
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            AuditLogDTO saved = create(dto);
+            System.out.println("✅ Audit log guardado exitosamente con ID: " + saved.getId());
+        } catch (Exception e) {
+            // ❌ Error al guardar audit log - no romper la transacción principal
+            System.err.println("❌ Error al guardar audit log: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Override
