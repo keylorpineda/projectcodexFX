@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.municipal.config.AppConfig;
 import com.municipal.exceptions.ApiClientException;
 import com.municipal.utils.JsonUtils;
+import com.municipal.utils.MultipartBodyPublisher;
 
 import java.io.IOException;
 import java.net.URI;
@@ -54,6 +55,14 @@ public class ApiClient {
         HttpRequest.Builder builder = authorizedBuilder(path, bearerToken)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.toJson(body)));
+        return send(builder.build(), responseType);
+    }
+
+    public <T> T postMultipart(String path, MultipartBodyPublisher multipartBody, String bearerToken,
+            Class<T> responseType) {
+        HttpRequest.Builder builder = authorizedBuilder(path, bearerToken)
+                .header("Content-Type", "multipart/form-data; boundary=" + multipartBody.getBoundary())
+                .POST(multipartBody.build());
         return send(builder.build(), responseType);
     }
 

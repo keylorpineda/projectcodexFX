@@ -3,11 +3,13 @@ package com.municipal.ui.controllers;
 import com.municipal.config.AppConfig;
 import com.municipal.controllers.ReservationController;
 import com.municipal.controllers.SpaceController;
+import com.municipal.controllers.SpaceImageController;
 import com.municipal.controllers.UserController;
 import com.municipal.controllers.WeatherController;
 import com.municipal.dtos.ReservationDTO;
 import com.municipal.dtos.SpaceDTO;
 import com.municipal.dtos.SpaceInputDTO;
+import com.municipal.dtos.SpaceImageDTO;
 import com.municipal.dtos.UserDTO;
 import com.municipal.dtos.UserInputDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
@@ -38,17 +40,23 @@ import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 import javafx.scene.control.Alert.AlertType;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.net.URL;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,6 +65,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -215,6 +224,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     // ==================== DATOS Y ESTADO ====================
 
     private final SpaceController spaceController = new SpaceController();
+    private final SpaceImageController spaceImageController = new SpaceImageController();
     private final UserController userController = new UserController();
     private final ReservationController reservationController = new ReservationController();
     private final WeatherController weatherController = new WeatherController();
@@ -575,29 +585,32 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         });
         
         // Configurar columna de acciones con anchos adecuados
-        colAccionesEspacio.setMinWidth(360);
-        colAccionesEspacio.setPrefWidth(380);
-        
+        colAccionesEspacio.setMinWidth(420);
+        colAccionesEspacio.setPrefWidth(440);
+
         colAccionesEspacio.setCellFactory(param -> new TableCell<SpaceDTO, Void>() {
             private final Button btnVer = new Button("👁️ Ver");
             private final Button btnEditar = new Button("✏️ Editar");
             private final Button btnEstado = new Button("� Estado");
+            private final Button btnImagenes = new Button("🖼 Imágenes");
             private final Button btnEliminar = new Button("�️ Eliminar");
-            private final HBox contenedor = new HBox(6, btnVer, btnEditar, btnEstado, btnEliminar);
+            private final HBox contenedor = new HBox(6, btnVer, btnEditar, btnEstado, btnImagenes, btnEliminar);
 
             {
                 // Aplicar estilos CSS
                 btnVer.getStyleClass().addAll("admin-btn-base", "admin-btn-view");
                 btnEditar.getStyleClass().addAll("admin-btn-base", "admin-btn-edit");
                 btnEstado.getStyleClass().addAll("admin-btn-base", "admin-btn-state");
+                btnImagenes.getStyleClass().addAll("admin-btn-base", "admin-btn-view");
                 btnEliminar.getStyleClass().addAll("admin-btn-base", "admin-btn-delete");
-                
+
                 // Tooltips
                 javafx.scene.control.Tooltip.install(btnVer, new javafx.scene.control.Tooltip("Ver detalles del espacio"));
                 javafx.scene.control.Tooltip.install(btnEditar, new javafx.scene.control.Tooltip("Editar información"));
                 javafx.scene.control.Tooltip.install(btnEstado, new javafx.scene.control.Tooltip("Cambiar disponibilidad"));
+                javafx.scene.control.Tooltip.install(btnImagenes, new javafx.scene.control.Tooltip("Gestionar imágenes"));
                 javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar espacio"));
-                
+
                 btnVer.setOnAction(e -> {
                     SpaceDTO espacio = getTableView().getItems().get(getIndex());
                     verDetallesEspacio(espacio);
@@ -611,6 +624,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 btnEstado.setOnAction(e -> {
                     SpaceDTO espacio = getTableView().getItems().get(getIndex());
                     cambiarEstadoEspacio(espacio);
+                });
+
+                btnImagenes.setOnAction(e -> {
+                    SpaceDTO espacio = getTableView().getItems().get(getIndex());
+                    gestionarImagenesEspacio(espacio);
                 });
 
                 btnEliminar.setOnAction(e -> {
@@ -2608,6 +2626,233 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 },
                 "Eliminando espacio...",
                 "No se pudo eliminar el espacio");
+    }
+
+    private void gestionarImagenesEspacio(SpaceDTO espacio) {
+        if (espacio == null || espacio.id() == null) {
+            mostrarAdvertencia("Selecciona un espacio válido para gestionar sus imágenes.");
+            return;
+        }
+
+        String token = obtenerToken();
+        if (token == null) {
+            return;
+        }
+
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Gestión de imágenes - " + espacio.name());
+        dialog.setHeaderText("Administra las imágenes asociadas al espacio seleccionado.");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.setResizable(true);
+
+        ObservableList<SpaceImageDTO> imagenes = FXCollections.observableArrayList();
+        ListView<SpaceImageDTO> listView = new ListView<>(imagenes);
+        listView.setPrefHeight(320);
+
+        TextField descripcionField = new TextField();
+        descripcionField.setPromptText("Descripción (opcional)");
+        descripcionField.getStyleClass().add("form-field");
+
+        Spinner<Integer> ordenSpinner = new Spinner<>(0, 999, 0);
+        ordenSpinner.setEditable(true);
+        ordenSpinner.getStyleClass().add("form-field");
+
+        CheckBox activaCheckBox = new CheckBox("Activa");
+        activaCheckBox.setSelected(true);
+
+        Label archivoSeleccionadoLabel = new Label("Ningún archivo seleccionado");
+        archivoSeleccionadoLabel.setWrapText(true);
+
+        Button seleccionarArchivoButton = new Button("Seleccionar imagen");
+        seleccionarArchivoButton.getStyleClass().addAll("admin-btn-base", "admin-btn-edit");
+
+        Button subirButton = new Button("Subir imagen");
+        subirButton.getStyleClass().addAll("admin-btn-base", "admin-btn-view");
+
+        AtomicReference<Path> archivoSeleccionado = new AtomicReference<>();
+
+        seleccionarArchivoButton.setOnAction(event -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Seleccionar imagen");
+            chooser.getExtensionFilters().setAll(new FileChooser.ExtensionFilter("Archivos de imagen",
+                    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+            File archivo = chooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
+            if (archivo != null) {
+                archivoSeleccionado.set(archivo.toPath());
+                archivoSeleccionadoLabel.setText(archivo.getName() + " (" + formatearTamanoArchivo(archivo.length()) + ")");
+            }
+        });
+
+        subirButton.setOnAction(event -> {
+            Path archivo = archivoSeleccionado.get();
+            if (archivo == null) {
+                mostrarAdvertencia("Selecciona una imagen antes de subirla.");
+                return;
+            }
+            String descripcion = descripcionField.getText();
+            String descripcionNormalizada = descripcion != null ? descripcion.trim() : null;
+            Integer orden = ordenSpinner.getValue();
+            boolean activa = activaCheckBox.isSelected();
+
+            ejecutarOperacionAsync(
+                    () -> spaceImageController.uploadImage(espacio.id(), archivo,
+                            (descripcionNormalizada != null && descripcionNormalizada.isBlank()) ? null
+                                    : descripcionNormalizada,
+                            orden, activa, token),
+                    nuevaImagen -> {
+                        imagenes.add(nuevaImagen);
+                        ordenarImagenes(imagenes);
+                        listView.refresh();
+                        descripcionField.clear();
+                        activaCheckBox.setSelected(true);
+                        archivoSeleccionado.set(null);
+                        archivoSeleccionadoLabel.setText("Ningún archivo seleccionado");
+                        ordenSpinner.getValueFactory().setValue(Math.max(0, imagenes.size()));
+                        mostrarExito("Imagen subida correctamente");
+                    },
+                    "Subiendo imagen...",
+                    "No se pudo subir la imagen");
+        });
+
+        listView.setCellFactory(lv -> new ListCell<>() {
+            private final ImageView preview = new ImageView();
+            private final Label descripcionLabel = new Label();
+            private final Label detallesLabel = new Label();
+            private final Button eliminarButton = new Button("Eliminar");
+            private final VBox texto = new VBox(4, descripcionLabel, detallesLabel);
+            private final HBox contenido = new HBox(12, preview, texto, eliminarButton);
+
+            {
+                preview.setFitWidth(120);
+                preview.setFitHeight(80);
+                preview.setPreserveRatio(true);
+                preview.setSmooth(true);
+                descripcionLabel.setWrapText(true);
+                detallesLabel.setWrapText(true);
+                eliminarButton.getStyleClass().addAll("admin-btn-base", "admin-btn-delete");
+                contenido.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(texto, Priority.ALWAYS);
+                eliminarButton.setOnAction(evt -> {
+                    SpaceImageDTO imagen = getItem();
+                    if (imagen != null) {
+                        eliminarImagen(imagen, token, imagenes, ordenSpinner);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(SpaceImageDTO imagen, boolean empty) {
+                super.updateItem(imagen, empty);
+                if (empty || imagen == null) {
+                    setGraphic(null);
+                } else {
+                    descripcionLabel.setText(imagen.description() != null && !imagen.description().isBlank()
+                            ? imagen.description()
+                            : "(Sin descripción)");
+                    String detalles = "Orden: " + (imagen.displayOrder() != null ? imagen.displayOrder() : 0)
+                            + " · " + (Boolean.TRUE.equals(imagen.active()) ? "Activa" : "Inactiva");
+                    detallesLabel.setText(detalles);
+                    String url = spaceImageController.resolveImageUrl(imagen);
+                    if (url != null) {
+                        try {
+                            preview.setImage(new Image(url, 120, 80, true, true, true));
+                        } catch (Exception ex) {
+                            preview.setImage(null);
+                        }
+                    } else {
+                        preview.setImage(null);
+                    }
+                    setGraphic(contenido);
+                }
+            }
+        });
+
+        VBox descripcionBox = new VBox(4, new Label("Descripción"), descripcionField);
+        VBox ordenBox = new VBox(4, new Label("Orden de despliegue"), ordenSpinner);
+        HBox archivoBox = new HBox(10, seleccionarArchivoButton, archivoSeleccionadoLabel);
+        archivoBox.setAlignment(Pos.CENTER_LEFT);
+
+        VBox formulario = new VBox(10, descripcionBox, ordenBox, activaCheckBox, archivoBox, subirButton);
+        formulario.setPadding(new Insets(10, 0, 10, 0));
+
+        VBox contenido = new VBox(15, formulario, new Separator(), listView);
+        contenido.setPadding(new Insets(20));
+        dialog.getDialogPane().setContent(contenido);
+        dialog.getDialogPane().setPrefWidth(640);
+
+        Button closeButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CLOSE);
+        if (closeButton != null) {
+            closeButton.setText("Cerrar");
+            closeButton.getStyleClass().add("dialog-cancel-button");
+        }
+
+        aplicarEstilosDialogo(dialog);
+
+        ejecutarOperacionAsync(
+                () -> spaceImageController.loadImages(espacio.id(), token),
+                lista -> {
+                    imagenes.setAll(lista);
+                    ordenarImagenes(imagenes);
+                    ordenSpinner.getValueFactory().setValue(Math.max(0, imagenes.size()));
+                },
+                "Cargando imágenes...",
+                "No se pudieron cargar las imágenes del espacio");
+
+        dialog.show();
+    }
+
+    private void eliminarImagen(SpaceImageDTO imagen, String token, ObservableList<SpaceImageDTO> imagenes,
+            Spinner<Integer> ordenSpinner) {
+        if (imagen == null || imagen.id() == null) {
+            return;
+        }
+
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacion.setTitle("Eliminar imagen");
+        confirmacion.setHeaderText("¿Deseas eliminar esta imagen?");
+        confirmacion.setContentText(imagen.description() != null && !imagen.description().isBlank()
+                ? imagen.description()
+                : "Esta acción no se puede deshacer.");
+
+        Optional<ButtonType> resultado = confirmacion.showAndWait();
+        if (resultado.isEmpty() || resultado.get() != ButtonType.OK) {
+            return;
+        }
+
+        ejecutarOperacionAsync(
+                () -> {
+                    spaceImageController.deleteImage(imagen.id(), token);
+                    return imagen;
+                },
+                deleted -> {
+                    imagenes.removeIf(item -> Objects.equals(item.id(), deleted.id()));
+                    ordenarImagenes(imagenes);
+                    ordenSpinner.getValueFactory().setValue(Math.max(0, imagenes.size()));
+                    mostrarExito("Imagen eliminada correctamente");
+                },
+                "Eliminando imagen...",
+                "No se pudo eliminar la imagen");
+    }
+
+    private void ordenarImagenes(ObservableList<SpaceImageDTO> imagenes) {
+        if (imagenes == null) {
+            return;
+        }
+        FXCollections.sort(imagenes, Comparator
+                .comparing((SpaceImageDTO img) -> img.displayOrder() != null ? img.displayOrder() : 0)
+                .thenComparing(img -> img.id() != null ? img.id() : Long.MAX_VALUE));
+    }
+
+    private String formatearTamanoArchivo(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        double kilobytes = bytes / 1024.0;
+        if (kilobytes < 1024) {
+            return String.format(Locale.getDefault(), "%.1f KB", kilobytes);
+        }
+        double megabytes = kilobytes / 1024.0;
+        return String.format(Locale.getDefault(), "%.2f MB", megabytes);
     }
 
     private void mostrarFormularioEspacio(SpaceDTO espacio) {
