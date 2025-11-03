@@ -4,12 +4,14 @@ import finalprojectprogramming.project.dtos.ReservationCheckInRequest;
 import finalprojectprogramming.project.dtos.ReservationDTO;
 import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.excel.ExcelExportService;
 import finalprojectprogramming.project.services.reservation.ReservationExportService;
 import finalprojectprogramming.project.services.reservation.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ContentDisposition;
@@ -35,11 +37,14 @@ public class ReservationController {
 
     private final ReservationService reservationService;
     private final ReservationExportService reservationExportService;
+    private final ExcelExportService excelExportService;
 
     public ReservationController(ReservationService reservationService,
-            ReservationExportService reservationExportService) {
+            ReservationExportService reservationExportService,
+            ExcelExportService excelExportService) {
         this.reservationService = reservationService;
         this.reservationExportService = reservationExportService;
+        this.excelExportService = excelExportService;
     }
 
     @PostMapping
@@ -156,6 +161,22 @@ public class ReservationController {
     public ResponseEntity<Void> permanentlyDeleteReservation(@PathVariable Long id) {
         reservationService.hardDelete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/export/space-statistics")
+    @Operation(summary = "Export space statistics to Excel (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<byte[]> exportSpaceStatistics() {
+        try {
+            ByteArrayOutputStream outputStream = excelExportService.exportSpaceStatistics();
+            
+            HttpHeaders headers = buildExcelHeaders("estadisticas-espacios.xlsx");
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(outputStream.toByteArray());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     public record CancellationRequest(String reason) {

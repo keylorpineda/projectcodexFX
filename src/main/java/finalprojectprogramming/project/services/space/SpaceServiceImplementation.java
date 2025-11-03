@@ -261,6 +261,52 @@ public class SpaceServiceImplementation implements SpaceService {
             Long reservationIdToIgnore) {
         availabilityValidator.assertAvailability(space, startTime, endTime, reservationIdToIgnore);
     }
+
+    @Override
+    public List<SpaceDTO> searchSpaces(SpaceType type, Integer minCapacity, Integer maxCapacity, 
+                                        String location, Boolean active) {
+        List<Space> allSpaces = spaceRepository.findAll();
+        
+        return allSpaces.stream()
+                .filter(space -> {
+                    // Filtrar espacios eliminados
+                    if (space.getDeletedAt() != null) {
+                        return false;
+                    }
+                    
+                    // Filtro por tipo
+                    if (type != null && !type.equals(space.getType())) {
+                        return false;
+                    }
+                    
+                    // Filtro por capacidad mínima
+                    if (minCapacity != null && space.getCapacity() < minCapacity) {
+                        return false;
+                    }
+                    
+                    // Filtro por capacidad máxima
+                    if (maxCapacity != null && space.getCapacity() > maxCapacity) {
+                        return false;
+                    }
+                    
+                    // Filtro por ubicación (búsqueda parcial case-insensitive)
+                    if (location != null && !location.trim().isEmpty()) {
+                        if (space.getLocation() == null || 
+                            !space.getLocation().toLowerCase().contains(location.toLowerCase().trim())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filtro por estado activo/inactivo
+                    if (active != null && !active.equals(space.getActive())) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
     
     /**
      * Registra un evento de auditoría para acciones de espacio

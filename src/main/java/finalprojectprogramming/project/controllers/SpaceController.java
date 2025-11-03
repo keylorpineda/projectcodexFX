@@ -4,6 +4,8 @@ import finalprojectprogramming.project.dtos.SpaceDTO;
 import finalprojectprogramming.project.models.enums.SpaceType;
 import finalprojectprogramming.project.services.space.SpaceService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -40,7 +42,12 @@ public class SpaceController {
     }
 
     @PostMapping
-    @Operation(summary = "Create a new space")
+    @Operation(summary = "Create a new space", description = "Creates a new reservable space in the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Space created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<SpaceDTO> createSpace(@Valid @RequestBody SpaceDTO spaceDTO) {
         SpaceDTO created = spaceService.create(spaceDTO);
@@ -48,28 +55,66 @@ public class SpaceController {
     }
 
     @GetMapping
-    @Operation(summary = "Retrieve all spaces")
+    @Operation(summary = "Retrieve all spaces", description = "Returns a list of all reservable spaces")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved spaces"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','USER')")
     public ResponseEntity<List<SpaceDTO>> getAllSpaces() {
         return ResponseEntity.ok(spaceService.findAll());
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Advanced search for spaces with multiple filters", 
+               description = "Search spaces by type, capacity range, location, and availability")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid search parameters"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','USER')")
+    public ResponseEntity<List<SpaceDTO>> searchSpaces(
+            @RequestParam(required = false) SpaceType type,
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam(required = false) Integer maxCapacity,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) Boolean active) {
+        return ResponseEntity.ok(spaceService.searchSpaces(type, minCapacity, maxCapacity, location, active));
+    }
+
     @GetMapping("/{id}")
-    @Operation(summary = "Retrieve a space by id")
+    @Operation(summary = "Retrieve a space by id", description = "Returns detailed information about a specific space")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Space found"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Space not found")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<SpaceDTO> getSpaceById(@PathVariable Long id) {
         return ResponseEntity.ok(spaceService.findById(id));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update an existing space")
+    @Operation(summary = "Update an existing space", description = "Updates space information including capacity, location, and features")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Space updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Space not found")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<SpaceDTO> updateSpace(@PathVariable Long id, @Valid @RequestBody SpaceDTO spaceDTO) {
         return ResponseEntity.ok(spaceService.update(id, spaceDTO));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Soft delete a space")
+    @Operation(summary = "Soft delete a space", description = "Marks a space as deleted without removing from database")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Space deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Space not found")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<Void> deleteSpace(@PathVariable Long id) {
         spaceService.delete(id);
@@ -77,7 +122,12 @@ public class SpaceController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Change the active status of a space")
+    @Operation(summary = "Change the active status of a space", description = "Activates or deactivates a space for reservations")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Status changed successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Space not found")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<SpaceDTO> changeStatus(@PathVariable Long id, @RequestParam boolean active) {
         return ResponseEntity.ok(spaceService.changeStatus(id, active));

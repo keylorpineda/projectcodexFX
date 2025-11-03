@@ -24,4 +24,17 @@ public interface SpaceService {
 
     List<SpaceDTO> findAvailableSpaces(LocalDateTime startTime, LocalDateTime endTime,
             SpaceType type, Integer minimumCapacity);
+
+    /**
+     * Búsqueda avanzada de espacios con múltiples filtros
+     * 
+     * @param type Tipo de espacio (opcional)
+     * @param minCapacity Capacidad mínima (opcional)
+     * @param maxCapacity Capacidad máxima (opcional)
+     * @param location Ubicación (búsqueda parcial, opcional)
+     * @param active Estado activo/inactivo (opcional)
+     * @return Lista de espacios que cumplen los criterios
+     */
+    List<SpaceDTO> searchSpaces(SpaceType type, Integer minCapacity, Integer maxCapacity, 
+                                 String location, Boolean active);
 }

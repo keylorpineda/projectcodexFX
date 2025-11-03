@@ -4,6 +4,8 @@ import finalprojectprogramming.project.dtos.UserInputDTO;
 import finalprojectprogramming.project.dtos.UserOutputDTO;
 import finalprojectprogramming.project.services.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -33,7 +35,13 @@ public class UserController {
     }
 
     @PostMapping
-    @Operation(summary = "Create a new user")
+    @Operation(summary = "Create a new user", description = "Creates a new user in the system with specified role and details")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "User created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "409", description = "User with email already exists")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<UserOutputDTO> createUser(@Valid @RequestBody UserInputDTO inputDTO) {
         UserOutputDTO created = userService.create(inputDTO);
@@ -41,21 +49,36 @@ public class UserController {
     }
 
     @GetMapping
-    @Operation(summary = "Retrieve all users")
+    @Operation(summary = "Retrieve all users", description = "Returns a list of all users in the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved users"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<UserOutputDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Retrieve a user by id")
+    @Operation(summary = "Retrieve a user by id", description = "Returns detailed information about a specific user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User found"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<UserOutputDTO> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.findById(id));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update an existing user")
+    @Operation(summary = "Update an existing user", description = "Updates user information including role and activation status")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserOutputDTO> updateUser(@PathVariable Long id,
             @Valid @RequestBody UserInputDTO inputDTO) {
@@ -63,7 +86,12 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Soft delete a user")
+    @Operation(summary = "Soft delete a user", description = "Marks a user as deleted without removing from database")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "User deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.delete(id);
