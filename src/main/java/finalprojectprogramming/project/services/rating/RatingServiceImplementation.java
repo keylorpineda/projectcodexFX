@@ -5,8 +5,11 @@ import finalprojectprogramming.project.exceptions.BusinessRuleException;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Rating;
 import finalprojectprogramming.project.models.Reservation;
+import finalprojectprogramming.project.models.enums.ReservationStatus;
+import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.repositories.RatingRepository;
 import finalprojectprogramming.project.repositories.ReservationRepository;
+import finalprojectprogramming.project.security.SecurityUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,8 +35,18 @@ public class RatingServiceImplementation implements RatingService {
     @Override
     public RatingDTO create(RatingDTO ratingDTO) {
         Reservation reservation = getActiveReservation(ratingDTO.getReservationId());
+        if (reservation.getUser() == null) {
+            throw new BusinessRuleException("Reservation has no associated user");
+        }
+        SecurityUtils.requireSelfOrAny(reservation.getUser().getId(), UserRole.SUPERVISOR, UserRole.ADMIN);
         if (reservation.getRating() != null || ratingRepository.findByReservationId(reservation.getId()).isPresent()) {
             throw new BusinessRuleException("Reservation already has a rating");
+        }
+        if (reservation.getEndTime() == null || reservation.getEndTime().isAfter(LocalDateTime.now())) {
+            throw new BusinessRuleException("Reservations can only be rated after they have ended");
+        }
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            throw new BusinessRuleException("Only reservations with attendance confirmed can be rated");
         }
 
         Rating rating = new Rating();

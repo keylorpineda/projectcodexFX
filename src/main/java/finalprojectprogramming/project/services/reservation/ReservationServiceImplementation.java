@@ -1,30 +1,34 @@
 package finalprojectprogramming.project.services.reservation;
 
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import finalprojectprogramming.project.dtos.ReservationAttendeeDTO;
 import finalprojectprogramming.project.dtos.ReservationCheckInRequest;
 import finalprojectprogramming.project.dtos.ReservationDTO;
-import finalprojectprogramming.project.models.ReservationAttendee;
 import finalprojectprogramming.project.exceptions.BusinessRuleException;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Notification;
 import finalprojectprogramming.project.models.Reservation;
+import finalprojectprogramming.project.models.ReservationAttendee;
 import finalprojectprogramming.project.models.Space;
 import finalprojectprogramming.project.models.User;
 import finalprojectprogramming.project.models.enums.ReservationStatus;
+import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.repositories.ReservationRepository;
 import finalprojectprogramming.project.repositories.SpaceRepository;
 import finalprojectprogramming.project.repositories.UserRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
-import finalprojectprogramming.project.models.enums.UserRole;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.services.notification.ReservationNotificationService;
 import finalprojectprogramming.project.services.space.SpaceAvailabilityValidator;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,17 +42,25 @@ public class ReservationServiceImplementation implements ReservationService {
     private final ModelMapper modelMapper;
     private final SpaceAvailabilityValidator availabilityValidator;
     private final ReservationNotificationService reservationNotificationService;
+    private final ReservationCancellationPolicy cancellationPolicy;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     public ReservationServiceImplementation(ReservationRepository reservationRepository,
             UserRepository userRepository, SpaceRepository spaceRepository,
             ModelMapper modelMapper, SpaceAvailabilityValidator availabilityValidator,
-            ReservationNotificationService reservationNotificationService) {
+            ReservationNotificationService reservationNotificationService,
+            ReservationCancellationPolicy cancellationPolicy, AuditLogService auditLogService,
+            ObjectMapper objectMapper) {
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
         this.spaceRepository = spaceRepository;
         this.modelMapper = modelMapper;
         this.availabilityValidator = availabilityValidator;
         this.reservationNotificationService = reservationNotificationService;
+        this.cancellationPolicy = cancellationPolicy;
+        this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
 
     }
 
@@ -87,6 +99,10 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         Reservation saved = reservationRepository.save(reservation);
         reservationNotificationService.notifyReservationCreated(saved);
+        recordAudit("RESERVATION_CREATED", saved, details -> {
+            details.put("startTime", saved.getStartTime() != null ? saved.getStartTime().toString() : null);
+            details.put("endTime", saved.getEndTime() != null ? saved.getEndTime().toString() : null);
+        });
         return toDto(saved);
     }
 
@@ -128,6 +144,7 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         reservation.setUpdatedAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
+        recordAudit("RESERVATION_UPDATED", saved, details -> details.put("updatedAt", saved.getUpdatedAt().toString()));
         return toDto(saved);
     }
 
@@ -182,15 +199,17 @@ public class ReservationServiceImplementation implements ReservationService {
         if (reservation.getStatus() == ReservationStatus.CANCELED) {
             return toDto(reservation);
         }
-        if (reservation.getStartTime() != null && reservation.getStartTime().isBefore(LocalDateTime.now())) {
-            throw new BusinessRuleException("Reservations cannot be canceled after their start time");
-        }
+        cancellationPolicy.assertCancellationAllowed(reservation);
         reservation.setStatus(ReservationStatus.CANCELED);
         reservation.setCancellationReason(cancellationReason);
         reservation.setCanceledAt(LocalDateTime.now());
         reservation.setUpdatedAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
         reservationNotificationService.notifyReservationCanceled(saved);
+        recordAudit("RESERVATION_CANCELED", saved, details -> {
+            details.put("cancellationReason", cancellationReason != null ? cancellationReason : "");
+            details.put("canceledAt", saved.getCanceledAt() != null ? saved.getCanceledAt().toString() : null);
+        });
         return toDto(saved);
     }
 
@@ -206,6 +225,8 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setUpdatedAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
         reservationNotificationService.notifyReservationApproved(saved);
+        recordAudit("RESERVATION_APPROVED", saved, details -> details.put("approvedBy",
+                saved.getApprovedBy() != null ? saved.getApprovedBy().getId() : null));
         return toDto(saved);
     }
 
@@ -296,6 +317,11 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setCheckinAt(checkInTimestamp);
         reservation.setUpdatedAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
+        recordAudit("RESERVATION_CHECKED_IN", saved, details -> {
+            details.put("checkInAt", saved.getCheckinAt() != null ? saved.getCheckinAt().toString() : null);
+            details.put("attendeeCount",
+                    saved.getAttendeeRecords() != null ? saved.getAttendeeRecords().size() : 0);
+        });
         return toDto(saved);
     }
 
@@ -315,6 +341,8 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setStatus(ReservationStatus.NO_SHOW);
         reservation.setUpdatedAt(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
+        recordAudit("RESERVATION_MARKED_NO_SHOW", saved, details ->
+                details.put("markedAt", saved.getUpdatedAt().toString()));
         return toDto(saved);
     }
 
@@ -337,6 +365,8 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setDeletedAt(LocalDateTime.now());
         reservation.setUpdatedAt(LocalDateTime.now());
         reservationRepository.save(reservation);
+        recordAudit("RESERVATION_SOFT_DELETED", reservation,
+                details -> details.put("deletedAt", reservation.getDeletedAt().toString()));
     }
 
     @Override
@@ -353,6 +383,9 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         
         reservationRepository.delete(reservation);
+        recordAudit("RESERVATION_HARD_DELETED", reservation, details -> {
+            details.put("status", reservation.getStatus() != null ? reservation.getStatus().name() : null);
+        });
     }
 
     private Reservation getActiveReservation(Long id) {
@@ -458,5 +491,32 @@ public class ReservationServiceImplementation implements ReservationService {
         if (exists) {
             throw new BusinessRuleException("QR code is already associated with another reservation");
         }
+    }
+
+    private void recordAudit(String action, Reservation reservation, Consumer<ObjectNode> detailsCustomizer) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (AuthenticationCredentialsNotFoundException ignored) {
+            actorId = null;
+        }
+
+        ObjectNode details = objectMapper.createObjectNode();
+        details.put("reservationId", reservation.getId());
+        if (reservation.getUser() != null) {
+            details.put("userId", reservation.getUser().getId());
+        }
+        if (reservation.getSpace() != null) {
+            details.put("spaceId", reservation.getSpace().getId());
+        }
+        if (reservation.getStatus() != null) {
+            details.put("status", reservation.getStatus().name());
+        }
+        if (detailsCustomizer != null) {
+            detailsCustomizer.accept(details);
+        }
+
+        String entityId = reservation.getId() != null ? reservation.getId().toString() : null;
+        auditLogService.logEvent(actorId, action, entityId, details);
     }
 }

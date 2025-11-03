@@ -5,15 +5,20 @@ import com.municipal.ApiClient;
 import com.municipal.dtos.ReservationDTO;
 import com.municipal.dtos.ReservationCheckInRequest;
 import com.municipal.exceptions.ApiClientException;
+import com.municipal.responses.BinaryFileResponse;
 import com.municipal.utils.JsonUtils;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ReservationController {
     private final ApiClient apiClient;
+    private static final Pattern FILENAME_PATTERN = Pattern.compile("filename=\"?([^\";]+)\"?");
 
     public ReservationController() {
         this(new ApiClient());
@@ -126,7 +131,7 @@ public class ReservationController {
     // ✅ MÉTODO PARA ELIMINACIÓN PERMANENTE - Elimina físicamente de la base de datos
     public void permanentlyDeleteReservation(Long id, String token) throws Exception {
         String url = apiClient.getBaseUrl() + "/api/reservations/" + id + "/permanent";
-        
+
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
@@ -242,5 +247,45 @@ public class ReservationController {
             return getReservationById(reservationId, token);
         }
         throw new ApiClientException(response.statusCode(), response.body());
+    }
+
+    public BinaryFileResponse exportAllReservationsExcel(String token) throws Exception {
+        String url = apiClient.getBaseUrl() + "/api/reservations/export";
+        return downloadExcel(url, token);
+    }
+
+    public BinaryFileResponse exportUserReservationsExcel(Long userId, String token) throws Exception {
+        String url = apiClient.getBaseUrl() + "/api/reservations/user/" + userId + "/export";
+        return downloadExcel(url, token);
+    }
+
+    private BinaryFileResponse downloadExcel(String url, String token) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", "Bearer " + token)
+                .header("Accept", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .GET()
+                .build();
+
+        HttpResponse<byte[]> response = apiClient.getHttpClient().send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            String fileName = response.headers()
+                    .firstValue("Content-Disposition")
+                    .flatMap(this::extractFileName)
+                    .orElse("reservas.xlsx");
+            return new BinaryFileResponse(response.body(), fileName);
+        }
+        throw new ApiClientException(response.statusCode(), new String(response.body()));
+    }
+
+    private Optional<String> extractFileName(String header) {
+        if (header == null || header.isBlank()) {
+            return Optional.empty();
+        }
+        Matcher matcher = FILENAME_PATTERN.matcher(header);
+        if (matcher.find()) {
+            return Optional.ofNullable(matcher.group(1));
+        }
+        return Optional.empty();
     }
 }

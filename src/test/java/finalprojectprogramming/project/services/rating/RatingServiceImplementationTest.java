@@ -9,14 +9,19 @@ import finalprojectprogramming.project.exceptions.BusinessRuleException;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.Rating;
 import finalprojectprogramming.project.models.Reservation;
+import finalprojectprogramming.project.models.User;
+import finalprojectprogramming.project.models.enums.ReservationStatus;
+import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.repositories.RatingRepository;
 import finalprojectprogramming.project.repositories.ReservationRepository;
+import finalprojectprogramming.project.security.SecurityUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.modelmapper.ModelMapper;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 class RatingServiceImplementationTest {
@@ -39,6 +44,11 @@ class RatingServiceImplementationTest {
         Reservation r = new Reservation();
         r.setId(id);
         r.setDeletedAt(null);
+        r.setEndTime(LocalDateTime.now().minusMinutes(10));
+        r.setStatus(ReservationStatus.CHECKED_IN);
+        User user = new User();
+        user.setId(1L);
+        r.setUser(user);
         return r;
     }
 
@@ -53,10 +63,15 @@ class RatingServiceImplementationTest {
         in.setScore(5);
         in.setComment("Excelente");
         in.setCreatedAt(LocalDateTime.now());
+        try (MockedStatic<SecurityUtils> mocked = Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(1L), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(invocation -> null);
 
-        RatingDTO out = service.create(in);
-        assertThat(out).isNotNull();
-        verify(ratingRepo).save(any(Rating.class));
+            RatingDTO out = service.create(in);
+            assertThat(out).isNotNull();
+            verify(ratingRepo).save(any(Rating.class));
+            mocked.verify(() -> SecurityUtils.requireSelfOrAny(1L, UserRole.SUPERVISOR, UserRole.ADMIN));
+        }
     }
 
     @Test
@@ -67,8 +82,12 @@ class RatingServiceImplementationTest {
 
         RatingDTO in = new RatingDTO();
         in.setReservationId(1L);
+        try (MockedStatic<SecurityUtils> mocked = Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(1L), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(invocation -> null);
 
-        assertThatThrownBy(() -> service.create(in)).isInstanceOf(BusinessRuleException.class);
+            assertThatThrownBy(() -> service.create(in)).isInstanceOf(BusinessRuleException.class);
+        }
     }
 
     @Test
@@ -78,7 +97,12 @@ class RatingServiceImplementationTest {
 
         RatingDTO in = new RatingDTO();
         in.setReservationId(1L);
-        assertThatThrownBy(() -> service.create(in)).isInstanceOf(BusinessRuleException.class);
+        try (MockedStatic<SecurityUtils> mocked = Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(1L), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(invocation -> null);
+
+            assertThatThrownBy(() -> service.create(in)).isInstanceOf(BusinessRuleException.class);
+        }
     }
 
     @Test

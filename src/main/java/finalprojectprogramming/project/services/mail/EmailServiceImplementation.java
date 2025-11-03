@@ -395,6 +395,12 @@ public class EmailServiceImplementation implements EmailService {
             case SALA -> "Sala";
             case CANCHA -> "Cancha";
             case AUDITORIO -> "Auditorio";
+            case GIMNASIO -> "Gimnasio";
+            case PISCINA -> "Piscina";
+            case PARQUE -> "Parque";
+            case LABORATORIO -> "Laboratorio";
+            case BIBLIOTECA -> "Biblioteca";
+            case TEATRO -> "Teatro";
         };
     }
 
