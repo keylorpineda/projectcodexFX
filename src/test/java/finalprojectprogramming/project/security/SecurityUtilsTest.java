@@ -92,6 +92,25 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void requireSelfOrAny_allowsSameUserWhenPrincipalIsDomainUser() {
+        User current = userWithIdAndRole(10L, UserRole.USER);
+        // Use domain User as principal (not AppUserDetails) to cover alternate isSameUser branch
+        setAuthentication(current, "ROLE_USER");
+
+        assertThatCode(() -> SecurityUtils.requireSelfOrAny(10L, UserRole.ADMIN)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireSelfOrAny_withNullTargetUserId_requiresRoleAndDenies() {
+        User current = userWithIdAndRole(7L, UserRole.USER);
+        setAuthentication(current, "ROLE_USER");
+
+        assertThatThrownBy(() -> SecurityUtils.requireSelfOrAny(null, UserRole.ADMIN))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("Access is denied.");
+    }
+
+    @Test
     void hasAny_returnsFalseWhenNoAuthenticationPresent() {
         assertThat(SecurityUtils.hasAny(UserRole.ADMIN)).isFalse();
     }

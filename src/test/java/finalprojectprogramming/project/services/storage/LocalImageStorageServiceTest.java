@@ -70,6 +70,20 @@ class LocalImageStorageServiceTest {
     }
 
     @Test
+    void store_adds_extension_from_webp_and_rejects_gif_contentType_when_missing() throws Exception {
+        LocalImageStorageService service = newService("/uploads");
+        MockMultipartFile webp = new MockMultipartFile("file", "img", "image/webp", new byte[]{1});
+        String urlWebp = service.store(8L, webp);
+        assertThat(urlWebp).startsWith("/uploads/8/");
+        assertThat(urlWebp).endsWith(".webp");
+
+        MockMultipartFile gif = new MockMultipartFile("file", "img", "image/gif", new byte[]{1});
+        assertThatThrownBy(() -> service.store(9L, gif))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("Unsupported content type");
+    }
+
+    @Test
     void constructor_normalizes_public_url_and_works_with_trailing_slashes() throws Exception {
         LocalImageStorageService service = newService("uploads///");
         MockMultipartFile file = new MockMultipartFile("file", "photo.PNG", "image/png", new byte[]{1});
@@ -90,6 +104,30 @@ class LocalImageStorageServiceTest {
         String url = service.store(2L, file);
         assertThat(url).startsWith("/pub/2/");
         assertThat(url).endsWith(".bmp");
+    }
+
+    @Test
+    void allowedTypes_blank_and_no_extension_or_content_type_results_in_filename_without_extension() throws Exception {
+        tempDir = Files.createTempDirectory("uploads-test-blank2");
+        LocalImageStorageService service = new LocalImageStorageService(tempDir.toString(), "/pub", "", 5_000_000L);
+
+        MockMultipartFile file = new MockMultipartFile("file", (String) null, null, new byte[]{1,2,3});
+        String url = service.store(11L, file);
+        assertThat(url).startsWith("/pub/11/");
+        assertThat(url).doesNotEndWith(".");
+    }
+
+    @Test
+    void allowedTypes_blank_allows_gif_and_extension_is_inferred_from_contentType() throws Exception {
+        tempDir = Files.createTempDirectory("uploads-test-gif");
+        LocalImageStorageService service = new LocalImageStorageService(tempDir.toString(), "/pub", "", 5_000_000L);
+
+        // No filename extension, but contentType is image/gif -> resolveExtension should map to .gif
+        MockMultipartFile file = new MockMultipartFile("file", "image", "image/gif", new byte[]{1,2});
+
+        String url = service.store(21L, file);
+        assertThat(url).startsWith("/pub/21/");
+        assertThat(url).endsWith(".gif");
     }
 
     @Test
@@ -122,6 +160,14 @@ class LocalImageStorageServiceTest {
         assertThatThrownBy(() -> service.store(2L, file))
                 .isInstanceOf(StorageException.class)
                 .hasMessageContaining("Unsupported content type");
+    }
+
+    @Test
+    void store_rejects_null_file_reference() throws Exception {
+    LocalImageStorageService service = newService("/uploads");
+    assertThatThrownBy(() -> service.store(1L, null))
+        .isInstanceOf(StorageException.class)
+        .hasMessageContaining("must not be empty");
     }
 
     @Test
@@ -202,6 +248,31 @@ class LocalImageStorageServiceTest {
             assertThatThrownBy(() -> service.delete("/uploads/5/a.png"))
                     .isInstanceOf(StorageException.class)
                     .hasMessageContaining("Failed to delete image");
+        }
+    }
+
+    @Test
+    void delete_handles_url_starting_with_prefix_without_slash_after() throws Exception {
+        // This exercises extractRelativePath branch where normalized.startsWith(urlPrefix) but not urlPrefixWithSlash
+        LocalImageStorageService service = newService("/uploads");
+
+        // create the file named "foo" directly under the root (no space folder), so removing without slash resolves correctly
+        Path file = tempDir.resolve("foo");
+        Files.writeString(file, "x");
+
+        service.delete("/uploadsfoo");
+        assertThat(Files.exists(file)).isFalse();
+    }
+
+    @Test
+    void constructor_fails_when_root_directory_creation_fails() throws Exception {
+        Path bogus = Path.of("/definitely/nonexistent/dir-" + System.nanoTime());
+        try (MockedStatic<Files> files = Mockito.mockStatic(Files.class)) {
+            files.when(() -> Files.createDirectories(any(Path.class))).thenThrow(new IOException("nope"));
+
+            assertThatThrownBy(() -> new LocalImageStorageService(bogus.toString(), "/uploads", "image/png", 1024))
+                    .isInstanceOf(StorageException.class)
+                    .hasMessageContaining("Unable to initialize storage directory");
         }
     }
 }

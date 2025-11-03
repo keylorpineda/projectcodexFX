@@ -30,13 +30,17 @@ class RatingServiceImplementationTest {
     private ReservationRepository reservationRepo;
     private ModelMapper mapper;
     private RatingServiceImplementation service;
+    private finalprojectprogramming.project.services.auditlog.AuditLogService auditLogService;
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {
         ratingRepo = Mockito.mock(RatingRepository.class);
         reservationRepo = Mockito.mock(ReservationRepository.class);
-        mapper = Mockito.mock(ModelMapper.class);
-        service = new RatingServiceImplementation(ratingRepo, reservationRepo, mapper);
+    mapper = Mockito.mock(ModelMapper.class);
+    auditLogService = Mockito.mock(finalprojectprogramming.project.services.auditlog.AuditLogService.class);
+    objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    service = new RatingServiceImplementation(ratingRepo, reservationRepo, mapper, auditLogService, objectMapper);
         when(mapper.map(any(Rating.class), eq(RatingDTO.class))).thenAnswer(i -> new RatingDTO());
     }
 
@@ -156,5 +160,86 @@ class RatingServiceImplementationTest {
         when(reservationRepo.findById(3L)).thenReturn(Optional.of(deleted));
         in.setReservationId(3L);
         assertThatThrownBy(() -> service.create(in)).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void create_rejects_when_reservation_has_no_user() {
+        Reservation res = activeRes(10L);
+        res.setUser(null);
+        when(reservationRepo.findById(10L)).thenReturn(Optional.of(res));
+
+        RatingDTO in = new RatingDTO();
+        in.setReservationId(10L);
+
+        assertThatThrownBy(() -> service.create(in))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("no associated user");
+    }
+
+    @Test
+    void create_rejects_when_status_not_completed_nor_checked_in() {
+        Reservation res = activeRes(12L);
+        res.setStatus(ReservationStatus.PENDING);
+        when(reservationRepo.findById(12L)).thenReturn(Optional.of(res));
+        when(ratingRepo.findByReservationId(12L)).thenReturn(Optional.empty());
+
+        RatingDTO in = new RatingDTO();
+        in.setReservationId(12L);
+        try (MockedStatic<SecurityUtils> mocked = Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(1L), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(invocation -> null);
+
+            assertThatThrownBy(() -> service.create(in))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("Only completed or checked-in");
+        }
+    }
+
+    @Test
+    void findBySpace_maps_list_and_toDto_populates_fields() {
+        Rating rating = new Rating();
+        rating.setId(1L);
+        Reservation res = activeRes(20L);
+        finalprojectprogramming.project.models.Space space = new finalprojectprogramming.project.models.Space();
+        space.setId(2L);
+        space.setName("Sala");
+        res.setSpace(space);
+        rating.setReservation(res);
+        rating.setUser(res.getUser());
+        rating.setVisible(true);
+        when(ratingRepo.findBySpaceIdAndVisibleTrueOrderByCreatedAtDesc(2L)).thenReturn(List.of(rating));
+        when(mapper.map(any(Rating.class), eq(RatingDTO.class))).thenAnswer(i -> new RatingDTO());
+
+        List<RatingDTO> out = service.findBySpace(2L);
+        assertThat(out).hasSize(1);
+    }
+
+    @Test
+    void average_and_count_by_space_cover_branches() {
+        when(ratingRepo.getAverageScoreBySpaceId(3L)).thenReturn(4.26);
+        when(ratingRepo.getAverageScoreBySpaceId(4L)).thenReturn(null);
+        when(ratingRepo.getRatingCountBySpaceId(3L)).thenReturn(7L);
+
+        assertThat(service.getAverageBySpace(3L)).isEqualTo(4.3);
+        assertThat(service.getAverageBySpace(4L)).isEqualTo(0.0);
+        assertThat(service.getCountBySpace(3L)).isEqualTo(7L);
+    }
+
+    @Test
+    void toggle_and_increment_update_entity_and_save() {
+        Rating rating = new Rating();
+        rating.setId(9L);
+        rating.setVisible(true);
+        rating.setHelpfulCount(0);
+        when(ratingRepo.findById(9L)).thenReturn(Optional.of(rating));
+        when(ratingRepo.save(any(Rating.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RatingDTO t = service.toggleVisibility(9L);
+        assertThat(rating.getVisible()).isFalse();
+        assertThat(t).isNotNull();
+
+        RatingDTO h = service.incrementHelpful(9L);
+        assertThat(rating.getHelpfulCount()).isEqualTo(1);
+        assertThat(h).isNotNull();
     }
 }

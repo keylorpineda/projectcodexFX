@@ -116,24 +116,23 @@ El sistema sigue una arquitectura de **3 capas** (Three-Tier Architecture):
 | **Hibernate** | 6.x | ORM |
 | **PostgreSQL** | 16.2 | Base de datos |
 | **JWT (jjwt)** | 0.11.5 | Tokens de autenticación |
-| **MapStruct** | 1.5.5 | Mapeo de objetos |
 | **ModelMapper** | 3.2.0 | Conversión DTO/Entity |
 | **Lombok** | 1.18.36 | Reducción de boilerplate |
 | **Apache POI** | 5.2.5 | Exportación Excel |
 | **ZXing** | 3.5.3 | Generación códigos QR |
 | **SpringDoc OpenAPI** | 2.8.9 | Documentación Swagger |
 | **Jakarta Mail** | 2.0.1 | Envío de correos |
-| **Jackson** | 2.18 | Procesamiento JSON |
+| **Jackson** | 2.17.1 | Procesamiento JSON |
 | **SLF4J + Log4j2** | 2.x | Logging |
 
 ### 3.2 Frontend
 
 | Tecnología | Versión | Propósito |
 |-----------|---------|-----------|
-| **JavaFX** | 21-ea+31 | Framework UI |
+| **JavaFX** | 21.0.2 | Framework UI |
 | **Maven** | 3.x | Gestión de dependencias |
 | **Java HTTP Client** | 21 | Cliente REST |
-| **Jackson** | 2.18 | Procesamiento JSON |
+| **Jackson** | 2.17.1 | Procesamiento JSON |
 
 ### 3.3 Herramientas de Desarrollo
 
@@ -732,8 +731,8 @@ Verificar condiciones climáticas para espacios exteriores antes de aprobar rese
 
 #### 9.2.1 Clonar Repositorio
 ```bash
-git clone https://github.com/usuario/projectcodex.git
-cd projectcodex
+git clone https://github.com/keylorpineda/projectcodexFX.git
+cd projectcodexFX
 ```
 
 #### 9.2.2 Configurar Base de Datos
@@ -949,14 +948,28 @@ Después de completar reserva:
 - **Spring Boot Test:** Contexto de pruebas
 
 #### 11.1.2 Cobertura
-> **Nota:** El proyecto requiere >70% de cobertura según especificaciones.
+> Nota: El proyecto requiere >70% de cobertura según especificaciones.
 
-Para generar reporte de cobertura:
-```bash
-mvn clean test jacoco:report
-```
+Formas de ver la cobertura:
 
-Ver reporte en: `target/site/jacoco/index.html`
+- Reporte HTML clásico:
+    ```bash
+    mvn clean test jacoco:report
+    ```
+    Ver en: `target/site/jacoco/index.html`
+
+- Cobertura en consola (una línea):
+    - Makefile (recomendado): `make coverage`
+    - Tarea VS Code: Paleta (⇧⌘P) → Run Task → `coverage`
+    - Maven solamente:
+        ```bash
+        ./mvnw -q -DskipITs -Djacoco.skip=false -Dgpg.skip -T1C test jacoco:report exec:exec
+        ```
+    Salida esperada (ejemplo):
+    ```
+    Instrucciones cubiertas: 97.08%
+    Líneas cubiertas: 98.28%
+    ```
 
 #### 11.1.3 Ejemplos de Pruebas
 

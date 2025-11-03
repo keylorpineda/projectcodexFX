@@ -20,7 +20,8 @@ class EmailServiceImplementationFormattingTest {
     void setup() {
         JavaMailSender mailSender = mock(JavaMailSender.class);
         MailConfig mailConfig = new MailConfig();
-        service = new EmailServiceImplementation(mailSender, mailConfig);
+        finalprojectprogramming.project.services.qr.QRCodeService qr = mock(finalprojectprogramming.project.services.qr.QRCodeService.class);
+        service = new EmailServiceImplementation(mailSender, mailConfig, qr);
     }
 
     @Test
@@ -122,6 +123,19 @@ class EmailServiceImplementationFormattingTest {
         .isEqualTo("Cancha");
     assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.AUDITORIO))
         .isEqualTo("Auditorio");
+    // cubrir el resto de tipos para ejecutar cada rama del switch
+    assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.GIMNASIO))
+        .isEqualTo("Gimnasio");
+    assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.PISCINA))
+        .isEqualTo("Piscina");
+    assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.PARQUE))
+        .isEqualTo("Parque");
+    assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.LABORATORIO))
+        .isEqualTo("Laboratorio");
+    assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.BIBLIOTECA))
+        .isEqualTo("Biblioteca");
+    assertThat((String) ReflectionTestUtils.invokeMethod(service, "translateSpaceType", finalprojectprogramming.project.models.enums.SpaceType.TEATRO))
+        .isEqualTo("Teatro");
 
         // buildNextSteps for different statuses
         finalprojectprogramming.project.models.Reservation r = new finalprojectprogramming.project.models.Reservation();
@@ -151,5 +165,42 @@ class EmailServiceImplementationFormattingTest {
         r.setStatus(ReservationStatus.CANCELED);
         java.util.List<String> stepsCanceled = ReflectionTestUtils.invokeMethod(service, "buildNextSteps", r);
         assertThat(stepsCanceled).isNotEmpty();
+
+        // COMPLETED cae en default -> cubre la rama por defecto del switch
+        r.setStatus(ReservationStatus.COMPLETED);
+        java.util.List<String> stepsCompleted = ReflectionTestUtils.invokeMethod(service, "buildNextSteps", r);
+        assertThat(stepsCompleted).isNotEmpty();
+    }
+
+    @Test
+    void buildStatusSummary_covers_all_statuses_and_null() {
+        finalprojectprogramming.project.models.Reservation r = new finalprojectprogramming.project.models.Reservation();
+        // null
+        String s0 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s0).contains("aún no tiene un estado");
+
+        r.setStatus(ReservationStatus.PENDING);
+        String s1 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s1).contains("revisión");
+
+        r.setStatus(ReservationStatus.CONFIRMED);
+        String s2 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s2).contains("código QR");
+
+        r.setStatus(ReservationStatus.CANCELED);
+        String s3 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s3).contains("cancelada");
+
+        r.setStatus(ReservationStatus.CHECKED_IN);
+        String s4 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s4).contains("ingreso");
+
+        r.setStatus(ReservationStatus.NO_SHOW);
+        String s5 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s5).contains("inasistencia");
+
+        r.setStatus(ReservationStatus.COMPLETED);
+        String s6 = ReflectionTestUtils.invokeMethod(service, "buildStatusSummary", r);
+        assertThat(s6).contains("completada");
     }
 }

@@ -8,6 +8,8 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -15,6 +17,8 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 class JwtServiceTest {
 
@@ -114,11 +118,39 @@ class JwtServiceTest {
     }
 
     @Test
+    void generateToken_withTooShortBase64Secret_fallsBackToRawAndWorks() {
+        // Base64 for the word "short" -> decodes to 5 bytes (< 32), triggers fallback path
+        String tooShortBase64 = java.util.Base64.getEncoder().encodeToString("short".getBytes(StandardCharsets.UTF_8));
+        Clock clock = Clock.fixed(Instant.parse("2023-01-01T00:00:00Z"), ZoneOffset.UTC);
+
+        JwtService service = new JwtService(tooShortBase64, 60_000L, clock);
+        String token = service.generateToken("user@example.com");
+
+        JwtService validatingService = new JwtService(tooShortBase64, 60_000L, clock);
+        assertThat(validatingService.isTokenValid(token, "user@example.com")).isTrue();
+    }
+
+    @Test
     void generateToken_throwsWhenSecretEmpty() {
         JwtService service = new JwtService("", 60_000L, Clock.systemUTC());
 
         assertThatThrownBy(() -> service.generateToken("subject"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("JWT secret must not be empty.");
+    }
+
+    @Test
+    void generateToken_throwsIllegalStateWhenSha256Unavailable() {
+        String shortSecret = "short-secret"; // triggers normalizeRawSecret path (< 32 bytes)
+        JwtService service = new JwtService(shortSecret, 60_000L, Clock.systemUTC());
+
+        try (MockedStatic<MessageDigest> mocked = Mockito.mockStatic(MessageDigest.class)) {
+            mocked.when(() -> MessageDigest.getInstance("SHA-256"))
+                    .thenThrow(new NoSuchAlgorithmException("no sha-256"));
+
+            assertThatThrownBy(() -> service.generateToken("user@example.com"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("SHA-256 algorithm is not available");
+        }
     }
 }

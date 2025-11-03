@@ -400,12 +400,29 @@ projectcodex/
 mvn test
 ```
 
-### Generar Reporte de Cobertura
+### Cobertura en terminal (una línea)
+Opciones para ver el % de cobertura directamente en la consola:
+
+1) Makefile (recomendado)
 ```bash
-mvn clean test jacoco:report
+make coverage
 ```
 
-Ver en: `target/site/jacoco/index.html`
+2) VS Code Task
+- Abrir la paleta (⇧⌘P) → "Run Task" → seleccionar "coverage".
+
+3) Maven solamente
+```bash
+./mvnw -q -DskipITs -Djacoco.skip=false -Dgpg.skip -T1C test jacoco:report exec:exec
+```
+
+Salida esperada en consola (ejemplo):
+```
+Instrucciones cubiertas: 97.08%
+Líneas cubiertas: 98.28%
+```
+
+Además, el reporte HTML completo queda en: `target/site/jacoco/index.html`
 
 ### Objetivo
 > **Cobertura mínima requerida: 70%**

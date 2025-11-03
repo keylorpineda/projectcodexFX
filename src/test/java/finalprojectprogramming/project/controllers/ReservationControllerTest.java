@@ -10,6 +10,7 @@ import finalprojectprogramming.project.models.enums.UserRole;
 import finalprojectprogramming.project.security.AppUserDetails;
 import finalprojectprogramming.project.services.reservation.ReservationExportService;
 import finalprojectprogramming.project.services.reservation.ReservationService;
+import finalprojectprogramming.project.services.excel.ExcelExportService;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -40,6 +41,9 @@ class ReservationControllerTest extends BaseControllerTest {
 
     @MockBean
     private ReservationExportService reservationExportService;
+
+    @MockBean
+    private ExcelExportService excelExportService;
 
     private ReservationDTO buildReservationDto() {
         ObjectNode weather = objectMapper.createObjectNode();
@@ -304,5 +308,28 @@ class ReservationControllerTest extends BaseControllerTest {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void exportSpaceStatistics_returnsExcel_onSuccess() throws Exception {
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        baos.write(new byte[] {1,2,3});
+        when(excelExportService.exportSpaceStatistics()).thenReturn(baos);
+
+        performGet("/api/reservations/export/space-statistics")
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(header().string("Content-Disposition", containsString("attachment")));
+    }
+
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void exportSpaceStatistics_returns500_onError() throws Exception {
+        when(excelExportService.exportSpaceStatistics()).thenThrow(new java.io.IOException("fail"));
+
+        performGet("/api/reservations/export/space-statistics")
+                .andExpect(status().isInternalServerError());
     }
 }

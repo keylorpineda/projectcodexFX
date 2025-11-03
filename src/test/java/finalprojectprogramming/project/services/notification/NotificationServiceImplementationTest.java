@@ -34,14 +34,18 @@ class NotificationServiceImplementationTest {
     private ModelMapper modelMapper;
     private EmailService emailService;
     private NotificationServiceImplementation service;
+    private finalprojectprogramming.project.services.auditlog.AuditLogService auditLogService;
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         notificationRepository = mock(NotificationRepository.class);
         reservationRepository = mock(ReservationRepository.class);
-        modelMapper = new ModelMapper();
+    modelMapper = new ModelMapper();
         emailService = mock(EmailService.class);
-        service = new NotificationServiceImplementation(notificationRepository, reservationRepository, modelMapper, emailService);
+    auditLogService = mock(finalprojectprogramming.project.services.auditlog.AuditLogService.class);
+    objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    service = new NotificationServiceImplementation(notificationRepository, reservationRepository, modelMapper, emailService, auditLogService, objectMapper);
     }
 
     private Reservation activeReservation(Long id, Long userId, String email) {
@@ -120,12 +124,12 @@ class NotificationServiceImplementationTest {
         try (MockedStatic<SecurityUtils> ignored = mockStatic(SecurityUtils.class)) {
             // success
             service.sendCustomEmailToReservation(3L, "Sub", "Hola");
-            verify(emailService).sendCustomEmail(eq(res), eq("Sub"), eq("Hola"));
+            verify(emailService).sendCustomAdminEmail(eq("p@q.com"), isNull(), eq("Sub"), eq("Hola"));
             verify(notificationRepository).save(any(Notification.class));
 
             // failure path -> MailSendingException propagates and status updated to FAILED
-            doThrow(new MailSendingException("down", new RuntimeException("x")))
-                    .when(emailService).sendCustomEmail(any(Reservation.class), anyString(), anyString());
+        doThrow(new MailSendingException("down", new RuntimeException("x")))
+            .when(emailService).sendCustomAdminEmail(anyString(), nullable(String.class), anyString(), anyString());
             assertThatThrownBy(() -> service.sendCustomEmailToReservation(3L, "Sub", "Hola"))
                     .isInstanceOf(MailSendingException.class);
             verify(notificationRepository, atLeast(2)).save(any(Notification.class));

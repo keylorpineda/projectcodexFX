@@ -101,6 +101,28 @@ class WeatherClientTest {
     }
 
     @Test
+    void getCurrentWeather_handles_missing_fields_and_zero_epoch() throws Exception {
+        server.enqueue(jsonResponse(200,
+                "{" +
+                        "\"main\":{}," +
+                        "\"wind\":{}," +
+                        "\"weather\":[]," +
+                        "\"dt\":0," +
+                        "\"timezone\":0}"));
+        WeatherClient weatherClient = new WeatherClient(properties, objectMapper);
+
+        CurrentWeatherResponse weather = weatherClient.getCurrentWeather(0.0, 0.0);
+
+        assertThat(weather.getTemp()).isNull();
+        assertThat(weather.getFeelsLike()).isNull();
+        assertThat(weather.getHumidity()).isNull();
+        assertThat(weather.getWindSpeed()).isNull();
+        assertThat(weather.getDescription()).isNull();
+        assertThat(weather.getIcon()).isNull();
+        assertThat(weather.getDt()).isNull();
+    }
+
+    @Test
     void send_whenBadRequest_throwsWeatherProviderException() {
         server.enqueue(jsonResponse(400, "{}"));
         WeatherClient weatherClient = new WeatherClient(properties, objectMapper);
@@ -259,5 +281,16 @@ class WeatherClientTest {
                     assertThat(exception.getStatus()).isEqualTo(status);
                     assertThat(exception.getCode()).isEqualTo(code);
                 });
+    }
+
+    @Test
+    void internal_helpers_handle_nulls() {
+        WeatherClient client = new WeatherClient(properties, objectMapper);
+
+        String sanitized = org.springframework.test.util.ReflectionTestUtils.invokeMethod(client, "sanitizeUri", new Object[]{null});
+        assertThat(sanitized).isNull();
+
+        CurrentWeatherResponse mapped = org.springframework.test.util.ReflectionTestUtils.invokeMethod(client, "mapCurrentWeather", new Object[]{null});
+        assertThat(mapped).isNull();
     }
 }
