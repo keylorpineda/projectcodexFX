@@ -23,20 +23,26 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.modelmapper.ModelMapper;
+import finalprojectprogramming.project.repositories.RatingRepository;
+import finalprojectprogramming.project.services.spaceimage.SpaceImageService;
 
 class SpaceServiceImplementationTest {
 
     private SpaceRepository repo;
     private ModelMapper mapper;
     private SpaceAvailabilityValidator availability;
+    private RatingRepository ratingRepository;
+    private SpaceImageService spaceImageService;
     private SpaceServiceImplementation service;
 
     @BeforeEach
     void setup() {
-        repo = Mockito.mock(SpaceRepository.class);
-        mapper = Mockito.mock(ModelMapper.class);
-        availability = Mockito.mock(SpaceAvailabilityValidator.class);
-        service = new SpaceServiceImplementation(repo, mapper, availability);
+    repo = Mockito.mock(SpaceRepository.class);
+    mapper = Mockito.mock(ModelMapper.class);
+    availability = Mockito.mock(SpaceAvailabilityValidator.class);
+    ratingRepository = Mockito.mock(RatingRepository.class);
+    spaceImageService = Mockito.mock(SpaceImageService.class);
+    service = new SpaceServiceImplementation(repo, mapper, availability, ratingRepository, spaceImageService);
     }
 
     private Space sampleSpace(Long id, boolean active, boolean deleted) {
@@ -71,6 +77,8 @@ class SpaceServiceImplementationTest {
             when(mapper.map(any(SpaceDTO.class), eq(Space.class))).thenReturn(new Space());
             when(repo.save(any(Space.class))).thenReturn(saved);
             when(mapper.map(any(Space.class), eq(SpaceDTO.class))).thenReturn(new SpaceDTO());
+            when(ratingRepository.getAverageScoreBySpaceId(anyLong())).thenReturn(0.0);
+            when(ratingRepository.getRatingCountBySpaceId(anyLong())).thenReturn(0L);
 
             SpaceDTO out = service.create(in);
 
@@ -87,6 +95,8 @@ class SpaceServiceImplementationTest {
             when(repo.findById(9L)).thenReturn(Optional.of(existing));
             when(repo.save(any(Space.class))).thenAnswer(inv -> inv.getArgument(0));
             when(mapper.map(any(Space.class), eq(SpaceDTO.class))).thenReturn(new SpaceDTO());
+            when(ratingRepository.getAverageScoreBySpaceId(anyLong())).thenReturn(0.0);
+            when(ratingRepository.getRatingCountBySpaceId(anyLong())).thenReturn(0L);
 
             SpaceDTO patch = new SpaceDTO();
             patch.setName("Nuevo");
@@ -121,6 +131,8 @@ class SpaceServiceImplementationTest {
             Space b = sampleSpace(2L, true, true); // eliminado
             when(repo.findAll()).thenReturn(List.of(a, b));
             when(mapper.map(any(Space.class), eq(SpaceDTO.class))).thenReturn(new SpaceDTO());
+            when(ratingRepository.getAverageScoreBySpaceId(anyLong())).thenReturn(0.0);
+            when(ratingRepository.getRatingCountBySpaceId(anyLong())).thenReturn(0L);
 
             List<SpaceDTO> list = service.findAll();
 
@@ -150,6 +162,8 @@ class SpaceServiceImplementationTest {
             Space s = sampleSpace(11L, true, false);
             when(repo.findById(11L)).thenReturn(Optional.of(s));
             when(mapper.map(any(Space.class), eq(SpaceDTO.class))).thenReturn(new SpaceDTO());
+            when(ratingRepository.getAverageScoreBySpaceId(anyLong())).thenReturn(0.0);
+            when(ratingRepository.getRatingCountBySpaceId(anyLong())).thenReturn(0L);
 
             SpaceDTO out = service.changeStatus(11L, false);
             assertThat(out).isNotNull();

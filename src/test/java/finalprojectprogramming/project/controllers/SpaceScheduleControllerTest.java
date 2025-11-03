@@ -71,6 +71,47 @@ class SpaceScheduleControllerTest extends BaseControllerTest {
     }
 
     @Test
+    void getScheduleByIdReturnsOk() throws Exception {
+        when(spaceScheduleService.findById(30L)).thenReturn(buildScheduleDto());
+
+        performGet("/api/space-schedules/30")
+                .andExpect(status().isOk());
+
+        verify(spaceScheduleService).findById(30L);
+    }
+
+    @Test
+    void getAllSchedulesReturnsOk() throws Exception {
+        when(spaceScheduleService.findAll()).thenReturn(java.util.List.of(buildScheduleDto()));
+
+        performGet("/api/space-schedules")
+                .andExpect(status().isOk());
+
+        verify(spaceScheduleService).findAll();
+    }
+
+    @Test
+    void getSchedulesBySpaceReturnsOk() throws Exception {
+        when(spaceScheduleService.findBySpace(5L)).thenReturn(java.util.List.of(buildScheduleDto()));
+
+        performGet("/api/space-schedules/space/5")
+                .andExpect(status().isOk());
+
+        verify(spaceScheduleService).findBySpace(5L);
+    }
+
+    @Test
+    void updateScheduleReturnsOk() throws Exception {
+        SpaceScheduleDTO updated = buildScheduleDto();
+        when(spaceScheduleService.update(eq(30L), any(SpaceScheduleDTO.class))).thenReturn(updated);
+
+        performPut("/api/space-schedules/30", buildScheduleDto())
+                .andExpect(status().isOk());
+
+        verify(spaceScheduleService).update(eq(30L), any(SpaceScheduleDTO.class));
+    }
+
+    @Test
     void deleteScheduleReturnsNoContent() throws Exception {
         performDelete("/api/space-schedules/6")
                 .andExpect(status().isNoContent());

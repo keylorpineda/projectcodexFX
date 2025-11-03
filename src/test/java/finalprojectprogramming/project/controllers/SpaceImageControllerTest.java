@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -100,4 +101,65 @@ class SpaceImageControllerTest extends BaseControllerTest {
 
         verify(spaceImageService).delete(eq(8L));
     }
+
+        @Test
+        void getSpaceImageByIdReturnsOk() throws Exception {
+                SpaceImageDTO dto = buildSpaceImageDto();
+                when(spaceImageService.findById(20L)).thenReturn(dto);
+
+                performGet("/api/space-images/20")
+                                .andExpect(status().isOk());
+
+                verify(spaceImageService).findById(20L);
+        }
+
+        @Test
+        void getAllSpaceImagesReturnsOk() throws Exception {
+                when(spaceImageService.findAll()).thenReturn(java.util.List.of(buildSpaceImageDto()));
+
+                performGet("/api/space-images")
+                                .andExpect(status().isOk());
+
+                verify(spaceImageService).findAll();
+        }
+
+        @Test
+        void getSpaceImagesBySpaceReturnsOk() throws Exception {
+                when(spaceImageService.findBySpace(3L)).thenReturn(java.util.List.of(buildSpaceImageDto()));
+
+                performGet("/api/space-images/space/3")
+                                .andExpect(status().isOk());
+
+                verify(spaceImageService).findBySpace(3L);
+        }
+
+        @Test
+        void updateSpaceImageReturnsOk() throws Exception {
+                SpaceImageDTO dto = buildSpaceImageDto();
+                when(spaceImageService.update(eq(20L), any(SpaceImageDTO.class))).thenReturn(dto);
+
+                performPut("/api/space-images/20", dto)
+                                .andExpect(status().isOk());
+
+                verify(spaceImageService).update(eq(20L), any(SpaceImageDTO.class));
+        }
+
+        @Test
+        void uploadSpaceImageWithDefaults() throws Exception {
+                SpaceImageDTO dto = buildSpaceImageDto();
+                // Expect defaults: description=null, active=true (default), displayOrder=null
+                when(spaceImageService.upload(eq(5L), any(MultipartFile.class), isNull(), eq(true), isNull()))
+                                .thenReturn(dto);
+
+                LinkedMultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+                params.add("spaceId", "5");
+
+                MockMultipartFile file = new MockMultipartFile("file", "image.png", "image/png", "data".getBytes());
+
+                performMultipart("/api/space-images/upload", file, params)
+                                .andExpect(status().isCreated())
+                                .andExpect(header().string("Location", "/api/space-images/20"));
+
+                verify(spaceImageService).upload(eq(5L), any(MultipartFile.class), isNull(), eq(true), isNull());
+        }
 }

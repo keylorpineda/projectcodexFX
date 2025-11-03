@@ -247,6 +247,8 @@ class RepositoryIntegrationTest {
 
         Rating rating = Rating.builder()
                 .reservation(reservation)
+                .user(user)
+                .space(space)
                 .score(5)
                 .comment("Excelente")
                 .build();

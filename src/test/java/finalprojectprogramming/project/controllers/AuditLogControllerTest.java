@@ -75,6 +75,28 @@ class AuditLogControllerTest extends BaseControllerTest {
     }
 
     @Test
+    void getAuditLogByIdReturnsOk() throws Exception {
+        when(auditLogService.findById(10L)).thenReturn(buildAuditLogDto());
+
+        performGet("/api/audit-logs/10")
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getAllAuditLogsReturnsOk() throws Exception {
+        when(auditLogService.findAll()).thenReturn(java.util.List.of(buildAuditLogDto()));
+        performGet("/api/audit-logs")
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getAuditLogsByUserReturnsOk() throws Exception {
+        when(auditLogService.findByUser(1L)).thenReturn(java.util.List.of(buildAuditLogDto()));
+        performGet("/api/audit-logs/user/1")
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void deleteAuditLogReturnsNoContent() throws Exception {
         performDelete("/api/audit-logs/5")
                 .andExpect(status().isNoContent());

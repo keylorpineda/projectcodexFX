@@ -8,16 +8,21 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.mock.web.MockMultipartFile;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 
 @WebMvcTest(value = SpaceController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import({BaseControllerTest.TestMethodSecurityConfig.class})
 class SpaceControllerTest extends BaseControllerTest {
 
@@ -99,5 +104,94 @@ class SpaceControllerTest extends BaseControllerTest {
 
         performGet("/api/spaces/available?startTime=2024-01-01T10:00:00&endTime=2024-01-01T12:00:00&type=SALA&minimumCapacity=10")
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = {"USER"})
+    void getAllSpacesAsUserReturnsOk() throws Exception {
+        when(spaceService.findAll()).thenReturn(List.of(buildSpaceDto()));
+
+        performGet("/api/spaces")
+                .andExpect(status().isOk());
+
+        verify(spaceService).findAll();
+    }
+
+    @Test
+    @WithMockUser(roles = {"SUPERVISOR"})
+    void getSpaceByIdReturnsOk() throws Exception {
+        when(spaceService.findById(12L)).thenReturn(buildSpaceDto());
+
+        performGet("/api/spaces/12")
+                .andExpect(status().isOk());
+
+        verify(spaceService).findById(12L);
+    }
+
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void updateSpaceAsAdminReturnsOk() throws Exception {
+        SpaceDTO dto = buildSpaceDto();
+        when(spaceService.update(eq(12L), any(SpaceDTO.class))).thenReturn(dto);
+
+        performPut("/api/spaces/12", dto)
+                .andExpect(status().isOk());
+
+        verify(spaceService).update(eq(12L), any(SpaceDTO.class));
+    }
+
+    @Test
+    @WithMockUser(roles = {"SUPERVISOR"})
+    void deleteSpaceAsSupervisorReturnsNoContent() throws Exception {
+        performDelete("/api/spaces/12")
+                .andExpect(status().isNoContent());
+
+        verify(spaceService).delete(12L);
+    }
+
+    @Test
+    @WithMockUser(roles = {"SUPERVISOR"})
+    void createSpaceWithImageReturnsCreated() throws Exception {
+        SpaceDTO dto = buildSpaceDto();
+        when(spaceService.createWithImage(any(SpaceDTO.class), any())).thenReturn(dto);
+
+        MockMultipartFile spacePart = new MockMultipartFile(
+                "space",
+                "space.json",
+                "application/json",
+                objectMapper.writeValueAsBytes(dto)
+        );
+        MockMultipartFile imagePart = new MockMultipartFile(
+                "image",
+                "image.png",
+                "image/png",
+                "data".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/spaces/with-image").file(spacePart).file(imagePart))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/spaces/12"));
+
+        verify(spaceService).createWithImage(any(SpaceDTO.class), any());
+    }
+
+    @Test
+    @WithMockUser(roles = {"SUPERVISOR"})
+    void createSpaceWithImageWithoutFileStillWorks() throws Exception {
+        SpaceDTO dto = buildSpaceDto();
+        when(spaceService.createWithImage(any(SpaceDTO.class), any())).thenReturn(dto);
+
+        MockMultipartFile spacePart = new MockMultipartFile(
+                "space",
+                "space.json",
+                "application/json",
+                objectMapper.writeValueAsBytes(dto)
+        );
+
+        mockMvc.perform(multipart("/api/spaces/with-image").file(spacePart))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/spaces/12"));
+
+        verify(spaceService).createWithImage(any(SpaceDTO.class), any());
     }
 }
