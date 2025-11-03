@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -41,7 +43,9 @@ public class ReservationScheduledTasks {
     @Transactional
     public void markExpiredReservationsAsNoShow() {
         try {
-            LocalDateTime now = LocalDateTime.now();
+            // ✅ Usar zona horaria de Costa Rica explícitamente
+            ZoneId costaRicaZone = ZoneId.of("America/Costa_Rica");
+            ZonedDateTime now = ZonedDateTime.now(costaRicaZone);
             
             // ✅ CORREGIDO: Solo marcar CONFIRMED (no PENDING) como NO_SHOW
             // Las reservas PENDING están esperando aprobación, no check-in
@@ -52,7 +56,9 @@ public class ReservationScheduledTasks {
                 .filter(r -> r.getStartTime() != null)
                 // ✅ Marcar NO_SHOW solo si han pasado MÁS de 30 minutos desde el inicio
                 .filter(r -> {
-                    LocalDateTime checkInWindowEnd = r.getStartTime().plusMinutes(30);
+                    // Convertir LocalDateTime a ZonedDateTime para comparación correcta
+                    ZonedDateTime startTimeZoned = r.getStartTime().atZone(costaRicaZone);
+                    ZonedDateTime checkInWindowEnd = startTimeZoned.plusMinutes(30);
                     return now.isAfter(checkInWindowEnd);
                 })
                 .toList();
@@ -61,10 +67,11 @@ public class ReservationScheduledTasks {
                 logger.info("Found {} CONFIRMED reservations with expired check-in window (30 min after start time)", expiredReservations.size());
                 
                 for (Reservation reservation : expiredReservations) {
-                    LocalDateTime checkInWindowEnd = reservation.getStartTime().plusMinutes(30);
+                    ZonedDateTime startTimeZoned = reservation.getStartTime().atZone(costaRicaZone);
+                    ZonedDateTime checkInWindowEnd = startTimeZoned.plusMinutes(30);
                     
                     reservation.setStatus(ReservationStatus.NO_SHOW);
-                    reservation.setUpdatedAt(now);
+                    reservation.setUpdatedAt(now.toLocalDateTime());
                     reservationRepository.save(reservation);
                     
                     logger.info("Marked reservation #{} as NO_SHOW (user: {}, space: {}, start: {}, check-in window ended: {})",

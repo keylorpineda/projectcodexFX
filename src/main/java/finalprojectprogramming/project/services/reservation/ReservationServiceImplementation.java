@@ -38,6 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ReservationServiceImplementation implements ReservationService {
 
+    // ✅ Zona horaria fija para Costa Rica
+    private static final ZoneId COSTA_RICA_ZONE = ZoneId.of("America/Costa_Rica");
+
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
     private final SpaceRepository spaceRepository;
@@ -66,6 +69,14 @@ public class ReservationServiceImplementation implements ReservationService {
 
     }
 
+    /**
+     * Obtiene la hora actual en la zona horaria de Costa Rica.
+     * Usa este método en lugar de LocalDateTime.now() para evitar problemas de zona horaria.
+     */
+    private LocalDateTime nowCostaRica() {
+        return ZonedDateTime.now(COSTA_RICA_ZONE).toLocalDateTime();
+    }
+
     @Override
     public ReservationDTO create(ReservationDTO reservationDTO) {
         SecurityUtils.requireSelfOrAny(reservationDTO.getUserId(), UserRole.SUPERVISOR, UserRole.ADMIN);
@@ -73,12 +84,11 @@ public class ReservationServiceImplementation implements ReservationService {
         // ✅ VALIDACIÓN: Mínimo 60 minutos de anticipación
         // Las reservas deben hacerse con anticipación para que un administrador las confirme
         // Usamos ZonedDateTime con zona horaria explícita de Costa Rica
-        ZoneId costaRicaZone = ZoneId.of("America/Costa_Rica");
-        ZonedDateTime now = ZonedDateTime.now(costaRicaZone);
+        ZonedDateTime now = ZonedDateTime.now(COSTA_RICA_ZONE);
         LocalDateTime startTime = reservationDTO.getStartTime();
         if (startTime != null) {
             // Convertir LocalDateTime a ZonedDateTime para comparación correcta
-            ZonedDateTime zonedStartTime = startTime.atZone(costaRicaZone);
+            ZonedDateTime zonedStartTime = startTime.atZone(COSTA_RICA_ZONE);
             
             // Validar que la hora de inicio sea al menos 60 minutos en el futuro
             long minutesUntilStart = java.time.Duration.between(now, zonedStartTime).toMinutes();
@@ -164,7 +174,7 @@ public class ReservationServiceImplementation implements ReservationService {
         if (reservationDTO.getApprovedByUserId() != null) {
             reservation.setApprovedBy(getUser(reservationDTO.getApprovedByUserId()));
         }
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setUpdatedAt(nowCostaRica());
         Reservation saved = reservationRepository.save(reservation);
         recordAudit("RESERVATION_UPDATED", saved, details -> details.put("updatedAt", saved.getUpdatedAt().toString()));
         return toDto(saved);
@@ -231,8 +241,8 @@ public class ReservationServiceImplementation implements ReservationService {
         
         reservation.setStatus(ReservationStatus.CANCELED);
         reservation.setCancellationReason(cancellationReason);
-        reservation.setCanceledAt(LocalDateTime.now());
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setCanceledAt(nowCostaRica());
+        reservation.setUpdatedAt(nowCostaRica());
         Reservation saved = reservationRepository.save(reservation);
         reservationNotificationService.notifyReservationCanceled(saved);
         recordAudit("RESERVATION_CANCELED", saved, details -> {
@@ -251,7 +261,7 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         reservation.setApprovedBy(getUser(approverUserId));
         reservation.setStatus(ReservationStatus.CONFIRMED);
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setUpdatedAt(nowCostaRica());
         Reservation saved = reservationRepository.save(reservation);
         reservationNotificationService.notifyReservationApproved(saved);
         recordAudit("RESERVATION_APPROVED", saved, details -> details.put("approvedBy",
@@ -282,9 +292,11 @@ public class ReservationServiceImplementation implements ReservationService {
         }
         
         // ✅ Validar ventana temporal: 30 minutos antes y 30 minutos después del inicio
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime windowStart = reservation.getStartTime().minusMinutes(30);
-        LocalDateTime windowEnd = reservation.getStartTime().plusMinutes(30);
+        // Usar zona horaria de Costa Rica explícitamente
+        ZonedDateTime now = ZonedDateTime.now(COSTA_RICA_ZONE);
+        ZonedDateTime startTimeZoned = reservation.getStartTime().atZone(COSTA_RICA_ZONE);
+        ZonedDateTime windowStart = startTimeZoned.minusMinutes(30);
+        ZonedDateTime windowEnd = startTimeZoned.plusMinutes(30);
         
         if (now.isBefore(windowStart)) {
             long minutesUntil = java.time.Duration.between(now, windowStart).toMinutes();
@@ -333,7 +345,8 @@ public class ReservationServiceImplementation implements ReservationService {
             throw new BusinessRuleException("Attendee last name is required");
         }
 
-        LocalDateTime checkInTimestamp = LocalDateTime.now();
+        // Usar zona horaria de Costa Rica para el timestamp de check-in
+        LocalDateTime checkInTimestamp = now.toLocalDateTime();
         ReservationAttendee attendee = ReservationAttendee.builder()
                 .reservation(reservation)
                 .idNumber(requestedIdNumber)
@@ -344,7 +357,7 @@ public class ReservationServiceImplementation implements ReservationService {
         attendeeRecords.add(attendee);
         reservation.setStatus(ReservationStatus.CHECKED_IN);
         reservation.setCheckinAt(checkInTimestamp);
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setUpdatedAt(checkInTimestamp);
         Reservation saved = reservationRepository.save(reservation);
         recordAudit("RESERVATION_CHECKED_IN", saved, details -> {
             details.put("checkInAt", saved.getCheckinAt() != null ? saved.getCheckinAt().toString() : null);
@@ -364,11 +377,11 @@ public class ReservationServiceImplementation implements ReservationService {
         if (reservation.getCheckinAt() != null) {
             throw new BusinessRuleException("Reservation already has a check-in registered");
         }
-        if (reservation.getStartTime() != null && reservation.getStartTime().isAfter(LocalDateTime.now())) {
+        if (reservation.getStartTime() != null && reservation.getStartTime().isAfter(nowCostaRica())) {
             throw new BusinessRuleException("No-show can only be registered after the reservation start time");
         }
         reservation.setStatus(ReservationStatus.NO_SHOW);
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setUpdatedAt(nowCostaRica());
         Reservation saved = reservationRepository.save(reservation);
         recordAudit("RESERVATION_MARKED_NO_SHOW", saved, details ->
                 details.put("markedAt", saved.getUpdatedAt().toString()));
@@ -391,8 +404,8 @@ public class ReservationServiceImplementation implements ReservationService {
             SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN);
         }
         
-        reservation.setDeletedAt(LocalDateTime.now());
-        reservation.setUpdatedAt(LocalDateTime.now());
+        reservation.setDeletedAt(nowCostaRica());
+        reservation.setUpdatedAt(nowCostaRica());
         reservationRepository.save(reservation);
         recordAudit("RESERVATION_SOFT_DELETED", reservation,
                 details -> details.put("deletedAt", reservation.getDeletedAt().toString()));
