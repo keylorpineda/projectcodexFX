@@ -168,6 +168,32 @@ class SecurityUtilsTest {
                 .hasMessage("Authentication is required to access this resource.");
     }
 
+    @Test
+    void getCurrentUserId_returnsNullForUnknownPrincipal() {
+        // Principal no reconocido (ni AppUserDetails, ni Spring UserDetails, ni dominio User)
+        setAuthentication("anon", "ROLE_USER");
+
+        assertThat(SecurityUtils.getCurrentUserId()).isNull();
+    }
+
+    @Test
+    void requireSelfOrAny_denies_with_unknown_principal() {
+        // Principal desconocido no puede ser el mismo usuario; requiere rol permitido
+        setAuthentication("anon", "ROLE_USER"); // no ADMIN
+
+        assertThatThrownBy(() -> SecurityUtils.requireSelfOrAny(1L, UserRole.ADMIN))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("Access is denied.");
+    }
+
+    @Test
+    void private_constructor_is_invokable_via_reflection() throws Exception {
+        var ctor = SecurityUtils.class.getDeclaredConstructor();
+        ctor.setAccessible(true);
+        // should not throw
+        ctor.newInstance();
+    }
+
     private void setAuthentication(Object principal, String... authorities) {
         List<SimpleGrantedAuthority> grantedAuthorities = authorities == null
                 ? List.of()

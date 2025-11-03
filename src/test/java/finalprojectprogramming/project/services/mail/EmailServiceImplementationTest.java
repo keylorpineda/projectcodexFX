@@ -61,6 +61,42 @@ class EmailServiceImplementationTest {
     }
 
     @Test
+    void sendWelcomeEmail_skips_when_user_null_or_no_email_and_sends_when_valid() {
+        // No envía cuando user es null
+        service.sendWelcomeEmail(null);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+
+        // No envía cuando no hay email
+        var u = new User();
+        u.setName("Test");
+        u.setEmail(null);
+        service.sendWelcomeEmail(u);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+
+        // Envía cuando el usuario es válido
+        u.setEmail("citizen@example.com");
+        service.sendWelcomeEmail(u);
+        verify(mailSender, atLeastOnce()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void sendPasswordResetEmail_validations_and_success() {
+        // No envía cuando user null
+        service.sendPasswordResetEmail(null, "token");
+        verify(mailSender, never()).send(any(MimeMessage.class));
+
+        // No envía cuando falta token
+        var u = new User();
+        u.setEmail("citizen@example.com");
+        service.sendPasswordResetEmail(u, " ");
+        verify(mailSender, never()).send(any(MimeMessage.class));
+
+        // Envía correctamente cuando user y token son válidos
+        service.sendPasswordResetEmail(u, "ABC123");
+        verify(mailSender, atLeastOnce()).send(any(MimeMessage.class));
+    }
+
+    @Test
     void sendReservationConfirmed_sends_message_when_user_has_email() {
         Reservation r = buildReservation("p@q.com");
 

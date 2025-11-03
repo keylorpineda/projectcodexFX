@@ -48,6 +48,40 @@ class NotificationServiceImplementationTest {
     service = new NotificationServiceImplementation(notificationRepository, reservationRepository, modelMapper, emailService, auditLogService, objectMapper);
     }
 
+    @Test
+    void delete_records_audit_with_null_reservation_and_actor_fallback() {
+        // Notification sin reserva asociada para cubrir rama que omite reservationId en detalles
+        Notification n = Notification.builder()
+                .id(100L)
+                .type(NotificationType.REMINDER)
+                .status(NotificationStatus.SENT)
+                .reservation(null)
+                .sentTo("a@b")
+                .build();
+        when(notificationRepository.findById(100L)).thenReturn(Optional.of(n));
+
+        // Mockear SecurityUtils.getCurrentUserId para que lance excepción y cubra el catch
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireAny(eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(inv -> null);
+            mocked.when(SecurityUtils::getCurrentUserId).thenThrow(new RuntimeException("whoops"));
+
+            // Capturar detalles enviados al audit log
+            var detailsCaptor = org.mockito.ArgumentCaptor.forClass(com.fasterxml.jackson.databind.JsonNode.class);
+            doNothing().when(auditLogService).logEvent(isNull(), eq("NOTIFICATION_DELETED"), eq("100"), detailsCaptor.capture());
+
+            service.delete(100L);
+
+            verify(notificationRepository).delete(any(Notification.class));
+
+            com.fasterxml.jackson.databind.JsonNode details = detailsCaptor.getValue();
+            // Debe existir notificationId y status, pero NO reservationId
+            assertThat(details.get("notificationId")).isNotNull();
+            assertThat(details.get("status")).isNotNull();
+            assertThat(details.get("reservationId")).isNull();
+        }
+    }
+
     private Reservation activeReservation(Long id, Long userId, String email) {
         User user = User.builder().id(userId).email(email).build();
         return Reservation.builder().id(id).user(user).notifications(new ArrayList<>()).build();
@@ -142,5 +176,44 @@ class NotificationServiceImplementationTest {
         assertThatThrownBy(() -> service.sendCustomEmailToReservation(4L, "a", "b"))
             .isInstanceOf(ResourceNotFoundException.class);
     }
+    }
+
+    @Test
+    void sendCustomEmail_does_not_add_to_null_notifications_but_saves_notification() {
+        // Reserva con notifications == null para cubrir la rama false del finally
+        Reservation res = Reservation.builder()
+                .id(13L)
+                .user(User.builder().id(99L).email("z@y.com").build())
+                .notifications(null)
+                .build();
+        when(reservationRepository.findById(13L)).thenReturn(Optional.of(res));
+
+        try (MockedStatic<SecurityUtils> ignored = mockStatic(SecurityUtils.class)) {
+            // Envío exitoso
+            service.sendCustomEmailToReservation(13L, "Asunto", "Mensaje");
+
+            // No se debe intentar añadir a una lista nula, pero la notificación debe guardarse
+            verify(notificationRepository, atLeastOnce()).save(any(Notification.class));
+        }
+    }
+
+    @Test
+    void sendCustomEmail_throws_when_reservation_not_found_and_findByReservation_throws_when_deleted() {
+        // not found path (covers getActiveReservation not-found throw line)
+        when(reservationRepository.findById(404L)).thenReturn(Optional.empty());
+        try (MockedStatic<SecurityUtils> ignored = mockStatic(SecurityUtils.class)) {
+            assertThatThrownBy(() -> service.sendCustomEmailToReservation(404L, "s", "m"))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Reservation with id 404 not found");
+        }
+
+        // deleted path (covers second throw in getActiveReservation)
+        Reservation deleted = Reservation.builder().id(7L).deletedAt(java.time.LocalDateTime.now()).build();
+        when(reservationRepository.findById(7L)).thenReturn(Optional.of(deleted));
+        try (MockedStatic<SecurityUtils> ignored2 = mockStatic(SecurityUtils.class)) {
+            assertThatThrownBy(() -> service.findByReservation(7L))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Reservation with id 7 not found");
+        }
     }
 }

@@ -131,6 +131,25 @@ class LocalImageStorageServiceTest {
     }
 
     @Test
+    void allowedTypes_enforced_rejects_missing_contentType_and_extension() throws Exception {
+        // allowedTypes NO vacío -> si no hay contentType ni extensión, debe rechazar
+        tempDir = java.nio.file.Files.createTempDirectory("uploads-test-enforced");
+        LocalImageStorageService service = new LocalImageStorageService(tempDir.toString(), "/pub", "image/png,image/jpeg", 5_000_000L);
+
+        // Archivo sin extensión y sin contentType
+        org.springframework.web.multipart.MultipartFile file = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+        org.mockito.Mockito.when(file.isEmpty()).thenReturn(false);
+        org.mockito.Mockito.when(file.getSize()).thenReturn(10L);
+        org.mockito.Mockito.when(file.getOriginalFilename()).thenReturn(null);
+        org.mockito.Mockito.when(file.getContentType()).thenReturn(null);
+        org.mockito.Mockito.when(file.getInputStream()).thenReturn(new java.io.ByteArrayInputStream(new byte[]{1}));
+
+        assertThatThrownBy(() -> service.store(1L, file))
+                .isInstanceOf(finalprojectprogramming.project.exceptions.StorageException.class)
+                .hasMessageContaining("Unsupported content type");
+    }
+
+    @Test
     void store_rejects_invalid_spaceId_or_empty_file_or_size_too_large() throws Exception {
         LocalImageStorageService service = newService("/uploads");
 
@@ -262,6 +281,67 @@ class LocalImageStorageServiceTest {
 
         service.delete("/uploadsfoo");
         assertThat(Files.exists(file)).isFalse();
+    }
+
+    @Test
+    void delete_supports_windows_style_backslashes_in_url() throws Exception {
+        LocalImageStorageService service = newService("/uploads");
+
+        // Create a file to delete
+        Path dir = tempDir.resolve("6");
+        Files.createDirectories(dir);
+        Path file = dir.resolve("a.png");
+        Files.writeString(file, "x");
+
+        // Use backslashes in the URL (Windows-style); service should normalize and delete
+        service.delete("\\uploads\\6\\a.png");
+        assertThat(Files.exists(file)).isFalse();
+    }
+
+    @Test
+    void ensureTrailingSlash_keeps_root_slash_and_extractRelativePath_removes_leading_slash() throws Exception {
+        // Asegurar tempDir inicializado para este test independiente
+        if (tempDir == null) {
+            tempDir = Files.createTempDirectory("uploads-test-root");
+        }
+        // publicUrl "/" ensures ensureTrailingSlash returns value as-is (covers the true branch)
+        LocalImageStorageService service = new LocalImageStorageService(tempDir.toString(), "/", "image/png", 1024);
+
+        // Create a file directly under root to delete via path starting with prefix then slash
+        Path file = tempDir.resolve("bar");
+        Files.writeString(file, "x");
+
+        // This hits extractRelativePath branch where normalized.startsWith(urlPrefix) and remaining starts with '/'
+        service.delete("/" + "bar"); // effectively "/bar"
+        assertThat(Files.exists(file)).isFalse();
+    }
+
+    @Test
+    void store_infers_png_extension_when_missing_filename_and_unknown_contentType_yields_no_extension() throws Exception {
+        // PNG inference when no filename extension
+        LocalImageStorageService svc = newService("/uploads");
+        MockMultipartFile pngNoExt = new MockMultipartFile("file", "image", "image/png", new byte[]{1});
+        String urlPng = svc.store(31L, pngNoExt);
+        assertThat(urlPng).endsWith(".png");
+
+        // Unknown contentType with allowedTypes blank -> no extension (covers default branch in switch)
+        LocalImageStorageService svc2 = new LocalImageStorageService(tempDir.toString(), "/pub", "", 5_000_000L);
+        MockMultipartFile unknown = new MockMultipartFile("file", "pic", "application/octet-stream", new byte[]{1});
+        String urlUnknown = svc2.store(32L, unknown);
+        assertThat(urlUnknown).startsWith("/pub/32/");
+        assertThat(urlUnknown).doesNotEndWith(".");
+    }
+
+    @Test
+    void store_with_allowedTypes_blank_hits_png_switch_case() throws Exception {
+        // Fuerza el uso del switch de contentType y el case image/png, sin bloqueo por allowedTypes
+        tempDir = Files.createTempDirectory("uploads-test-png-case");
+        LocalImageStorageService service = new LocalImageStorageService(tempDir.toString(), "/pub", "", 5_000_000L);
+        MockMultipartFile file = new MockMultipartFile("file", "noext", "image/png", new byte[]{1});
+
+        String url = service.store(41L, file);
+        assertThat(url).startsWith("/pub/41/");
+        assertThat(url).endsWith(".png");
     }
 
     @Test

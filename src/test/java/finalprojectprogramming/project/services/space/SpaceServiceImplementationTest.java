@@ -132,10 +132,12 @@ class SpaceServiceImplementationTest {
             SpaceDTO out = service.update(9L, patch);
 
             mocked.verify(() -> SecurityUtils.requireAny(UserRole.ADMIN, UserRole.SUPERVISOR));
+            // Se verifica que el update se efectúa correctamente sobre la entidad
             assertThat(out).isNotNull();
             assertThat(existing.getName()).isEqualTo("Nuevo");
             assertThat(existing.getActive()).isFalse();
-            assertThat(existing.getDeletedAt()).isNotNull();
+            // Al desactivar no se marca como eliminado; deletedAt permanece igual (nulo)
+            assertThat(existing.getDeletedAt()).isNull();
         }
     }
 
@@ -207,6 +209,17 @@ class SpaceServiceImplementationTest {
             assertThat(out).isNotNull();
             assertThat(s.getActive()).isFalse();
             verify(repo).save(s);
+        }
+    }
+
+    @Test
+    void changeStatus_throws_when_not_found() {
+        try (MockedStatic<SecurityUtils> ignored = Mockito.mockStatic(SecurityUtils.class)) {
+            when(repo.findById(404L)).thenReturn(java.util.Optional.empty());
+
+            assertThatThrownBy(() -> service.changeStatus(404L, true))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Space with id 404 not found");
         }
     }
 
@@ -551,5 +564,20 @@ class SpaceServiceImplementationTest {
             // Assert: active copied from space
             assertThat(dto.getActive()).isFalse();
         }
+    }
+
+    @Test
+    void recordAudit_handles_null_detailsCustomizer_via_reflection() throws Exception {
+        // Preparar un espacio simple
+        Space s = sampleSpace(901L, true, false);
+
+        // Invocar método privado recordAudit(action, space, null) por reflexión para cubrir rama null
+        var method = SpaceServiceImplementation.class.getDeclaredMethod(
+                "recordAudit", String.class, Space.class, java.util.function.Consumer.class);
+        method.setAccessible(true);
+
+        // No debe lanzar y debe registrar un evento de auditoría
+        method.invoke(service, "TEST_ACTION", s, null);
+        verify(auditLogService, atLeastOnce()).logEvent(any(), eq("TEST_ACTION"), eq("901"), any());
     }
 }

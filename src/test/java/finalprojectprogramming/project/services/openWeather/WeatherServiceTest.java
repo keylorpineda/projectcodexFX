@@ -58,6 +58,7 @@ class WeatherServiceTest {
     @Test
     void getCurrentWeather_uses_cache_then_client() {
         double lat = 10.0, lon = -84.0; String key = "u2";
+        // Primero: cache miss -> va al cliente y guarda en cache
         when(cache.get(anyString(), eq(CurrentWeatherResponse.class))).thenReturn(Optional.empty());
         CurrentWeatherResponse current = new CurrentWeatherResponse();
         when(client.getCurrentWeather(lat, lon)).thenReturn(current);
@@ -65,6 +66,13 @@ class WeatherServiceTest {
         CurrentWeatherResponse out = service.getCurrentWeather(lat, lon, key);
         assertThat(out).isSameAs(current);
         verify(cache).put(anyString(), eq(current));
+
+        // Segundo: cache hit -> no llama al cliente
+        reset(cache, client);
+        when(cache.get(anyString(), eq(CurrentWeatherResponse.class))).thenReturn(Optional.of(current));
+        CurrentWeatherResponse fromCache = service.getCurrentWeather(lat, lon, key);
+        assertThat(fromCache).isSameAs(current);
+        verifyNoInteractions(client);
     }
 
     @Test
