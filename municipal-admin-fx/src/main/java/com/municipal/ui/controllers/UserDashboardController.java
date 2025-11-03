@@ -136,6 +136,30 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
 
     // ==================== STATUS MAPPING ====================
     
+    private static final List<String> SPACE_TYPES = List.of(
+        "SALA",
+        "CANCHA",
+        "AUDITORIO",
+        "GIMNASIO",
+        "PISCINA",
+        "PARQUE",
+        "LABORATORIO",
+        "BIBLIOTECA",
+        "TEATRO"
+    );
+
+    private static final Map<String, String> SPACE_ICON_MAP = Map.ofEntries(
+        Map.entry("AUDITORIO", "🎭"),
+        Map.entry("SALA", "🏛️"),
+        Map.entry("CANCHA", "⚽"),
+        Map.entry("GIMNASIO", "🏋️"),
+        Map.entry("PISCINA", "🏊"),
+        Map.entry("PARQUE", "🌳"),
+        Map.entry("LABORATORIO", "🔬"),
+        Map.entry("BIBLIOTECA", "📚"),
+        Map.entry("TEATRO", "🎬")
+    );
+
     private static final Map<String, String> STATUS_MAP = Map.of(
         "PENDING", "Pendiente",
         "CONFIRMED", "Confirmada",
@@ -825,9 +849,10 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
 
     private void setupFilters() {
         if (spaceTypeChoice != null) {
-            spaceTypeChoice.setItems(FXCollections.observableArrayList(
-                "Todos", "SALA", "CANCHA", "AUDITORIO"
-            ));
+            List<String> options = new ArrayList<>();
+            options.add("Todos");
+            options.addAll(SPACE_TYPES);
+            spaceTypeChoice.setItems(FXCollections.observableArrayList(options));
             spaceTypeChoice.setValue("Todos");
         }
 
@@ -918,7 +943,7 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         typeBox.setAlignment(Pos.CENTER_LEFT);
         Label typeIcon = new Label(getSpaceIcon(space.type()));
         typeIcon.getStyleClass().add("space-icon");
-        Label typeLabel = new Label(space.type());
+        Label typeLabel = new Label(formatSpaceType(space.type()));
         typeLabel.getStyleClass().add("space-type");
         typeBox.getChildren().addAll(typeIcon, typeLabel);
 
@@ -942,14 +967,21 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
     }
 
     private String getSpaceIcon(String type) {
-        if (type == null) return "🏢";
-        
-        return switch (type.toUpperCase()) {
-            case "AUDITORIO" -> "🎭";
-            case "SALA" -> "🏛️";
-            case "CANCHA" -> "⚽";
-            default -> "🏢";
-        };
+        if (type == null) {
+            return "🏢";
+        }
+        return SPACE_ICON_MAP.getOrDefault(type.toUpperCase(Locale.getDefault()), "🏢");
+    }
+
+    private String formatSpaceType(String type) {
+        if (type == null || type.isBlank()) {
+            return "Sin clasificar";
+        }
+        String normalized = type.replace('_', ' ').toLowerCase(Locale.getDefault());
+        return Arrays.stream(normalized.split(" "))
+                .filter(word -> !word.isBlank())
+                .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                .collect(Collectors.joining(" "));
     }
 
     // ==================== RESERVATION ACTIONS ====================

@@ -64,6 +64,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -253,7 +254,17 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private static final Duration PANEL_ANIMATION_DURATION = Duration.millis(260);
     private static final Duration CLIMA_REFRESH_INTERVAL = Duration.minutes(10); // Actualización del clima cada 10 minutos
     private static final Duration DATA_REFRESH_INTERVAL = Duration.seconds(30); // Actualización cada 30 segundos
-    private static final List<String> TIPOS_ESPACIO = List.of("SALA", "CANCHA", "AUDITORIO");
+    private static final List<String> TIPOS_ESPACIO = List.of(
+            "SALA",
+            "CANCHA",
+            "AUDITORIO",
+            "GIMNASIO",
+            "PISCINA",
+            "PARQUE",
+            "LABORATORIO",
+            "BIBLIOTECA",
+            "TEATRO");
+    private static final Set<String> TIPOS_EXTERIOR = Set.of("CANCHA", "PISCINA", "PARQUE");
     private static final Map<String, String> ROLES_FRIENDLY = Map.of(
             "ADMIN", "Administrador",
             "SUPERVISOR", "Supervisor",
@@ -431,9 +442,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         if (cmbTipoEspacio == null) {
             return;
         }
-        List<String> tipos = collectDistinctValues(listaEspacios.stream()
+        List<String> tipos = new ArrayList<>(TIPOS_ESPACIO);
+        tipos.addAll(collectDistinctValues(listaEspacios.stream()
                 .map(SpaceDTO::type)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList())));
         updateComboBoxOptions(cmbTipoEspacio, "Todos los tipos", tipos);
     }
 
@@ -2232,7 +2244,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                         return true;
                     }
                     String tipo = e.type() != null ? e.type() : "";
-                    boolean esExterior = "CANCHA".equalsIgnoreCase(tipo);
+                    boolean esExterior = TIPOS_EXTERIOR.contains(tipo.toUpperCase());
                     if ("Interior".equalsIgnoreCase(tipoSeleccionado)) {
                         return !esExterior;
                     }
