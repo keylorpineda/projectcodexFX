@@ -3,13 +3,19 @@ package finalprojectprogramming.project.services.mail;
 import finalprojectprogramming.project.configs.MailConfig;
 import finalprojectprogramming.project.models.Reservation;
 import finalprojectprogramming.project.models.Space;
+import finalprojectprogramming.project.models.enums.SpaceType;
 import finalprojectprogramming.project.models.User;
 import finalprojectprogramming.project.models.enums.ReservationStatus;
 import jakarta.mail.MessagingException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import java.io.UnsupportedEncodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +35,8 @@ public class EmailServiceImplementation implements EmailService {
             DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", LOCALE_ES_CR);
     private static final DateTimeFormatter TIME_FORMATTER =
             DateTimeFormatter.ofPattern("hh:mm a", LOCALE_ES_CR);
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("d 'de' MMMM yyyy 'a las' hh:mm a", LOCALE_ES_CR);
 
     private final JavaMailSender mailSender;
     private final MailConfig mailConfig;
@@ -110,16 +118,29 @@ public class EmailServiceImplementation implements EmailService {
         Space space = reservation.getSpace();
         String spaceName = sanitize(space != null ? space.getName() : "Espacio municipal");
         String location = sanitize(space != null ? nullSafe(space.getLocation()) : "Por definir");
-        String attendees = reservation.getAttendees() != null ? reservation.getAttendees().toString() : "--";
+        String spaceType = translateSpaceType(space != null ? space.getType() : null);
+        String capacity = formatAttendees(space != null ? space.getCapacity() : null);
+        String approval = space != null && Boolean.TRUE.equals(space.getRequiresApproval()) ?
+                "Requiere aprobación del administrador" : "Aprobación automática";
+        String maxDuration = formatMaxDuration(space != null ? space.getMaxReservationDuration() : null);
+        String spaceDescription = sanitize(space != null ? nullSafe(space.getDescription()) : "");
+
+        String attendees = formatAttendees(reservation.getAttendees());
         String notes = sanitize(nullSafe(reservation.getNotes()));
         String qrCode = sanitize(nullSafe(reservation.getQrCode()));
         String status = translateStatus(reservation.getStatus());
 
         String dateLine = formatDate(reservation.getStartTime());
         String scheduleLine = formatSchedule(reservation.getStartTime(), reservation.getEndTime());
+        String durationLine = formatReservationDuration(reservation.getStartTime(), reservation.getEndTime());
+        String createdLine = formatDateTime(reservation.getCreatedAt());
+        String checkInLine = formatDateTime(reservation.getCheckinAt());
 
         String cancellationReason = sanitize(nullSafe(reservation.getCancellationReason()));
         boolean isCanceled = reservation.getStatus() == ReservationStatus.CANCELED;
+        String statusSummary = buildStatusSummary(reservation);
+        List<String> nextSteps = buildNextSteps(reservation);
+        String normalizedIntro = sanitize(intro);
 
         StringBuilder builder = new StringBuilder();
         builder.append("<!DOCTYPE html>")
@@ -128,40 +149,85 @@ public class EmailServiceImplementation implements EmailService {
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
                 .append("<title>").append(title).append("</title></head>")
                 .append("<body style=\"margin:0;padding:32px;background:#f4f7fb;font-family:'Segoe UI',Arial,sans-serif;\">")
-                .append("<div style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:18px;padding:32px;box-shadow:0 24px 48px rgba(15,35,95,0.12);\">")
+                .append("<div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;padding:36px;box-shadow:0 24px 48px rgba(15,35,95,0.12);\">")
                 .append("<div style=\"font-size:0;color:transparent;height:0;overflow:hidden\">").append(preheader)
                 .append("</div>")
                 .append("<div style=\"text-align:center\">")
-                .append("<div style=\"display:inline-block;padding:10px 18px;border-radius:999px;background:")
+                .append("<div style=\"display:inline-block;padding:12px 20px;border-radius:999px;background:")
                 .append(accentColor)
-                .append("10;color:").append(accentColor)
-                .append(";font-size:13px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;\">")
+                .append("14;color:").append(accentColor)
+                .append(";font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;\">")
                 .append(escape(title))
                 .append("</div>")
-                .append("<h1 style=\"color:#0f235f;font-size:28px;margin:18px 0 12px;font-weight:700;\">")
+                .append("<h1 style=\"color:#0f235f;font-size:28px;margin:20px 0 14px;font-weight:700;\">")
                 .append(escape(spaceName))
                 .append("</h1>")
                 .append("<p style=\"color:#4c5d73;font-size:16px;line-height:1.6;margin:0 auto 24px;max-width:460px;\">")
-                .append(escape(intro))
+                .append(formatMultiline(normalizedIntro))
                 .append("</p>")
                 .append("</div>")
-                .append("<div style=\"background:#f5f7ff;border-radius:14px;padding:24px;margin-bottom:24px;\">")
+                .append("<div style=\"background:").append(accentColor).append("0F;border-radius:16px;padding:22px;margin-bottom:28px;\">")
+                .append("<h2 style=\"margin:0 0 8px;font-size:20px;color:").append(accentColor).append(";text-transform:uppercase;letter-spacing:1px;\">Estado actual</h2>")
+                .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#1f2a44;\">")
+                .append(formatMultiline(statusSummary))
+                .append("</p>")
+                .append("</div>")
+                .append("<div style=\"display:grid;gap:20px;margin-bottom:28px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));\">")
+                .append("<div style=\"background:#f5f7ff;border-radius:16px;padding:24px;\">")
+                .append("<h3 style=\"margin:0 0 16px;color:#0f235f;font-size:18px;\">Detalles de la reserva</h3>")
                 .append(detailRow("Fecha", dateLine))
                 .append(detailRow("Horario", scheduleLine))
-                .append(detailRow("Ubicación", location))
+                .append(detailRow("Duración", durationLine))
                 .append(detailRow("Asistentes", attendees))
-                .append(detailRow("Estado", status));
+                .append(detailRow("Estado", status))
+                .append(detailRow("Creada", createdLine));
+        if (StringUtils.hasText(checkInLine)) {
+            builder.append(detailRow("Ingreso registrado", checkInLine));
+        }
         if (StringUtils.hasText(qrCode)) {
             builder.append(detailRow("Código QR", qrCode));
         }
-        if (StringUtils.hasText(notes)) {
-            builder.append(detailRow("Notas", notes));
-        }
-        if (isCanceled && StringUtils.hasText(cancellationReason)) {
-            builder.append(detailRow("Motivo de cancelación", cancellationReason));
+        builder.append("</div>")
+                .append("<div style=\"background:#f5f7ff;border-radius:16px;padding:24px;\">")
+                .append("<h3 style=\"margin:0 0 16px;color:#0f235f;font-size:18px;\">Información del espacio</h3>")
+                .append(detailRow("Ubicación", location))
+                .append(detailRow("Tipo", spaceType))
+                .append(detailRow("Capacidad", capacity))
+                .append(detailRow("Política", approval))
+                .append(detailRow("Máx. por reserva", maxDuration));
+        if (StringUtils.hasText(spaceDescription)) {
+            builder.append(detailRow("Descripción", spaceDescription));
         }
         builder.append("</div>")
-                .append("<div style=\"border-radius:14px;padding:24px;background:#0f235f;color:#ffffff;\">")
+                .append("</div>");
+        if (StringUtils.hasText(notes)) {
+            builder.append("<div style=\"background:#fef7e5;border-radius:14px;padding:22px;margin-bottom:28px;border:1px solid #f6d78f;\">")
+                    .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#8b6a11;\">Notas adicionales</h3>")
+                    .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#5b4607;\">")
+                    .append(formatMultiline(notes))
+                    .append("</p>")
+                    .append("</div>");
+        }
+        if (isCanceled && StringUtils.hasText(cancellationReason)) {
+            builder.append("<div style=\"background:#fee9ec;border-radius:14px;padding:22px;margin-bottom:28px;border:1px solid #f8b7c1;\">")
+                    .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#a30b2f;\">Motivo de cancelación</h3>")
+                    .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#781125;\">")
+                    .append(formatMultiline(cancellationReason))
+                    .append("</p>")
+                    .append("</div>");
+        }
+        if (!nextSteps.isEmpty()) {
+            builder.append("<div style=\"background:#eef3ff;border-radius:16px;padding:24px;margin-bottom:28px;\">")
+                    .append("<h3 style=\"margin:0 0 14px;font-size:18px;color:#1f2a44;\">Próximos pasos recomendados</h3>")
+                    .append("<ul style=\"margin:0;padding-left:20px;color:#1f2a44;font-size:15px;line-height:1.6;\">");
+            for (String step : nextSteps) {
+                builder.append("<li style=\"margin-bottom:8px;\">")
+                        .append(formatMultiline(step))
+                        .append("</li>");
+            }
+            builder.append("</ul></div>");
+        }
+        builder.append("<div style=\"border-radius:16px;padding:24px;background:#0f235f;color:#ffffff;\">")
                 .append("<h2 style=\"margin:0;font-size:22px;\">¿Necesitas ayuda?</h2>")
                 .append("<p style=\"margin:12px 0 0;font-size:15px;line-height:1.6;color:#d9e2ff;\">")
                 .append("Respondé este correo o contactá a la Oficina de Reservas de la Municipalidad de Pérez Zeledón.")
@@ -177,14 +243,120 @@ public class EmailServiceImplementation implements EmailService {
 
     private String detailRow(String label, String value) {
         return new StringBuilder()
-                .append("<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;\">")
-                .append("<span style=\"font-size:14px;color:#6b7a99;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;\">")
+                .append("<div style=\"display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;\">")
+                .append("<span style=\"min-width:120px;font-size:13px;color:#6b7a99;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;\">")
                 .append(escape(label))
                 .append("</span>")
-                .append("<span style=\"font-size:15px;color:#1f2a44;font-weight:600;text-align:right;max-width:60%;\">")
-                .append(escape(value))
+                .append("<span style=\"flex:1;font-size:15px;color:#1f2a44;font-weight:600;white-space:pre-wrap;\">")
+                .append(formatMultiline(value))
                 .append("</span></div>")
                 .toString();
+    }
+
+    private String formatMultiline(String value) {
+        String normalized = normalizeSpacing(value);
+        String escaped = escape(normalized);
+        return escaped.replace("\n", "<br/>");
+    }
+
+    private String formatAttendees(Integer attendees) {
+        if (attendees == null || attendees <= 0) {
+            return "--";
+        }
+        return attendees + (attendees == 1 ? " persona" : " personas");
+    }
+
+    private String formatReservationDuration(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) {
+            return "Por definir";
+        }
+        Duration duration = Duration.between(start, end);
+        if (duration.isZero() || duration.isNegative()) {
+            return "Menos de un minuto";
+        }
+        long totalMinutes = duration.toMinutes();
+        long hours = totalMinutes / 60;
+        long minutes = totalMinutes % 60;
+        List<String> parts = new ArrayList<>();
+        if (hours > 0) {
+            parts.add(hours + (hours == 1 ? " hora" : " horas"));
+        }
+        if (minutes > 0) {
+            parts.add(minutes + " min");
+        }
+        if (parts.isEmpty()) {
+            return "Menos de un minuto";
+        }
+        return String.join(" ", parts);
+    }
+
+    private String formatMaxDuration(Integer minutes) {
+        if (minutes == null || minutes <= 0) {
+            return "Sin límite definido";
+        }
+        int absMinutes = Math.abs(minutes);
+        int hours = absMinutes / 60;
+        int remaining = absMinutes % 60;
+        if (hours > 0 && remaining > 0) {
+            return String.format("%d %s %d min", hours, hours == 1 ? "hora" : "horas", remaining);
+        }
+        if (hours > 0) {
+            return hours + (hours == 1 ? " hora" : " horas");
+        }
+        return remaining + " min";
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "";
+        }
+        return capitalize(DATE_TIME_FORMATTER.format(dateTime));
+    }
+
+    private String buildStatusSummary(Reservation reservation) {
+        ReservationStatus status = reservation.getStatus();
+        if (status == null) {
+            return "La reserva aún no tiene un estado definido. Nuestro equipo confirmará los detalles muy pronto.";
+        }
+        return switch (status) {
+            case PENDING -> "Tu solicitud está en revisión. Te notificaremos apenas el administrador valide la disponibilidad del espacio.";
+            case CONFIRMED -> "La reserva está confirmada. Presentá el código QR al ingresar y llegá con 10 minutos de anticipación para evitar contratiempos.";
+            case CANCELED -> "La reserva fue cancelada. Si necesitás reagendar, podés solicitar un nuevo espacio desde la plataforma.";
+            case CHECKED_IN -> "El ingreso ya fue registrado en el sistema. Disfrutá del espacio y recordá dejarlo en óptimas condiciones.";
+            case NO_SHOW -> "La reserva se marcó como inasistencia. Si fue un error, contactá a la oficina de reservas para regularizar la situación.";
+        };
+    }
+
+    private List<String> buildNextSteps(Reservation reservation) {
+        List<String> steps = new ArrayList<>();
+        ReservationStatus status = reservation.getStatus();
+        if (status == null) {
+            steps.add("Revisá tu bandeja de entrada: te enviaremos una confirmación tan pronto validemos la disponibilidad.");
+            return steps;
+        }
+        switch (status) {
+            case PENDING -> {
+                steps.add("Verificá que tus datos de contacto estén actualizados para recibir la aprobación sin retrasos.");
+                if (reservation.getSpace() != null && Boolean.TRUE.equals(reservation.getSpace().getRequiresApproval())) {
+                    steps.add("Recordá que este espacio requiere aprobación explícita del administrador municipal.");
+                }
+            }
+            case CONFIRMED -> {
+                steps.add("Guardá este correo: contiene toda la información necesaria para tu ingreso.");
+                steps.add("Mostrá el código QR y un documento de identificación al llegar al espacio.");
+            }
+            case CHECKED_IN -> {
+                steps.add("Si detectás algún incidente durante tu uso del espacio, reportalo inmediatamente al personal municipal.");
+            }
+            case NO_SHOW -> {
+                steps.add("Contactá al equipo de reservas si necesitás reactivar tu acceso o gestionar una nueva fecha.");
+            }
+            case CANCELED -> {
+                steps.add("Evaluá reagendar en otro horario disponible desde la plataforma de reservas.");
+            }
+        }
+        steps.add("Recordá que las cancelaciones están sujetas a las restricciones temporales vigentes de la municipalidad.");
+        return steps;
     }
 
     private String formatDate(LocalDateTime dateTime) {
@@ -215,12 +387,23 @@ public class EmailServiceImplementation implements EmailService {
         };
     }
 
+    private String translateSpaceType(SpaceType type) {
+        if (type == null) {
+            return "Sin clasificar";
+        }
+        return switch (type) {
+            case SALA -> "Sala";
+            case CANCHA -> "Cancha";
+            case AUDITORIO -> "Auditorio";
+        };
+    }
+
     private String nullSafe(String value) {
         return value != null ? value : "";
     }
 
     private String sanitize(String value) {
-        return value != null ? value.trim() : "";
+        return normalizeSpacing(value);
     }
 
     private String escape(String value) {
@@ -233,6 +416,20 @@ public class EmailServiceImplementation implements EmailService {
         }
         String lower = value.toLowerCase(LOCALE_ES_CR);
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
+    private String normalizeSpacing(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.strip();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String[] lines = trimmed.split("\\R", -1);
+        return Arrays.stream(lines)
+                .map(line -> line.replaceAll("[ \t]{2,}", " ").strip())
+                .collect(Collectors.joining("\n"));
     }
 
     public static class MailSendingException extends RuntimeException {
