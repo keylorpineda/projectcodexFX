@@ -132,25 +132,25 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     @FXML private TextField txtBuscarEspacio;
     @FXML private ComboBox<String> cmbTipoEspacio;
     @FXML private ComboBox<String> cmbEstadoEspacio;
-    @FXML private TableView<Espacio> tablaEspacios;
-    @FXML private TableColumn<Espacio, String> colNombreEspacio;
-    @FXML private TableColumn<Espacio, String> colTipoEspacio;
-    @FXML private TableColumn<Espacio, Integer> colCapacidadEspacio;
-    @FXML private TableColumn<Espacio, String> colEstadoEspacio;
-    @FXML private TableColumn<Espacio, Void> colAccionesEspacio;
+    @FXML private TableView<SpaceDTO> tablaEspacios;
+    @FXML private TableColumn<SpaceDTO, String> colNombreEspacio;
+    @FXML private TableColumn<SpaceDTO, String> colTipoEspacio;
+    @FXML private TableColumn<SpaceDTO, Integer> colCapacidadEspacio;
+    @FXML private TableColumn<SpaceDTO, String> colEstadoEspacio;
+    @FXML private TableColumn<SpaceDTO, Void> colAccionesEspacio;
     
     // ==================== GESTIÓN DE USUARIOS ====================
     
     @FXML private TextField txtBuscarUsuario;
     @FXML private ComboBox<String> cmbRolUsuario;
-    @FXML private TableView<Usuario> tablaUsuarios;
-    @FXML private TableColumn<Usuario, String> colUsuario;
-    @FXML private TableColumn<Usuario, String> colCorreo;
-    @FXML private TableColumn<Usuario, String> colRol;
-    @FXML private TableColumn<Usuario, String> colEstadoUsuario;
-    @FXML private TableColumn<Usuario, String> colUltimoAcceso;
-    @FXML private TableColumn<Usuario, String> colReservasUsuario;
-    @FXML private TableColumn<Usuario, Void> colAccionesUsuario;
+    @FXML private TableView<UserDTO> tablaUsuarios;
+    @FXML private TableColumn<UserDTO, String> colUsuario;
+    @FXML private TableColumn<UserDTO, String> colCorreo;
+    @FXML private TableColumn<UserDTO, String> colRol;
+    @FXML private TableColumn<UserDTO, String> colEstadoUsuario;
+    @FXML private TableColumn<UserDTO, String> colUltimoAcceso;
+    @FXML private TableColumn<UserDTO, String> colReservasUsuario;
+    @FXML private TableColumn<UserDTO, Void> colAccionesUsuario;
     
     // ==================== CONTROL DE RESERVAS ====================
     
@@ -163,16 +163,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     @FXML private Label lblReservasFiltradas;
     @FXML private ComboBox<Integer> cmbFilasPorPagina;
     @FXML private Label lblPaginaReservas;
-    @FXML private TableView<Reserva> tablaReservas;
-    @FXML private TableColumn<Reserva, Long> colIdReserva;
-    @FXML private TableColumn<Reserva, String> colUsuarioReserva;
-    @FXML private TableColumn<Reserva, String> colEspacioReserva;
-    @FXML private TableColumn<Reserva, String> colFechaReserva;
-    @FXML private TableColumn<Reserva, String> colHoraReserva;
-    @FXML private TableColumn<Reserva, String> colEstadoReservaTabla;
-    @FXML private TableColumn<Reserva, String> colQRReserva;
-    @FXML private TableColumn<Reserva, String> colClimaReserva;
-    @FXML private TableColumn<Reserva, Void> colAccionesReserva;
+    @FXML private TableView<ReservationDTO> tablaReservas;
+    @FXML private TableColumn<ReservationDTO, Long> colIdReserva;
+    @FXML private TableColumn<ReservationDTO, String> colUsuarioReserva;
+    @FXML private TableColumn<ReservationDTO, String> colEspacioReserva;
+    @FXML private TableColumn<ReservationDTO, String> colFechaReserva;
+    @FXML private TableColumn<ReservationDTO, String> colHoraReserva;
+    @FXML private TableColumn<ReservationDTO, String> colEstadoReservaTabla;
+    @FXML private TableColumn<ReservationDTO, String> colQRReserva;
+    @FXML private TableColumn<ReservationDTO, String> colClimaReserva;
+    @FXML private TableColumn<ReservationDTO, Void> colAccionesReserva;
     
     // ==================== REPORTES GLOBALES ====================
     
@@ -223,14 +223,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private SessionManager sessionManager;
     private FlowController flowController;
 
-    private ObservableList<Espacio> listaEspacios;
-    private ObservableList<Espacio> listaEspaciosFiltrados;
-    private ObservableList<Usuario> listaUsuarios;
-    private ObservableList<Usuario> listaUsuariosFiltrados;
-    private ObservableList<Reserva> listaReservas;
-    private ObservableList<Reserva> listaReservasFiltradas;
-    private EstadisticasDashboard estadisticas;
-    private DatosClimaticos climaActual;
+    // Usar DTOs directamente en lugar de modelos locales
+    private ObservableList<SpaceDTO> listaEspacios;
+    private ObservableList<SpaceDTO> listaEspaciosFiltrados;
+    private ObservableList<UserDTO> listaUsuarios;
+    private ObservableList<UserDTO> listaUsuariosFiltrados;
+    private ObservableList<ReservationDTO> listaReservas;
+    private ObservableList<ReservationDTO> listaReservasFiltradas;
+    private CurrentWeatherDTO climaActual;
     private Timeline climaTimeline;
     private Timeline datosTimeline;
     private boolean panelNotificacionesVisible;
@@ -305,7 +305,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         listaUsuariosFiltrados = FXCollections.observableArrayList();
         listaReservas = FXCollections.observableArrayList();
         listaReservasFiltradas = FXCollections.observableArrayList();
-        estadisticas = new EstadisticasDashboard();
+        // estadisticas = new EstadisticasDashboard(); // TODO: Implementar clase de estadísticas
         datosInicialesCargados = false;
     }
 
@@ -422,28 +422,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
         List<String> tipos = collectDistinctValues(listaEspacios.stream()
-                .map(Espacio::getTipo)
+                .map(SpaceDTO::type)
                 .collect(Collectors.toList()));
-        List<String> opciones = new ArrayList<>();
-        boolean hayInterior = listaEspacios.stream().anyMatch(espacio -> !espacio.isEsExterior());
-        boolean hayExterior = listaEspacios.stream().anyMatch(Espacio::isEsExterior);
-        if (hayInterior) {
-            opciones.add("Interior");
-        }
-        if (hayExterior) {
-            opciones.add("Exterior");
-        }
-        opciones.addAll(tipos);
-        updateComboBoxOptions(cmbTipoEspacio, "Todos los tipos", opciones);
+        updateComboBoxOptions(cmbTipoEspacio, "Todos los tipos", tipos);
     }
 
     private void actualizarOpcionesEstadoEspacio() {
         if (cmbEstadoEspacio == null) {
             return;
         }
-        List<String> estados = collectDistinctValues(listaEspacios.stream()
-                .map(Espacio::getEstado)
-                .collect(Collectors.toList()));
+        List<String> estados = List.of("Activo", "Inactivo");
         updateComboBoxOptions(cmbEstadoEspacio, "Todos los estados", estados);
     }
 
@@ -452,7 +440,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
         List<String> roles = collectDistinctValues(listaUsuarios.stream()
-                .map(Usuario::getRol)
+                .map(UserDTO::role)
                 .collect(Collectors.toList()));
         updateComboBoxOptions(cmbRolUsuario, "Todos los roles", roles);
     }
@@ -462,7 +450,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
         List<String> estados = collectDistinctValues(listaReservas.stream()
-                .map(Reserva::getEstado)
+                .map(ReservationDTO::status)
                 .collect(Collectors.toList()));
         updateComboBoxOptions(cmbEstadoReserva, "Todos los estados", estados);
     }
@@ -547,13 +535,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         if (tablaEspacios == null) return;
         
         // Configurar columnas con lambdas en lugar de PropertyValueFactory
-        colNombreEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNombre()));
-        colTipoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTipo()));
-        colCapacidadEspacio.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getCapacidad()).asObject());
-        colEstadoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getEstado()));
+        colNombreEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
+        colTipoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().type()));
+        colCapacidadEspacio.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().capacity()).asObject());
+        colEstadoEspacio.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().active() ? "Activo" : "Inactivo"));
         
         // Personalizar columna de estado con estilos
-        colEstadoEspacio.setCellFactory(column -> new TableCell<Espacio, String>() {
+        colEstadoEspacio.setCellFactory(column -> new TableCell<SpaceDTO, String>() {
             @Override
             protected void updateItem(String estado, boolean empty) {
                 super.updateItem(estado, empty);
@@ -590,7 +578,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         colAccionesEspacio.setMinWidth(360);
         colAccionesEspacio.setPrefWidth(380);
         
-        colAccionesEspacio.setCellFactory(param -> new TableCell<Espacio, Void>() {
+        colAccionesEspacio.setCellFactory(param -> new TableCell<SpaceDTO, Void>() {
             private final Button btnVer = new Button("👁️ Ver");
             private final Button btnEditar = new Button("✏️ Editar");
             private final Button btnEstado = new Button("� Estado");
@@ -611,22 +599,22 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar espacio"));
                 
                 btnVer.setOnAction(e -> {
-                    Espacio espacio = getTableView().getItems().get(getIndex());
+                    SpaceDTO espacio = getTableView().getItems().get(getIndex());
                     verDetallesEspacio(espacio);
                 });
 
                 btnEditar.setOnAction(e -> {
-                    Espacio espacio = getTableView().getItems().get(getIndex());
+                    SpaceDTO espacio = getTableView().getItems().get(getIndex());
                     editarEspacio(espacio);
                 });
 
                 btnEstado.setOnAction(e -> {
-                    Espacio espacio = getTableView().getItems().get(getIndex());
+                    SpaceDTO espacio = getTableView().getItems().get(getIndex());
                     cambiarEstadoEspacio(espacio);
                 });
 
                 btnEliminar.setOnAction(e -> {
-                    Espacio espacio = getTableView().getItems().get(getIndex());
+                    SpaceDTO espacio = getTableView().getItems().get(getIndex());
                     eliminarEspacio(espacio);
                 });
 
@@ -652,28 +640,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         colCorreo.setCellValueFactory(cellData ->
                 new SimpleStringProperty(formatearCorreoUsuario(cellData.getValue())));
         colRol.setCellValueFactory(cellData -> {
-            Usuario usuario = cellData.getValue();
+            UserDTO usuario = cellData.getValue();
             if (usuario == null) {
                 return new SimpleStringProperty("");
             }
-            String rol = defaultString(usuario.getRol()).trim();
-            if (rol.isEmpty()) {
-                rol = obtenerRolFriendly(usuario.getRolCodigo());
-            }
+            String rol = defaultString(usuario.role()).trim();
             if (rol.isEmpty()) {
                 rol = ROLES_FRIENDLY.getOrDefault("USER", "Usuario");
+            } else {
+                rol = ROLES_FRIENDLY.getOrDefault(rol.toUpperCase(), rol);
             }
             return new SimpleStringProperty(rol);
         });
         colEstadoUsuario.setCellValueFactory(cellData -> {
-            Usuario usuario = cellData.getValue();
+            UserDTO usuario = cellData.getValue();
             if (usuario == null) {
                 return new SimpleStringProperty("");
             }
-            String estado = defaultString(usuario.getEstado()).trim();
-            if (estado.isEmpty()) {
-                estado = usuario.isActivo() ? "Activo" : "Inactivo";
-            }
+            String estado = usuario.active() != null && usuario.active() ? "Activo" : "Inactivo";
             return new SimpleStringProperty(estado);
         });
 
@@ -707,7 +691,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         // Formatear columna de último acceso
         colUltimoAcceso.setCellValueFactory(cellData -> {
-            LocalDateTime fecha = cellData.getValue().getUltimoAcceso();
+            LocalDateTime fecha = cellData.getValue().lastLoginAt();
             if (fecha == null) {
                 return new SimpleStringProperty("N/A");
             }
@@ -717,13 +701,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         if (colReservasUsuario != null) {
             colReservasUsuario.setCellValueFactory(cellData -> {
-                Usuario usuario = cellData.getValue();
+                UserDTO usuario = cellData.getValue();
                 if (usuario == null) {
                     return new SimpleStringProperty("0 / 0");
                 }
-                String resumen = String.format(Locale.getDefault(), "%d / %d",
-                        Math.max(usuario.getTotalReservas(), 0),
-                        Math.max(usuario.getReservasAprobadas(), 0));
+                int totalReservas = usuario.reservationIds() != null ? usuario.reservationIds().size() : 0;
+                int reservasAprobadas = usuario.approvedReservationIds() != null ? usuario.approvedReservationIds().size() : 0;
+                String resumen = String.format(Locale.getDefault(), "%d / %d", totalReservas, reservasAprobadas);
                 return new SimpleStringProperty(resumen);
             });
 
@@ -746,7 +730,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
 
         // Personalizar columna de rol
-        colRol.setCellFactory(column -> new TableCell<Usuario, String>() {
+        colRol.setCellFactory(column -> new TableCell<UserDTO, String>() {
             @Override
             protected void updateItem(String rol, boolean empty) {
                 super.updateItem(rol, empty);
@@ -783,7 +767,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         });
 
         // Personalizar columna de estado para mostrar chips visuales
-        colEstadoUsuario.setCellFactory(column -> new TableCell<Usuario, String>() {
+        colEstadoUsuario.setCellFactory(column -> new TableCell<UserDTO, String>() {
             @Override
             protected void updateItem(String estado, boolean empty) {
                 super.updateItem(estado, empty);
@@ -814,7 +798,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         colAccionesUsuario.setMinWidth(320);
         colAccionesUsuario.setPrefWidth(340);
         
-        colAccionesUsuario.setCellFactory(param -> new TableCell<Usuario, Void>() {
+        colAccionesUsuario.setCellFactory(param -> new TableCell<UserDTO, Void>() {
             private final Button btnEditar = new Button("✏️ Editar");
             private final Button btnEstado = new Button("🔄 Estado");
             private final Button btnEliminar = new Button("🗑️ Eliminar");
@@ -829,20 +813,20 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 // Tooltips
                 javafx.scene.control.Tooltip.install(btnEditar, new javafx.scene.control.Tooltip("Editar información del usuario"));
                 javafx.scene.control.Tooltip.install(btnEstado, new javafx.scene.control.Tooltip("Activar/Desactivar usuario"));
-                javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar usuario del sistema"));
+                javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar UserDTO del sistema"));
                 
                 btnEditar.setOnAction(e -> {
-                    Usuario usuario = getTableView().getItems().get(getIndex());
+                    UserDTO usuario = getTableView().getItems().get(getIndex());
                     editarUsuario(usuario);
                 });
 
                 btnEstado.setOnAction(e -> {
-                    Usuario usuario = getTableView().getItems().get(getIndex());
+                    UserDTO usuario = getTableView().getItems().get(getIndex());
                     cambiarEstadoUsuario(usuario);
                 });
 
                 btnEliminar.setOnAction(e -> {
-                    Usuario usuario = getTableView().getItems().get(getIndex());
+                    UserDTO usuario = getTableView().getItems().get(getIndex());
                     eliminarUsuario(usuario);
                 });
 
@@ -857,26 +841,26 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         });
     }
 
-    private String formatearNombreUsuario(Usuario usuario) {
+    private String formatearNombreUsuario(UserDTO usuario) {
         if (usuario == null) {
             return "Usuario no disponible";
         }
-        String nombre = defaultString(usuario.getNombre()).trim();
+        String nombre = defaultString(usuario.name()).trim();
         if (!nombre.isEmpty()) {
             return nombre;
         }
-        String correo = defaultString(usuario.getCorreo()).trim();
+        String correo = defaultString(usuario.email()).trim();
         if (!correo.isEmpty()) {
             return correo;
         }
         return "Usuario no disponible";
     }
 
-    private String formatearCorreoUsuario(Usuario usuario) {
+    private String formatearCorreoUsuario(UserDTO usuario) {
         if (usuario == null) {
             return "Correo no disponible";
         }
-        String correo = defaultString(usuario.getCorreo()).trim();
+        String correo = defaultString(usuario.email()).trim();
         if (!correo.isEmpty()) {
             return correo;
         }
@@ -890,49 +874,69 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         if (tablaReservas == null) return;
         
         colIdReserva.setCellValueFactory(cellData -> {
-            Long id = cellData.getValue().getId();
+            Long id = cellData.getValue().id();
             return new SimpleObjectProperty<>(id);
         });
         
-        colUsuarioReserva.setCellValueFactory(cellData ->
-                new SimpleStringProperty(formatearNombreUsuario(cellData.getValue().getUsuario())));
+        colUsuarioReserva.setCellValueFactory(cellData -> {
+            Long userId = cellData.getValue().userId();
+            if (userId == null) return new SimpleStringProperty("N/A");
+            
+            // Buscar el usuario en la lista
+            UserDTO usuario = listaUsuarios.stream()
+                .filter(u -> u.id() != null && u.id().equals(userId))
+                .findFirst()
+                .orElse(null);
+            
+            String nombre = usuario != null && usuario.name() != null ? usuario.name() : "Usuario #" + userId;
+            return new SimpleStringProperty(nombre);
+        });
         
         colEspacioReserva.setCellValueFactory(cellData -> {
-            Espacio espacio = cellData.getValue().getEspacio();
-            return new SimpleStringProperty(espacio != null ? espacio.getNombre() : "N/A");
+            Long spaceId = cellData.getValue().spaceId();
+            if (spaceId == null) return new SimpleStringProperty("N/A");
+            
+            // Buscar el espacio en la lista
+            SpaceDTO espacio = listaEspacios.stream()
+                .filter(e -> e.id() != null && e.id().equals(spaceId))
+                .findFirst()
+                .orElse(null);
+            
+            String nombre = espacio != null && espacio.name() != null ? espacio.name() : "Espacio #" + spaceId;
+            return new SimpleStringProperty(nombre);
         });
         
         colFechaReserva.setCellValueFactory(cellData -> {
-            LocalDate fecha = cellData.getValue().getFecha();
-            return new SimpleStringProperty(fecha != null ? fecha.toString() : "N/A");
+            LocalDateTime startTime = cellData.getValue().startTime();
+            return new SimpleStringProperty(startTime != null ? startTime.toLocalDate().toString() : "N/A");
         });
         
         colHoraReserva.setCellValueFactory(cellData -> {
-            LocalTime inicio = cellData.getValue().getHoraInicio();
-            LocalTime fin = cellData.getValue().getHoraFin();
+            LocalDateTime inicio = cellData.getValue().startTime();
+            LocalDateTime fin = cellData.getValue().endTime();
             String hora = (inicio != null && fin != null) 
-                ? inicio.toString() + " - " + fin.toString() 
+                ? inicio.toLocalTime().toString() + " - " + fin.toLocalTime().toString() 
                 : "N/A";
             return new SimpleStringProperty(hora);
         });
         
         colEstadoReservaTabla.setCellValueFactory(cellData -> {
-            String estado = cellData.getValue().getEstado();
+            String estado = cellData.getValue().status();
             return new SimpleStringProperty(estado != null ? estado : "N/A");
         });
         
         colQRReserva.setCellValueFactory(cellData -> {
-            String codigoQR = cellData.getValue().getCodigoQR();
-            return new SimpleStringProperty(codigoQR != null ? codigoQR : "N/A");
+            String codigoQR = cellData.getValue().qrCode();
+            return new SimpleStringProperty(codigoQR != null ? (codigoQR.length() > 20 ? "✓ Generado" : codigoQR) : "N/A");
         });
         
         colClimaReserva.setCellValueFactory(cellData -> {
-            DatosClimaticos clima = cellData.getValue().getClima();
-            return new SimpleStringProperty(clima != null ? clima.getTemperaturaFormateada() : "N/A");
+            // WeatherCheck es un JsonNode, simplemente mostrar si existe o no
+            return new SimpleStringProperty(cellData.getValue().weatherCheck() != null ? "✓ Verificado" : "N/A");
         });
         
         // Personalizar columna de estado
-        colEstadoReservaTabla.setCellFactory(column -> new TableCell<Reserva, String>() {
+        colEstadoReservaTabla.setCellFactory(column -> new TableCell<ReservationDTO, String>() {
             @Override
             protected void updateItem(String estado, boolean empty) {
                 super.updateItem(estado, empty);
@@ -981,7 +985,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         colAccionesReserva.setPrefWidth(200);
         colAccionesReserva.setMaxWidth(220);
         
-        colAccionesReserva.setCellFactory(param -> new TableCell<Reserva, Void>() {
+        colAccionesReserva.setCellFactory(param -> new TableCell<ReservationDTO, Void>() {
             private final Button btnVer = new Button("👁️ Ver");
             private final Button btnAprobar = new Button("✅ Aprobar");
             private final Button btnCancelar = new Button("❌ Cancelar");
@@ -1006,33 +1010,33 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 
                 // Tooltips detallados
                 javafx.scene.control.Tooltip.install(btnVer, new javafx.scene.control.Tooltip("Ver detalles completos de la reserva"));
-                javafx.scene.control.Tooltip.install(btnAprobar, new javafx.scene.control.Tooltip("Aprobar reserva y desbloquear código QR"));
+                javafx.scene.control.Tooltip.install(btnAprobar, new javafx.scene.control.Tooltip("Aprobar ReservationDTO y desbloquear código QR"));
                 javafx.scene.control.Tooltip.install(btnCancelar, new javafx.scene.control.Tooltip("Cancelar esta reserva"));
                 javafx.scene.control.Tooltip.install(btnEmail, new javafx.scene.control.Tooltip("Enviar notificación por correo electrónico"));
-                javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar permanentemente esta reserva de la base de datos"));
+                javafx.scene.control.Tooltip.install(btnEliminar, new javafx.scene.control.Tooltip("Eliminar permanentemente esta ReservationDTO de la base de datos"));
                 
                 btnVer.setOnAction(e -> {
-                    Reserva reserva = getTableView().getItems().get(getIndex());
+                    ReservationDTO reserva = getTableView().getItems().get(getIndex());
                     verDetallesReserva(reserva);
                 });
                 
                 btnAprobar.setOnAction(e -> {
-                    Reserva reserva = getTableView().getItems().get(getIndex());
+                    ReservationDTO reserva = getTableView().getItems().get(getIndex());
                     aprobarReserva(reserva);
                 });
                 
                 btnCancelar.setOnAction(e -> {
-                    Reserva reserva = getTableView().getItems().get(getIndex());
+                    ReservationDTO reserva = getTableView().getItems().get(getIndex());
                     cancelarReservaConMotivo(reserva);
                 });
                 
                 btnEmail.setOnAction(e -> {
-                    Reserva reserva = getTableView().getItems().get(getIndex());
+                    ReservationDTO reserva = getTableView().getItems().get(getIndex());
                     enviarEmailReserva(reserva);
                 });
                 
                 btnEliminar.setOnAction(e -> {
-                    Reserva reserva = getTableView().getItems().get(getIndex());
+                    ReservationDTO reserva = getTableView().getItems().get(getIndex());
                     eliminarReservaPermanente(reserva);
                 });
                 
@@ -1050,24 +1054,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     return;
                 }
                 
-                Reserva reserva = getTableView().getItems().get(getIndex());
-                String estado = reserva.getEstado();
+                ReservationDTO reserva = getTableView().getItems().get(getIndex());
+                String estado = reserva.status();
                 contenedor.getChildren().clear();
                 
                 // Siempre mostrar botón Ver
                 contenedor.getChildren().add(btnVer);
                 
                 // Lógica según estado:
-                // PENDIENTE: Ver + Aprobar + Cancelar + Email
-                if ("Pendiente".equals(estado)) {
+                // PENDING: Ver + Aprobar + Cancelar + Email
+                if ("PENDING".equalsIgnoreCase(estado)) {
                     contenedor.getChildren().addAll(btnAprobar, btnCancelar, btnEmail);
                 }
-                // CONFIRMADA: Ver + Cancelar + Email  
-                else if ("Confirmada".equals(estado)) {
+                // CONFIRMED: Ver + Cancelar + Email  
+                else if ("CONFIRMED".equalsIgnoreCase(estado)) {
                     contenedor.getChildren().addAll(btnCancelar, btnEmail);
                 }
-                // EN SITIO (CHECKED_IN) o INASISTENCIA (NO_SHOW): Ver + Email + Eliminar
-                else if ("En sitio".equals(estado) || "Inasistencia".equals(estado)) {
+                // CHECKED_IN o NO_SHOW: Ver + Email + Eliminar
+                else if ("CHECKED_IN".equalsIgnoreCase(estado) || "NO_SHOW".equalsIgnoreCase(estado)) {
                     contenedor.getChildren().addAll(btnEmail, btnEliminar);
                 }
                 // CANCELADA: Ver + Email + Eliminar
@@ -1307,7 +1311,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     // ==================== CARGA DE DATOS ====================
     
     /**
-     * Carga el usuario actual del sistema
+     * Carga el UserDTO actual del sistema
      */
     private void cargarUsuarioActual() {
         if (lblNombreUsuario == null) {
@@ -1376,20 +1380,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             protected DatosIniciales call() {
                 List<String> warnings = new ArrayList<>();
 
-                List<Espacio> espacios = cargarEspaciosDesdeApi(token, warnings);
-                Map<Long, Espacio> espaciosPorId = espacios.stream()
-                        .filter(espacio -> espacio.getId() != null)
-                        .collect(Collectors.toMap(Espacio::getId, espacio -> espacio, (a, b) -> a, HashMap::new));
-
-                List<Usuario> usuarios = cargarUsuariosDesdeApi(token, warnings);
-                Map<Long, Usuario> usuariosPorId = usuarios.stream()
-                        .filter(usuario -> usuario.getId() != null)
-                        .collect(Collectors.toMap(Usuario::getId, usuario -> usuario, (a, b) -> a, HashMap::new));
-
-                List<Reserva> reservas = cargarReservasDesdeApi(token, warnings, usuariosPorId, espaciosPorId);
+                List<SpaceDTO> espacios = cargarEspaciosDesdeApi(token, warnings);
+                List<UserDTO> usuarios = cargarUsuariosDesdeApi(token, warnings);
+                List<ReservationDTO> reservas = cargarReservasDesdeApi(token, warnings);
+                
                 // ✅ El clima se actualiza por separado cada 10 minutos mediante climaTimeline
                 // No necesitamos cargarlo aquí cada 30 segundos
-                DatosClimaticos clima = climaActual; // Usar el clima ya cargado
+                CurrentWeatherDTO clima = climaActual; // Usar el clima ya cargado
 
                 return new DatosIniciales(espacios, usuarios, reservas, clima, warnings);
             }
@@ -1416,7 +1413,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             filtrarReservas();
 
             climaActual = resultado.clima();
-            actualizarIndicadoresClimaticos();
+            loadWeather();
 
             cargarDatosDashboard();
             cargarClima();
@@ -1456,14 +1453,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         thread.start();
     }
 
-    private List<Espacio> cargarEspaciosDesdeApi(String token, List<String> warnings) {
+    private List<SpaceDTO> cargarEspaciosDesdeApi(String token, List<String> warnings) {
         try {
             List<SpaceDTO> espacios = spaceController.loadSpaces(token);
             if (espacios == null) {
                 return Collections.emptyList();
             }
             return espacios.stream()
-                    .map(this::mapearEspacio)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
         } catch (Exception exception) {
@@ -1472,14 +1468,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
     }
 
-    private List<Usuario> cargarUsuariosDesdeApi(String token, List<String> warnings) {
+    private List<UserDTO> cargarUsuariosDesdeApi(String token, List<String> warnings) {
         try {
             List<UserDTO> usuarios = userController.loadUsers(token);
             if (usuarios == null) {
                 return Collections.emptyList();
             }
             return usuarios.stream()
-                    .map(this::mapearUsuario)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
         } catch (Exception exception) {
@@ -1488,123 +1483,19 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
     }
 
-    private List<Reserva> cargarReservasDesdeApi(String token, List<String> warnings,
-            Map<Long, Usuario> usuariosPorId, Map<Long, Espacio> espaciosPorId) {
+    private List<ReservationDTO> cargarReservasDesdeApi(String token, List<String> warnings) {
         try {
             List<ReservationDTO> reservas = reservationController.loadReservations(token);
             if (reservas == null) {
                 return Collections.emptyList();
             }
             return reservas.stream()
-                    .map(dto -> mapearReserva(dto, usuariosPorId, espaciosPorId))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
         } catch (Exception exception) {
             warnings.add("No se pudieron cargar las reservas: " + construirMensajeError(exception));
             return Collections.emptyList();
         }
-    }
-
-    private DatosClimaticos cargarClimaDesdeApi(String token, List<String> warnings) {
-        String latitudConfigurada = AppConfig.get("weather.default-lat");
-        String longitudConfigurada = AppConfig.get("weather.default-lon");
-
-        if (latitudConfigurada == null || longitudConfigurada == null) {
-            warnings.add("No hay coordenadas configuradas para consultar el clima.");
-            return null;
-        }
-
-        try {
-            double latitud = Double.parseDouble(latitudConfigurada);
-            double longitud = Double.parseDouble(longitudConfigurada);
-            CurrentWeatherDTO weather = weatherController.loadCurrentWeather(latitud, longitud, token);
-            if (weather == null) {
-                return null;
-            }
-            return mapearDatosClimaticos(weather);
-        } catch (NumberFormatException exception) {
-            warnings.add("Las coordenadas configuradas para el clima no son válidas.");
-            return null;
-        } catch (Exception exception) {
-            warnings.add("No se pudo obtener la información climática: " + construirMensajeError(exception));
-            return null;
-        }
-    }
-
-    private Espacio mapearEspacio(SpaceDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        Long id = dto.id();
-        String nombre = defaultString(dto.name());
-        String tipo = defaultString(dto.type());
-        int capacidad = dto.capacity() != null ? dto.capacity() : 0;
-        boolean activo = dto.active() == null || Boolean.TRUE.equals(dto.active());
-        String estado = activo ? "Disponible" : "Inactivo";
-        boolean esExterior = "CANCHA".equalsIgnoreCase(tipo);
-        String descripcion = defaultString(dto.description());
-        String ubicacion = defaultString(dto.location());
-        Integer maxDuracion = dto.maxReservationDuration();
-        boolean requiereAprobacion = dto.requiresApproval() != null && dto.requiresApproval();
-        return new Espacio(id, nombre, tipo, capacidad, estado, descripcion, esExterior,
-                ubicacion, maxDuracion, requiereAprobacion, activo);
-    }
-
-    private Usuario mapearUsuario(UserDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        Long id = dto.id();
-        String nombre = defaultString(dto.name()).trim();
-        String correo = defaultString(dto.email()).trim();
-        String rolCodigo = defaultString(dto.role()).trim();
-        if (rolCodigo.isEmpty()) {
-            rolCodigo = "USER";
-        } else {
-            rolCodigo = rolCodigo.toUpperCase(Locale.ROOT);
-        }
-        String rol = obtenerRolFriendly(rolCodigo);
-        boolean activo = dto.active() == null || Boolean.TRUE.equals(dto.active());
-        String estado = activo ? "Activo" : "Inactivo";
-        LocalDateTime ultimoAcceso = dto.lastLoginAt();
-        int totalReservas = dto.reservationIds() != null ? dto.reservationIds().size() : 0;
-        int reservasAprobadas = dto.approvedReservationIds() != null
-                ? dto.approvedReservationIds().size() : 0;
-        return new Usuario(id, nombre, correo, rol, estado, ultimoAcceso, null, rolCodigo, activo,
-                totalReservas, reservasAprobadas);
-    }
-
-    private Reserva mapearReserva(ReservationDTO dto, Map<Long, Usuario> usuariosPorId,
-            Map<Long, Espacio> espaciosPorId) {
-        if (dto == null) {
-            return null;
-        }
-        Usuario usuario = dto.userId() != null ? usuariosPorId.get(dto.userId()) : null;
-        Espacio espacio = dto.spaceId() != null ? espaciosPorId.get(dto.spaceId()) : null;
-        LocalDate fecha = dto.startTime() != null ? dto.startTime().toLocalDate() : null;
-        LocalTime horaInicio = dto.startTime() != null ? dto.startTime().toLocalTime() : null;
-        LocalTime horaFin = dto.endTime() != null ? dto.endTime().toLocalTime() : null;
-        String estado = mapearEstadoReserva(dto.status());
-        String codigoQR = defaultString(dto.qrCode());
-        String notas = dto.notes();
-        return new Reserva(dto.id(), usuario, espacio, fecha, horaInicio, horaFin, estado, codigoQR, null, notas);
-    }
-
-    private DatosClimaticos mapearDatosClimaticos(CurrentWeatherDTO weather) {
-        double temperatura = weather.temperature() != null ? weather.temperature() : 0;
-        int humedad = weather.humidity() != null ? weather.humidity() : 0;
-        double velocidadVientoMs = weather.windSpeed() != null ? weather.windSpeed() : 0;
-        double velocidadVientoKmh = velocidadVientoMs * 3.6;
-        String condicion = defaultString(weather.description());
-        String nivelAlerta;
-        if (humedad >= 80) {
-            nivelAlerta = "Posible lluvia";
-        } else if (humedad >= 60) {
-            nivelAlerta = "Precaución";
-        } else {
-            nivelAlerta = "Sin alerta";
-        }
-        return new DatosClimaticos(temperatura, condicion, humedad, velocidadVientoKmh, nivelAlerta, condicion);
     }
 
     private String mapearEstadoReserva(String status) {
@@ -1621,24 +1512,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         };
     }
 
-    private void actualizarIndicadoresClimaticos() {
-        // Mantener compatibilidad con labels antiguos
-        if (lblTemperatura != null) {
-            lblTemperatura.setText(climaActual != null ? climaActual.getTemperaturaFormateada() : "--");
-        }
-        if (lblClimaCondicion != null) {
-            lblClimaCondicion.setText(climaActual != null ? climaActual.getCondicion() : "--");
-        }
-        if (lblViento != null) {
-            lblViento.setText(climaActual != null ? climaActual.getVientoFormateado() : "--");
-        }
-        if (lblLluvia != null) {
-            lblLluvia.setText(climaActual != null ? climaActual.getProbabilidadLluviaFormateada() : "--");
-        }
-        
-        // Cargar clima con la nueva implementación (igual a User)
-        loadWeather();
-    }
+
     
     /**
      * Carga el clima actual usando WeatherController (igual que UserDashboard)
@@ -1770,15 +1644,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private void cargarDatosDashboard() {
         // Calcular estadísticas basadas en los datos actuales
         int espaciosActivos = (int) listaEspacios.stream()
-            .filter(e -> "Disponible".equals(e.getEstado()))
+            .filter(e -> Boolean.TRUE.equals(e.active()))
             .count();
 
         int reservasHoy = (int) listaReservas.stream()
-            .filter(r -> r.getFecha() != null && r.getFecha().equals(LocalDate.now()))
+            .filter(r -> r.startTime().toLocalDate() != null && r.startTime().toLocalDate().equals(LocalDate.now()))
             .count();
         
         int inasistencias = (int) listaReservas.stream()
-            .filter(r -> "Inasistencia".equals(r.getEstado()))
+            .filter(r -> "Inasistencia".equals(r.status()))
             .count();
         
         // Actualizar labels del dashboard
@@ -1837,7 +1711,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
      * Actualiza los indicadores climáticos visibles en el panel principal.
      */
     private void cargarClimaActual() {
-        actualizarIndicadoresClimaticos();
+        loadWeather();
     }
 
     private void iniciarActualizacionDatos() {
@@ -1881,45 +1755,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
 
-        String token = sessionManager.getAccessToken();
-        if (token == null || token.isBlank()) {
-            mostrarAdvertencia("No se encontró un token de acceso válido.");
-            return;
+        // Usar el método unificado loadWeather() del widget climático
+        loadWeather();
+        cargarClima();
+        
+        if (notifySuccess) {
+            mostrarExito("Información climática actualizada");
         }
-
-        Task<ClimaResultado> task = new Task<>() {
-            @Override
-            protected ClimaResultado call() {
-                List<String> warnings = new ArrayList<>();
-                DatosClimaticos clima = cargarClimaDesdeApi(token, warnings);
-                return new ClimaResultado(clima, warnings);
-            }
-        };
-
-        task.setOnRunning(event -> mostrarIndicadorCarga("Actualizando información climática..."));
-        task.setOnSucceeded(event -> {
-            ClimaResultado resultado = task.getValue();
-            climaActual = resultado.clima();
-            actualizarIndicadoresClimaticos();
-            cargarClima();
-            ocultarIndicadorCarga();
-            if (notifySuccess) {
-                mostrarExito("Información climática actualizada");
-            }
-            if (!resultado.warnings().isEmpty()) {
-                mostrarAdvertencia(String.join("\n", resultado.warnings()));
-            }
-        });
-        task.setOnFailed(event -> {
-            ocultarIndicadorCarga();
-            Throwable error = task.getException();
-            mostrarError("No se pudo actualizar el clima: "
-                    + (error != null ? construirMensajeError(error) : "Error desconocido"));
-        });
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
     }
     
     /**
@@ -1930,7 +1772,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         contenedorAlertas.getChildren().clear();
 
-        List<Reserva> reservasConAlertas = obtenerReservasConAlertas();
+        List<ReservationDTO> reservasConAlertas = obtenerReservasConAlertas();
 
         if (lblNumAlertas != null) {
             lblNumAlertas.setText(String.valueOf(reservasConAlertas.size()));
@@ -1956,27 +1798,32 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         actualizarPanelNotificaciones(reservasConAlertas);
     }
 
-    private HBox crearAlertaDesdeReserva(Reserva reserva) {
-        Espacio espacio = reserva.getEspacio();
-        String titulo = espacio != null && espacio.getNombre() != null && !espacio.getNombre().isBlank()
-                ? espacio.getNombre()
-                : "Reserva #" + (reserva.getId() != null ? reserva.getId() : "-");
+    private HBox crearAlertaDesdeReserva(ReservationDTO reserva) {
+        // Buscar el espacio correspondiente
+        SpaceDTO espacio = listaEspacios.stream()
+                .filter(e -> e.id() != null && e.id().equals(reserva.spaceId()))
+                .findFirst()
+                .orElse(null);
+        
+        String titulo = espacio != null && espacio.name() != null && !espacio.name().isBlank()
+                ? espacio.name()
+                : "Reserva #" + (reserva.id() != null ? reserva.id() : "-");
 
-        String descripcion = switch (reserva.getEstado()) {
-            case "Cancelada" -> "Reserva cancelada. Contactar al usuario.";
-            case "Inasistencia" -> "El usuario no se presentó.";
-            case "Pendiente" -> "Reserva pendiente de aprobación.";
-            default -> "Estado: " + reserva.getEstado();
+        String descripcion = switch (reserva.status()) {
+            case "CANCELED" -> "Reserva cancelada. Contactar al usuario.";
+            case "NO_SHOW" -> "El usuario no se presentó.";
+            case "PENDING" -> "Reserva pendiente de aprobación.";
+            default -> "Estado: " + reserva.status();
         };
 
         String afectados;
-        if (reserva.getFecha() != null) {
-            afectados = "Programada para " + reserva.getFecha().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        if (reserva.startTime() != null) {
+            afectados = "Programada para " + reserva.startTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
         } else {
             afectados = "Fecha por confirmar";
         }
 
-        String tipo = switch (reserva.getEstado()) {
+        String tipo = switch (reserva.status()) {
             case "Cancelada", "Inasistencia" -> "critical";
             default -> "warning";
         };
@@ -2040,24 +1887,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         // Actualizar estadísticas
         if (lblReservasActivas != null) {
             long activas = listaReservas.stream()
-                .filter(r -> "Confirmada".equals(r.getEstado()))
+                .filter(r -> "Confirmada".equals(r.status()))
                 .count();
             lblReservasActivas.setText(String.valueOf(activas));
         }
         
         if (lblReservasCompletadas != null) {
             long completadas = listaReservas.stream()
-                .filter(r -> "Completada".equals(r.getEstado()))
+                .filter(r -> "Completada".equals(r.status()))
                 .count();
             lblReservasCompletadas.setText(String.valueOf(completadas));
         }
 
         if (lblTasaAsistencia != null) {
             long completadas = listaReservas.stream()
-                    .filter(r -> "Completada".equals(r.getEstado()))
+                    .filter(r -> "Completada".equals(r.status()))
                     .count();
             long inasistencias = listaReservas.stream()
-                    .filter(r -> "Inasistencia".equals(r.getEstado()))
+                    .filter(r -> "Inasistencia".equals(r.status()))
                     .count();
             long total = completadas + inasistencias;
             if (total == 0) {
@@ -2074,7 +1921,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         if (lblInasistenciasReporte != null) {
             long inasistencias = listaReservas.stream()
-                    .filter(r -> "Inasistencia".equals(r.getEstado()))
+                    .filter(r -> "Inasistencia".equals(r.status()))
                     .count();
             lblInasistenciasReporte.setText(String.valueOf(inasistencias));
         }
@@ -2098,17 +1945,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         pieChart.setAnimated(true); // ✨ Habilitar animación
         pieChart.setLegendVisible(true);
         
-        // Contar reservas por tipo de espacio
-        long interiores = listaReservas.stream()
-            .filter(r -> r.getEspacio() != null && !r.getEspacio().isEsExterior())
+        // Contar reservas por tipo de espacio (simplificado ya que no tenemos info de exterior/interior)
+        long salas = listaReservas.stream()
+            .filter(r -> r.spaceId() != null)
             .count();
 
-        long exteriores = listaReservas.stream()
-            .filter(r -> r.getEspacio() != null && r.getEspacio().isEsExterior())
-            .count();
+        long total = listaReservas.size();
         
-        pieChart.getData().add(new PieChart.Data("Interior (" + interiores + ")", interiores));
-        pieChart.getData().add(new PieChart.Data("Exterior (" + exteriores + ")", exteriores));
+        pieChart.getData().add(new PieChart.Data("Con Espacio (" + salas + ")", salas));
+        pieChart.getData().add(new PieChart.Data("Total (" + total + ")", total));
         
         graficoDistribucion.getChildren().add(pieChart);
     }
@@ -2138,12 +1983,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         // Contar reservas por espacio
         listaEspacios.forEach(espacio -> {
             long count = listaReservas.stream()
-                .filter(r -> r.getEspacio() != null
-                        && Objects.equals(r.getEspacio().getId(), espacio.getId()))
+                .filter(r -> r.spaceId() != null
+                        && Objects.equals(r.spaceId(), espacio.id()))
                 .count();
             
             if (count > 0) {
-                series.getData().add(new XYChart.Data<>(espacio.getNombre(), count));
+                series.getData().add(new XYChart.Data<>(espacio.name(), count));
             }
         });
         
@@ -2156,21 +2001,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
      * Carga los datos climáticos de todos los espacios
      */
     private void cargarClima() {
-        // Actualizar resumen
-        long espaciosExteriores = listaEspacios.stream()
-            .filter(e -> e.isEsExterior())
+        // Actualizar resumen (simplificado: contamos todos los espacios activos)
+        long espaciosActivos = listaEspacios.stream()
+            .filter(e -> Boolean.TRUE.equals(e.active()))
             .count();
 
         if (lblEspaciosMonitoreados != null) {
-            lblEspaciosMonitoreados.setText(String.valueOf(espaciosExteriores));
+            lblEspaciosMonitoreados.setText(String.valueOf(espaciosActivos));
         }
 
         long alertasActivas = listaReservas.stream()
                 .filter(reserva -> {
-                    String estado = reserva.getEstado();
-                    return "Pendiente".equalsIgnoreCase(estado)
-                            || "Cancelada".equalsIgnoreCase(estado)
-                            || "Inasistencia".equalsIgnoreCase(estado);
+                    String estado = reserva.status();
+                    return "PENDING".equalsIgnoreCase(estado)
+                            || "CANCELED".equalsIgnoreCase(estado)
+                            || "NO_SHOW".equalsIgnoreCase(estado);
                 })
                 .count();
         if (lblAlertasActivas != null) {
@@ -2198,7 +2043,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
 
     /**
-     * Carga las tarjetas de clima para cada espacio exterior
+     * Carga las tarjetas de clima para cada SpaceDTO exterior
      */
     private void cargarTarjetasClima() {
         if (contenedorTarjetasClima == null) return;
@@ -2206,8 +2051,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         // Limpiar tarjetas existentes
         contenedorTarjetasClima.getChildren().clear();
         
-        List<Espacio> espaciosExteriores = listaEspacios.stream()
-            .filter(Espacio::isEsExterior)
+        // Nota: SpaceDTO no tiene campo isExterior, así que tomamos todos los espacios activos
+        List<SpaceDTO> espaciosExteriores = listaEspacios.stream()
+            .filter(e -> Boolean.TRUE.equals(e.active()))
             .collect(Collectors.toList());
 
         int col = 0;
@@ -2227,7 +2073,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
 
-        for (Espacio espacio : espaciosExteriores) {
+        // Obtener espacios activos para mostrar tarjetas de clima
+        List<SpaceDTO> espaciosActivos = listaEspacios.stream()
+                .filter(e -> Boolean.TRUE.equals(e.active()))
+                .toList();
+        
+        for (SpaceDTO espacio : espaciosActivos) {
             VBox tarjeta = crearTarjetaClima(espacio);
             contenedorTarjetasClima.add(tarjeta, col, row);
 
@@ -2242,7 +2093,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     /**
      * Crea una tarjeta de clima para un espacio
      */
-    private VBox crearTarjetaClima(Espacio espacio) {
+    private VBox crearTarjetaClima(SpaceDTO espacio) {
         VBox tarjeta = new VBox(15);
         tarjeta.setPadding(new Insets(20));
         tarjeta.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
@@ -2253,16 +2104,17 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        Label nombre = new Label(espacio.getNombre());
+        Label nombre = new Label(espacio.name());
         nombre.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         HBox.setHgrow(nombre, javafx.scene.layout.Priority.ALWAYS);
 
-        String nivelAlerta = climaActual != null ? climaActual.getNivelAlerta() : null;
+        // Simplificado: usar descripción para determinar el nivel de alerta
+        String descripcion = climaActual != null ? climaActual.description() : null;
         String estiloEtiqueta;
-        String textoEtiqueta = nivelAlerta != null && !nivelAlerta.isBlank() ? nivelAlerta : "Sin datos";
-        if (nivelAlerta != null && nivelAlerta.toLowerCase().contains("lluvia")) {
+        String textoEtiqueta = descripcion != null && !descripcion.isBlank() ? descripcion : "Sin datos";
+        if (descripcion != null && descripcion.toLowerCase().contains("lluvia")) {
             estiloEtiqueta = "-fx-background-color: #DC3545; -fx-text-fill: white;";
-        } else if (nivelAlerta != null && nivelAlerta.toLowerCase().contains("precauc")) {
+        } else if (descripcion != null && descripcion.toLowerCase().contains("nublado")) {
             estiloEtiqueta = "-fx-background-color: #FFC107; -fx-text-fill: #212529;";
         } else {
             estiloEtiqueta = "-fx-background-color: #28A745; -fx-text-fill: white;";
@@ -2275,18 +2127,25 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         // Datos climáticos
         VBox datos = new VBox(10);
+        String temperaturaFormateada = climaActual != null && climaActual.temperature() != null 
+            ? String.format("%.1f°C", climaActual.temperature()) : "--";
+        String humedadFormateada = climaActual != null && climaActual.humidity() != null 
+            ? String.format("%d%%", climaActual.humidity()) : "--";
+        String condicion = climaActual != null && climaActual.description() != null 
+            ? climaActual.description() : "--";
+            
         datos.getChildren().addAll(
-            crearFilaClima("🌡️", "Temperatura", climaActual != null ? climaActual.getTemperaturaFormateada() : "--"),
-            crearFilaClima("💧", "Probabilidad de lluvia", climaActual != null ? climaActual.getProbabilidadLluviaFormateada() : "--"),
-            crearFilaClima("☁️", "Condición", climaActual != null ? climaActual.getCondicion() : "--")
+            crearFilaClima("🌡️", "Temperatura", temperaturaFormateada),
+            crearFilaClima("💧", "Humedad", humedadFormateada),
+            crearFilaClima("☁️", "Condición", condicion)
         );
 
         // Mensaje
-        String descripcion = climaActual != null ? climaActual.getDescripcion() : null;
-        if (descripcion == null || descripcion.isBlank()) {
-            descripcion = "Sin información disponible";
+        String descripcionMensaje = climaActual != null ? climaActual.description() : null;
+        if (descripcionMensaje == null || descripcionMensaje.isBlank()) {
+            descripcionMensaje = "Sin información disponible";
         }
-        Label mensaje = new Label(descripcion);
+        Label mensaje = new Label(descripcionMensaje);
         mensaje.setWrapText(true);
         mensaje.setStyle("-fx-font-size: 12px; -fx-text-fill: #28A745; -fx-font-weight: 600; " +
                         "-fx-background-color: rgba(40, 167, 69, 0.1); -fx-padding: 8; -fx-background-radius: 6;");
@@ -2347,32 +2206,34 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         listaEspaciosFiltrados.addAll(
             listaEspacios.stream()
                 .filter(e -> {
-                    String nombre = e.getNombre() != null ? e.getNombre().toLowerCase() : "";
+                    String nombre = e.name() != null ? e.name().toLowerCase() : "";
                     return busqueda.isEmpty() || nombre.contains(busqueda);
                 })
                 .filter(e -> {
                     if ("Todos los tipos".equals(tipoSeleccionado)) {
                         return true;
                     }
+                    String tipo = e.type() != null ? e.type() : "";
+                    boolean esExterior = "CANCHA".equalsIgnoreCase(tipo);
                     if ("Interior".equalsIgnoreCase(tipoSeleccionado)) {
-                        return !e.isEsExterior();
+                        return !esExterior;
                     }
                     if ("Exterior".equalsIgnoreCase(tipoSeleccionado)) {
-                        return e.isEsExterior();
+                        return esExterior;
                     }
-                    String tipo = e.getTipo() != null ? e.getTipo() : "";
                     return tipo.equalsIgnoreCase(tipoSeleccionado);
                 })
                 .filter(e -> {
                     if ("Todos los estados".equals(estadoSeleccionado)) {
                         return true;
                     }
-                    String estado = e.getEstado() != null ? e.getEstado() : "";
+                    boolean activo = e.active() == null || Boolean.TRUE.equals(e.active());
+                    String estado = activo ? "Disponible" : "Inactivo";
                     if ("Disponible".equalsIgnoreCase(estadoSeleccionado)) {
-                        return "Disponible".equalsIgnoreCase(estado);
+                        return activo;
                     }
                     if ("Ocupado".equalsIgnoreCase(estadoSeleccionado)) {
-                        return !"Disponible".equalsIgnoreCase(estado);
+                        return !activo;
                     }
                     return estado.equalsIgnoreCase(estadoSeleccionado);
                 })
@@ -2400,15 +2261,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     if (busqueda.isEmpty()) {
                         return true;
                     }
-                    String nombre = u.getNombre() != null ? u.getNombre().toLowerCase() : "";
-                    String correo = u.getCorreo() != null ? u.getCorreo().toLowerCase() : "";
+                    String nombre = u.name() != null ? u.name().toLowerCase() : "";
+                    String correo = u.email() != null ? u.email().toLowerCase() : "";
                     return nombre.contains(busqueda) || correo.contains(busqueda);
                 })
                 .filter(u -> {
                     if ("Todos los roles".equals(rolSeleccionado)) {
                         return true;
                     }
-                    String rol = u.getRol() != null ? u.getRol() : "";
+                    String rolCodigo = u.role() != null ? u.role() : "USER";
+                    String rol = obtenerRolFriendly(rolCodigo);
                     return rol.equalsIgnoreCase(rolSeleccionado);
                 })
                 .collect(Collectors.toList())
@@ -2434,13 +2296,30 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 .filter(r -> {
                     if (busqueda.isEmpty()) return true;
 
-                    boolean coincideUsuario = r.getUsuario() != null
-                            && r.getUsuario().getNombre() != null
-                            && r.getUsuario().getNombre().toLowerCase().contains(busqueda);
-                    boolean coincideEspacio = r.getEspacio() != null
-                            && r.getEspacio().getNombre() != null
-                            && r.getEspacio().getNombre().toLowerCase().contains(busqueda);
-                    boolean coincideId = String.valueOf(r.getId()).contains(busqueda);
+                    // Buscar por ID de usuario o espacio
+                    String nombreUsuario = "";
+                    if (r.userId() != null) {
+                        UserDTO usuario = listaUsuarios.stream()
+                            .filter(u -> u.id() != null && u.id().equals(r.userId()))
+                            .findFirst().orElse(null);
+                        if (usuario != null && usuario.name() != null) {
+                            nombreUsuario = usuario.name().toLowerCase();
+                        }
+                    }
+                    
+                    String nombreEspacio = "";
+                    if (r.spaceId() != null) {
+                        SpaceDTO espacio = listaEspacios.stream()
+                            .filter(e -> e.id() != null && e.id().equals(r.spaceId()))
+                            .findFirst().orElse(null);
+                        if (espacio != null && espacio.name() != null) {
+                            nombreEspacio = espacio.name().toLowerCase();
+                        }
+                    }
+                    
+                    boolean coincideUsuario = nombreUsuario.contains(busqueda);
+                    boolean coincideEspacio = nombreEspacio.contains(busqueda);
+                    boolean coincideId = String.valueOf(r.id()).contains(busqueda);
 
                     return coincideUsuario || coincideEspacio || coincideId;
                 })
@@ -2448,14 +2327,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     if ("Todos los estados".equals(estadoSeleccionado)) {
                         return true;
                     }
-                    String estado = r.getEstado() != null ? r.getEstado() : "";
+                    String estado = mapearEstadoReserva(r.status());
                     return estado.equalsIgnoreCase(estadoSeleccionado);
                 })
                 .filter(r -> {
                     // Filtro por rango de fechas
                     if (fechaDesde == null && fechaHasta == null) return true;
                     
-                    LocalDate fechaReserva = r.getFecha();
+                    LocalDate fechaReserva = r.startTime() != null ? r.startTime().toLocalDate() : null;
                     if (fechaReserva == null) return false;
                     
                     if (fechaDesde != null && fechaReserva.isBefore(fechaDesde)) {
@@ -2468,8 +2347,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 })
                 // Ordenar por prioridad de estado: Pendiente -> Confirmada -> Checked In -> No Show -> Cancelada
                 .sorted((r1, r2) -> {
-                    int prioridad1 = obtenerPrioridadEstado(r1.getEstado());
-                    int prioridad2 = obtenerPrioridadEstado(r2.getEstado());
+                    String estado1 = mapearEstadoReserva(r1.status());
+                    String estado2 = mapearEstadoReserva(r2.status());
+                    int prioridad1 = obtenerPrioridadEstado(estado1);
+                    int prioridad2 = obtenerPrioridadEstado(estado2);
                     return Integer.compare(prioridad1, prioridad2);
                 })
                 .collect(Collectors.toList())
@@ -2636,71 +2517,71 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         mostrarFormularioEspacio(null);
     }
 
-    private void verDetallesEspacio(Espacio espacio) {
+    private void verDetallesEspacio(SpaceDTO espacio) {
         if (espacio == null) {
             return;
         }
         StringBuilder detalles = new StringBuilder();
-        detalles.append("Tipo: ").append(espacio.getTipo()).append('\n');
-        detalles.append("Capacidad: ").append(espacio.getCapacidad()).append(" personas\n");
+        detalles.append("Tipo: ").append(espacio.type()).append('\n');
+        detalles.append("Capacidad: ").append(espacio.capacity()).append(" personas\n");
         detalles.append("Ubicación: ")
-                .append(espacio.getUbicacion() != null && !espacio.getUbicacion().isBlank()
-                        ? espacio.getUbicacion()
+                .append(espacio.location() != null && !espacio.location().isBlank()
+                        ? espacio.location()
                         : "No registrada")
                 .append('\n');
         detalles.append("Duración máxima: ")
-                .append(espacio.getMaxDuracion() != null 
-                    ? String.format("%.1f horas (%d minutos)", espacio.getMaxDuracion() / 60.0, espacio.getMaxDuracion())
+                .append(espacio.maxReservationDuration() != null 
+                    ? String.format("%.1f horas (%d minutos)", espacio.maxReservationDuration() / 60.0, espacio.maxReservationDuration())
                     : "No definida")
                 .append('\n');
-        detalles.append("Requiere aprobación: ").append(espacio.isRequiereAprobacion() ? "Sí" : "No").append('\n');
-        detalles.append("Estado: ").append(espacio.getEstado()).append('\n');
+        detalles.append("Requiere aprobación: ").append(espacio.requiresApproval() ? "Sí" : "No").append('\n');
+        detalles.append("Estado: ").append(espacio.active() ? "Activo" : "Inactivo").append('\n');
         detalles.append("Descripción: ")
-                .append(espacio.getDescripcion() != null && !espacio.getDescripcion().isBlank()
-                        ? espacio.getDescripcion()
+                .append(espacio.description() != null && !espacio.description().isBlank()
+                        ? espacio.description()
                         : "Sin descripción disponible");
 
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Detalles del espacio");
-        alert.setHeaderText(espacio.getNombre());
+        alert.setHeaderText(espacio.name());
         alert.setContentText(detalles.toString());
         alert.showAndWait();
     }
 
-    private void editarEspacio(Espacio espacio) {
+    private void editarEspacio(SpaceDTO espacio) {
         mostrarFormularioEspacio(espacio);
     }
 
-    private void cambiarEstadoEspacio(Espacio espacio) {
-        if (espacio == null || espacio.getId() == null) {
-            mostrarAdvertencia("Selecciona un espacio válido para actualizar su estado.");
+    private void cambiarEstadoEspacio(SpaceDTO espacio) {
+        if (espacio == null || espacio.id() == null) {
+            mostrarAdvertencia("Selecciona un SpaceDTO válido para actualizar su estado.");
             return;
         }
         String token = obtenerToken();
         if (token == null) {
             return;
         }
-        boolean nuevoEstado = !espacio.isActivo();
+        boolean nuevoEstado = !espacio.active();
         ejecutarOperacionAsync(
-                () -> spaceController.changeStatus(espacio.getId(), nuevoEstado, token),
+                () -> spaceController.changeStatus(espacio.id(), nuevoEstado, token),
                 dto -> {
-                    Espacio actualizado = mapearEspacio(dto);
-                    actualizarEspacioEnListas(actualizado);
+                    // El DTO ya viene del servidor, solo actualizar listas
+                    actualizarEspacioEnListas(dto);
                     mostrarExito(nuevoEstado ? "Espacio activado" : "Espacio desactivado");
                 },
                 "Actualizando espacio...",
                 "No se pudo actualizar el estado del espacio");
     }
 
-    private void eliminarEspacio(Espacio espacio) {
-        if (espacio == null || espacio.getId() == null) {
-            mostrarAdvertencia("Selecciona un espacio válido para eliminar.");
+    private void eliminarEspacio(SpaceDTO espacio) {
+        if (espacio == null || espacio.id() == null) {
+            mostrarAdvertencia("Selecciona un SpaceDTO válido para eliminar.");
             return;
         }
 
         Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacion.setTitle("Eliminar espacio");
-        confirmacion.setHeaderText("¿Deseas eliminar el espacio " + espacio.getNombre() + "?");
+        confirmacion.setHeaderText("¿Deseas eliminar el SpaceDTO " + espacio.name() + "?");
         confirmacion.setContentText("Esta acción no se puede deshacer.");
 
         Optional<ButtonType> resultado = confirmacion.showAndWait();
@@ -2715,21 +2596,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         ejecutarOperacionAsync(
                 () -> {
-                    spaceController.deleteSpace(espacio.getId(), token);
+                    spaceController.deleteSpace(espacio.id(), token);
                     return null;
                 },
                 unused -> {
-                    listaEspacios.removeIf(item -> Objects.equals(item.getId(), espacio.getId()));
-                    listaEspaciosFiltrados.removeIf(item -> Objects.equals(item.getId(), espacio.getId()));
+                    listaEspacios.removeIf(item -> Objects.equals(item.id(), espacio.id()));
+                    listaEspaciosFiltrados.removeIf(item -> Objects.equals(item.id(), espacio.id()));
                     filtrarEspacios();
                     cargarDatosDashboard();
-                    mostrarExito("Espacio eliminado correctamente");
+                    mostrarExito("SpaceDTO eliminado correctamente");
                 },
                 "Eliminando espacio...",
                 "No se pudo eliminar el espacio");
     }
 
-    private void mostrarFormularioEspacio(Espacio espacio) {
+    private void mostrarFormularioEspacio(SpaceDTO espacio) {
         Dialog<SpaceInputDTO> dialog = new Dialog<>();
         dialog.setTitle(espacio == null ? "Agregar espacio" : "Editar espacio");
         dialog.setHeaderText(espacio == null
@@ -2772,18 +2653,18 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         txtDescripcion.getStyleClass().addAll("form-field", "form-textarea");
 
         if (espacio != null) {
-            txtNombre.setText(espacio.getNombre());
-            cmbTipo.setValue(espacio.getTipo());
-            spCapacidad.getValueFactory().setValue(espacio.getCapacidad());
-            txtUbicacion.setText(espacio.getUbicacion());
+            txtNombre.setText(espacio.name());
+            cmbTipo.setValue(espacio.type());
+            spCapacidad.getValueFactory().setValue(espacio.capacity());
+            txtUbicacion.setText(espacio.location());
             // ✅ Convertir de minutos a horas al cargar
-            if (espacio.getMaxDuracion() != null) {
-                int horas = espacio.getMaxDuracion() / 60;
+            if (espacio.maxReservationDuration() != null) {
+                int horas = espacio.maxReservationDuration() / 60;
                 spMaxDuracion.getValueFactory().setValue(Math.max(1, horas)); // Mínimo 1 hora
             }
-            chkRequiereAprobacion.setSelected(espacio.isRequiereAprobacion());
-            chkActivo.setSelected(espacio.isActivo());
-            txtDescripcion.setText(espacio.getDescripcion());
+            chkRequiereAprobacion.setSelected(espacio.requiresApproval());
+            chkActivo.setSelected(espacio.active());
+            txtDescripcion.setText(espacio.description());
         } else {
             cmbTipo.getSelectionModel().selectFirst();
         }
@@ -2828,7 +2709,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             okButton.getStyleClass().add("dialog-primary-button");
             okButton.addEventFilter(ActionEvent.ACTION, action -> {
                 if (txtNombre.getText().isBlank()) {
-                    mostrarAdvertencia("El nombre del espacio es obligatorio.");
+                    mostrarAdvertencia("El nombre del SpaceDTO es obligatorio.");
                     action.consume();
                 } else if (cmbTipo.getValue() == null || cmbTipo.getValue().isBlank()) {
                     mostrarAdvertencia("Selecciona un tipo de espacio.");
@@ -2865,18 +2746,17 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         dialog.showAndWait().ifPresent(input -> guardarEspacio(espacio, input));
     }
 
-    private void guardarEspacio(Espacio espacioOriginal, SpaceInputDTO input) {
+    private void guardarEspacio(SpaceDTO espacioOriginal, SpaceInputDTO input) {
         String token = obtenerToken();
         if (token == null) {
             return;
         }
 
-        if (espacioOriginal == null || espacioOriginal.getId() == null) {
+        if (espacioOriginal == null || espacioOriginal.id() == null) {
             ejecutarOperacionAsync(
                     () -> spaceController.createSpace(input, token),
                     dto -> {
-                        Espacio creado = mapearEspacio(dto);
-                        listaEspacios.add(creado);
+                        listaEspacios.add(dto);
                         filtrarEspacios();
                         cargarDatosDashboard();
                         mostrarExito("Espacio creado correctamente");
@@ -2885,10 +2765,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     "No se pudo crear el espacio");
         } else {
             ejecutarOperacionAsync(
-                    () -> spaceController.updateSpace(espacioOriginal.getId(), input, token),
+                    () -> spaceController.updateSpace(espacioOriginal.id(), input, token),
                     dto -> {
-                        Espacio actualizado = mapearEspacio(dto);
-                        actualizarEspacioEnListas(actualizado);
+                        actualizarEspacioEnListas(dto);
                         mostrarExito("Espacio actualizado correctamente");
                     },
                     "Actualizando espacio...",
@@ -2903,13 +2782,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         mostrarFormularioUsuario(null);
     }
 
-    private void editarUsuario(Usuario usuario) {
+    private void editarUsuario(UserDTO usuario) {
         mostrarFormularioUsuario(usuario);
     }
 
-    private void cambiarEstadoUsuario(Usuario usuario) {
-        if (usuario == null || usuario.getId() == null) {
-            mostrarAdvertencia("Selecciona un usuario válido para actualizar su estado.");
+    private void cambiarEstadoUsuario(UserDTO usuario) {
+        if (usuario == null || usuario.id() == null) {
+            mostrarAdvertencia("Selecciona un UserDTO válido para actualizar su estado.");
             return;
         }
         String token = obtenerToken();
@@ -2917,39 +2796,38 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
 
-        boolean nuevoEstado = !usuario.isActivo();
+        boolean nuevoEstado = !usuario.active();
         UserInputDTO input = new UserInputDTO(
-                usuario.getRolCodigo(),
-                usuario.getNombre(),
-                usuario.getCorreo(),
+                usuario.role(), // rol viene como string directamente
+                usuario.name(),
+                usuario.email(),
                 nuevoEstado);
 
         ejecutarOperacionAsync(
-                () -> userController.updateUser(usuario.getId(), input, token),
+                () -> userController.updateUser(usuario.id(), input, token),
                 dto -> {
-                    Usuario actualizado = mapearUsuario(dto);
-                    actualizarUsuarioEnListas(actualizado);
+                    actualizarUsuarioEnListas(dto);
                     if (sessionManager != null && sessionManager.getUserId() != null
-                            && sessionManager.getUserId().equals(actualizado.getId())) {
-                        sessionManager.updateProfileInfo(actualizado.getNombre(), actualizado.getCorreo());
+                            && sessionManager.getUserId().equals(dto.id())) {
+                        sessionManager.updateProfileInfo(dto.name(), dto.email());
                         cargarUsuarioActual();
                         actualizarPanelPerfil();
                     }
-                    mostrarExito(nuevoEstado ? "Usuario activado" : "Usuario desactivado");
+                    mostrarExito(nuevoEstado ? "UserDTO activado" : "UserDTO desactivado");
                 },
                 "Actualizando usuario...",
                 "No se pudo actualizar el usuario");
     }
 
-    private void eliminarUsuario(Usuario usuario) {
-        if (usuario == null || usuario.getId() == null) {
-            mostrarAdvertencia("Selecciona un usuario válido para eliminar.");
+    private void eliminarUsuario(UserDTO usuario) {
+        if (usuario == null || usuario.id() == null) {
+            mostrarAdvertencia("Selecciona un UserDTO válido para eliminar.");
             return;
         }
 
         Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacion.setTitle("Eliminar usuario");
-        confirmacion.setHeaderText("¿Deseas eliminar al usuario " + usuario.getNombre() + "?");
+        confirmacion.setHeaderText("¿Deseas eliminar al UserDTO " + usuario.name() + "?");
         confirmacion.setContentText("Esta acción no se puede deshacer.");
 
         Optional<ButtonType> resultado = confirmacion.showAndWait();
@@ -2964,21 +2842,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
 
         ejecutarOperacionAsync(
                 () -> {
-                    userController.deleteUser(usuario.getId(), token);
+                    userController.deleteUser(usuario.id(), token);
                     return null;
                 },
                 unused -> {
-                    listaUsuarios.removeIf(item -> Objects.equals(item.getId(), usuario.getId()));
-                    listaUsuariosFiltrados.removeIf(item -> Objects.equals(item.getId(), usuario.getId()));
+                    listaUsuarios.removeIf(item -> Objects.equals(item.id(), usuario.id()));
+                    listaUsuariosFiltrados.removeIf(item -> Objects.equals(item.id(), usuario.id()));
                     filtrarUsuarios();
                     cargarDatosDashboard();
-                    mostrarExito("Usuario eliminado correctamente");
+                    mostrarExito("UserDTO eliminado correctamente");
                 },
                 "Eliminando usuario...",
                 "No se pudo eliminar el usuario");
     }
 
-    private void mostrarFormularioUsuario(Usuario usuario) {
+    private void mostrarFormularioUsuario(UserDTO usuario) {
         Dialog<UserInputDTO> dialog = new Dialog<>();
         dialog.setTitle(usuario == null ? "Agregar usuario" : "Editar usuario");
         dialog.setHeaderText(usuario == null
@@ -3010,10 +2888,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
 
         if (usuario != null) {
-            txtNombre.setText(usuario.getNombre());
-            txtCorreo.setText(usuario.getCorreo());
-            cmbRol.setValue(ROLES_FRIENDLY.getOrDefault(usuario.getRolCodigo(), usuario.getRol()));
-            chkActivo.setSelected(usuario.isActivo());
+            txtNombre.setText(usuario.name());
+            txtCorreo.setText(usuario.email());
+            cmbRol.setValue(ROLES_FRIENDLY.getOrDefault(usuario.role(), usuario.role()));
+            chkActivo.setSelected(usuario.active());
         } else {
             cmbRol.setValue(ROLES_FRIENDLY.getOrDefault("USER", "Usuario"));
         }
@@ -3109,18 +2987,17 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         return resource != null ? resource.toExternalForm() : null;
     }
 
-    private void guardarUsuario(Usuario usuarioOriginal, UserInputDTO input) {
+    private void guardarUsuario(UserDTO usuarioOriginal, UserInputDTO input) {
         String token = obtenerToken();
         if (token == null) {
             return;
         }
 
-        if (usuarioOriginal == null || usuarioOriginal.getId() == null) {
+        if (usuarioOriginal == null || usuarioOriginal.id() == null) {
             ejecutarOperacionAsync(
                     () -> userController.createUser(input, token),
                     dto -> {
-                        Usuario creado = mapearUsuario(dto);
-                        listaUsuarios.add(creado);
+                        listaUsuarios.add(dto);
                         filtrarUsuarios();
                         cargarDatosDashboard();
                         mostrarExito("Usuario agregado correctamente");
@@ -3129,25 +3006,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                     "No se pudo crear el usuario");
         } else {
             ejecutarOperacionAsync(
-                    () -> userController.updateUser(usuarioOriginal.getId(), input, token),
+                    () -> userController.updateUser(usuarioOriginal.id(), input, token),
                     dto -> {
-                        Usuario actualizado = mapearUsuario(dto);
-                        actualizarUsuarioEnListas(actualizado);
+                        actualizarUsuarioEnListas(dto);
                         if (sessionManager != null && sessionManager.getUserId() != null
-                                && sessionManager.getUserId().equals(actualizado.getId())) {
-                            sessionManager.updateProfileInfo(actualizado.getNombre(), actualizado.getCorreo());
+                                && sessionManager.getUserId().equals(dto.id())) {
+                            sessionManager.updateProfileInfo(dto.name(), dto.email());
                             cargarUsuarioActual();
                             actualizarPanelPerfil();
                         }
-                        mostrarExito("Usuario actualizado correctamente");
+                        mostrarExito("UserDTO actualizado correctamente");
                     },
                     "Actualizando usuario...",
                     "No se pudo actualizar el usuario");
         }
     }
 
-    private void actualizarEspacioEnListas(Espacio espacioActualizado) {
-        if (espacioActualizado == null || espacioActualizado.getId() == null) {
+    private void actualizarEspacioEnListas(SpaceDTO espacioActualizado) {
+        if (espacioActualizado == null || espacioActualizado.id() == null) {
             return;
         }
         reemplazarEspacio(listaEspacios, espacioActualizado);
@@ -3156,21 +3032,21 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         cargarDatosDashboard();
     }
 
-    private void reemplazarEspacio(ObservableList<Espacio> lista, Espacio actualizado) {
-        if (lista == null || actualizado == null || actualizado.getId() == null) {
+    private void reemplazarEspacio(ObservableList<SpaceDTO> lista, SpaceDTO actualizado) {
+        if (lista == null || actualizado == null || actualizado.id() == null) {
             return;
         }
         for (int i = 0; i < lista.size(); i++) {
-            Espacio existente = lista.get(i);
-            if (existente.getId() != null && existente.getId().equals(actualizado.getId())) {
+            SpaceDTO existente = lista.get(i);
+            if (existente.id() != null && existente.id().equals(actualizado.id())) {
                 lista.set(i, actualizado);
                 return;
             }
         }
     }
 
-    private void actualizarUsuarioEnListas(Usuario usuarioActualizado) {
-        if (usuarioActualizado == null || usuarioActualizado.getId() == null) {
+    private void actualizarUsuarioEnListas(UserDTO usuarioActualizado) {
+        if (usuarioActualizado == null || usuarioActualizado.id() == null) {
             return;
         }
         reemplazarUsuario(listaUsuarios, usuarioActualizado);
@@ -3179,13 +3055,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         cargarDatosDashboard();
     }
 
-    private void reemplazarUsuario(ObservableList<Usuario> lista, Usuario actualizado) {
-        if (lista == null || actualizado == null || actualizado.getId() == null) {
+    private void reemplazarUsuario(ObservableList<UserDTO> lista, UserDTO actualizado) {
+        if (lista == null || actualizado == null || actualizado.id() == null) {
             return;
         }
         for (int i = 0; i < lista.size(); i++) {
-            Usuario existente = lista.get(i);
-            if (existente.getId() != null && existente.getId().equals(actualizado.getId())) {
+            UserDTO existente = lista.get(i);
+            if (existente.id() != null && existente.id().equals(actualizado.id())) {
                 lista.set(i, actualizado);
                 return;
             }
@@ -3212,10 +3088,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     
     // ==================== ACCIONES DE RESERVAS ====================
     
-    private void verDetallesReserva(Reserva reserva) {
+    private void verDetallesReserva(ReservationDTO reserva) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Detalles de la Reserva");
-        alert.setHeaderText("Reserva #" + reserva.getId());
+        alert.setHeaderText("ReservationDTO #" + reserva.id());
         
         // Crear contenedor principal con disposición vertical
         VBox contenedorPrincipal = new VBox(12);
@@ -3223,16 +3099,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         contenedorPrincipal.setStyle("-fx-font-size: 13px;");
         
         // Información de la reserva en formato vertical
+        // Buscar usuario y espacio por ID
+        UserDTO usuario = listaUsuarios.stream()
+            .filter(u -> u.id().equals(reserva.userId()))
+            .findFirst().orElse(null);
+        SpaceDTO espacio = listaEspacios.stream()
+            .filter(e -> e.id().equals(reserva.spaceId()))
+            .findFirst().orElse(null);
+            
         VBox infoBox = new VBox(6);
         infoBox.getChildren().addAll(
-            crearLabelDetalle("👤 Usuario:", reserva.getUsuario() != null ? reserva.getUsuario().getNombre() : "N/A"),
-            crearLabelDetalle("📍 Espacio:", reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "N/A"),
-            crearLabelDetalle("📅 Fecha:", reserva.getFecha() != null ? reserva.getFecha().toString() : "N/A"),
+            crearLabelDetalle("👤 Usuario:", usuario != null ? usuario.name() : "N/A"),
+            crearLabelDetalle("📍 Espacio:", espacio != null ? espacio.name() : "N/A"),
+            crearLabelDetalle("📅 Fecha:", reserva.startTime().toLocalDate() != null ? reserva.startTime().toLocalDate().toString() : "N/A"),
             crearLabelDetalle("🕐 Horario:", 
-                (reserva.getHoraInicio() != null ? reserva.getHoraInicio().toString() : "N/A") + 
+                (reserva.startTime().toLocalTime() != null ? reserva.startTime().toLocalTime().toString() : "N/A") + 
                 " - " + 
-                (reserva.getHoraFin() != null ? reserva.getHoraFin().toString() : "N/A")),
-            crearLabelDetalle("📊 Estado:", reserva.getEstado() != null ? reserva.getEstado() : "N/A")
+                (reserva.endTime().toLocalTime() != null ? reserva.endTime().toLocalTime().toString() : "N/A")),
+            crearLabelDetalle("📊 Estado:", reserva.status() != null ? reserva.status() : "N/A")
         );
         
         // Sección del código QR con mayor visibilidad
@@ -3243,12 +3127,12 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         Label qrTitulo = new Label("🔲 Código QR de la Reserva");
         qrTitulo.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #0369a1;");
         
-        Label qrCodigo = new Label(reserva.getCodigoQR() != null ? reserva.getCodigoQR() : "Sin código QR");
+        Label qrCodigo = new Label(reserva.qrCode() != null ? reserva.qrCode() : "Sin código QR");
         qrCodigo.setStyle("-fx-font-family: 'Courier New', monospace; -fx-font-size: 16px; -fx-text-fill: #0c4a6e; -fx-font-weight: bold;");
         qrCodigo.setWrapText(true);
         
         Label qrInfo = new Label(
-            "PENDING".equals(reserva.getEstado()) || "Pendiente".equals(reserva.getEstado())
+            "PENDING".equals(reserva.status()) || "Pendiente".equals(reserva.status())
             ? "⚠️ Este QR estará bloqueado hasta que se apruebe la reserva"
             : "✅ Este código QR puede ser escaneado para el check-in"
         );
@@ -3258,11 +3142,11 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         qrBox.getChildren().addAll(qrTitulo, qrCodigo, qrInfo);
         
         // Notas adicionales si existen
-        if (reserva.getNotas() != null && !reserva.getNotas().isEmpty()) {
+        if (reserva.notes() != null && !reserva.notes().isEmpty()) {
             VBox notasBox = new VBox(4);
             Label notasTitulo = new Label("📝 Notas:");
             notasTitulo.setStyle("-fx-font-weight: bold;");
-            Label notasContenido = new Label(reserva.getNotas());
+            Label notasContenido = new Label(reserva.notes());
             notasContenido.setWrapText(true);
             notasContenido.setStyle("-fx-text-fill: #475569;");
             notasBox.getChildren().addAll(notasTitulo, notasContenido);
@@ -3294,24 +3178,32 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
     
     /**
-     * ✅ Aprueba una reserva PENDING y la cambia a CONFIRMED
+     * ✅ Aprueba una ReservationDTO PENDING y la cambia a CONFIRMED
      * Esto desbloquea el código QR para que pueda ser escaneado
      */
-    private void aprobarReserva(Reserva reserva) {
-        if (!"Pendiente".equals(reserva.getEstado())) {
-            mostrarAdvertencia("Esta reserva no está pendiente de aprobación.\nEstado actual: " + reserva.getEstado());
+    private void aprobarReserva(ReservationDTO reserva) {
+        if (!"Pendiente".equals(reserva.status())) {
+            mostrarAdvertencia("Esta ReservationDTO no está pendiente de aprobación.\nEstado actual: " + reserva.status());
             return;
         }
         
         // Confirmación
+        // Buscar usuario y espacio por ID
+        UserDTO usuario = listaUsuarios.stream()
+            .filter(u -> u.id().equals(reserva.userId()))
+            .findFirst().orElse(null);
+        SpaceDTO espacio = listaEspacios.stream()
+            .filter(e -> e.id().equals(reserva.spaceId()))
+            .findFirst().orElse(null);
+            
         Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacion.setTitle("Aprobar Reserva");
         confirmacion.setHeaderText("¿Deseas aprobar esta reserva?");
         confirmacion.setContentText(
-            "Usuario: " + (reserva.getUsuario() != null ? reserva.getUsuario().getNombre() : "N/A") + "\n" +
-            "Espacio: " + (reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "N/A") + "\n" +
-            "Fecha: " + reserva.getFecha() + "\n" +
-            "Hora: " + reserva.getHoraInicio() + " - " + reserva.getHoraFin() + "\n\n" +
+            "Usuario: " + (usuario != null ? usuario.name() : "N/A") + "\n" +
+            "Espacio: " + (espacio != null ? espacio.name() : "N/A") + "\n" +
+            "Fecha: " + reserva.startTime().toLocalDate() + "\n" +
+            "Hora: " + reserva.startTime().toLocalTime() + " - " + reserva.endTime().toLocalTime() + "\n\n" +
             "⚠️ Al aprobar, el código QR se activará y el usuario podrá hacer check-in."
         );
         
@@ -3338,15 +3230,15 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         Task<ReservationDTO> task = new Task<>() {
             @Override
             protected ReservationDTO call() throws Exception {
-                return reservationController.approveReservation(reserva.getId(), adminUserId, token);
+                return reservationController.approveReservation(reserva.id(), adminUserId, token);
             }
         };
         
         task.setOnSucceeded(e -> {
             ReservationDTO approved = task.getValue();
             if (approved != null) {
-                // Actualizar el estado en la tabla
-                reserva.setEstado("Confirmada");
+                // Nota: ReservationDTO es inmutable (record), el backend ya actualizó el estado
+                // Solo necesitamos recargar los datos
                 tablaReservas.refresh();
                 
                 mostrarExito("✅ Reserva aprobada exitosamente\n\n" +
@@ -3371,9 +3263,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         new Thread(task).start();
     }
     
-    private void cancelarReserva(Reserva reserva) {
-        if ("Cancelada".equals(reserva.getEstado())) {
-            mostrarAdvertencia("Esta reserva ya está cancelada");
+    private void cancelarReserva(ReservationDTO reserva) {
+        if ("Cancelada".equals(reserva.status())) {
+            mostrarAdvertencia("Esta ReservationDTO ya está cancelada");
             return;
         }
         
@@ -3382,18 +3274,18 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     }
     
     /**
-     * Cancela una reserva solicitando el motivo de cancelación
+     * Cancela una ReservationDTO solicitando el motivo de cancelación
      */
-    private void cancelarReservaConMotivo(Reserva reserva) {
-        if ("Cancelada".equals(reserva.getEstado())) {
-            mostrarAdvertencia("Esta reserva ya está cancelada");
+    private void cancelarReservaConMotivo(ReservationDTO reserva) {
+        if ("Cancelada".equals(reserva.status())) {
+            mostrarAdvertencia("Esta ReservationDTO ya está cancelada");
             return;
         }
         
         // Crear diálogo para ingresar motivo
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Cancelar Reserva");
-        dialog.setHeaderText("Cancelación de Reserva #" + reserva.getId());
+        dialog.setHeaderText("Cancelación de ReservationDTO #" + reserva.id());
         dialog.setContentText("Motivo de la cancelación:");
         
         // Mostrar diálogo y esperar respuesta
@@ -3408,7 +3300,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
             confirmacion.setTitle("Confirmar Cancelación");
             confirmacion.setHeaderText("¿Está seguro de cancelar esta reserva?");
-            confirmacion.setContentText("Motivo: " + motivo + "\n\nSe enviará un email al usuario notificando la cancelación.");
+            confirmacion.setContentText("Motivo: " + motivo + "\n\nSe enviará un email al UserDTO notificando la cancelación.");
             
             Optional<ButtonType> confirmResult = confirmacion.showAndWait();
             if (confirmResult.isPresent() && confirmResult.get() == ButtonType.OK) {
@@ -3423,13 +3315,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 Task<ReservationDTO> task = new Task<>() {
                     @Override
                     protected ReservationDTO call() throws Exception {
-                        return reservationController.cancelReservation(reserva.getId(), motivo, token);
+                        return reservationController.cancelReservation(reserva.id(), motivo, token);
                     }
                 };
                 
                 task.setOnSucceeded(e -> {
                     ReservationDTO cancelada = task.getValue();
-                    mostrarExito("✅ Reserva cancelada exitosamente\n\nSe ha enviado un email al usuario con el motivo de la cancelación.");
+                    mostrarExito("✅ ReservationDTO cancelada exitosamente\n\nSe ha enviado un email al UserDTO con el motivo de la cancelación.");
                     // Recargar datos para mostrar el cambio de estado
                     cargarDatosIniciales(false);
                 });
@@ -3448,9 +3340,14 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     /**
      * Envía un email personalizado relacionado con la reserva
      */
-    private void enviarEmailReserva(Reserva reserva) {
+    private void enviarEmailReserva(ReservationDTO reserva) {
+        // Buscar usuario por ID
+        UserDTO usuario = listaUsuarios.stream()
+            .filter(u -> u.id().equals(reserva.userId()))
+            .findFirst().orElse(null);
+            
         // Validar que la reserva tenga usuario con email
-        if (reserva.getUsuario() == null || reserva.getUsuario().getCorreo() == null) {
+        if (usuario == null || usuario.email() == null) {
             mostrarAdvertencia("Esta reserva no tiene un usuario o email asociado");
             return;
         }
@@ -3458,10 +3355,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         // Crear diálogo personalizado para el email
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Enviar Email");
-        dialog.setHeaderText("Enviar notificación para Reserva #" + reserva.getId());
+        dialog.setHeaderText("Enviar notificación para Reserva #" + reserva.id());
         
         // Mostrar información del destinatario
-        Label lblDestinatario = new Label("Destinatario: " + reserva.getUsuario().getCorreo());
+        Label lblDestinatario = new Label("Destinatario: " + usuario.email());
         lblDestinatario.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50;");
         
         // Crear campos del formulario
@@ -3469,7 +3366,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         asuntoField.setPromptText("Ejemplo: Recordatorio de tu reserva");
         
         TextArea mensajeArea = new TextArea();
-        mensajeArea.setPromptText("Escribe aquí tu mensaje personalizado...\n\nLa información de la reserva (fecha, espacio, etc.) se incluirá automáticamente.");
+        mensajeArea.setPromptText("Escribe aquí tu mensaje personalizado...\n\nLa información de la ReservationDTO (fecha, espacio, etc.) se incluirá automáticamente.");
         mensajeArea.setPrefRowCount(8);
         mensajeArea.setWrapText(true);
         
@@ -3511,13 +3408,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             Task<Void> task = new Task<>() {
                 @Override
                 protected Void call() throws Exception {
-                    notificationController.sendCustomEmail(reserva.getId(), asunto, mensaje, token);
+                    notificationController.sendCustomEmail(reserva.id(), asunto, mensaje, token);
                     return null;
                 }
             };
             
             task.setOnSucceeded(e -> {
-                mostrarExito("✅ Email enviado exitosamente\n\nLa notificación ha sido enviada a: " + reserva.getUsuario().getCorreo());
+                mostrarExito("✅ Email enviado exitosamente\n\nLa notificación ha sido enviada a: " + usuario.email());
             });
             
             task.setOnFailed(e -> {
@@ -3530,16 +3427,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
     }
 
-    private void notificarUsuarioReserva(Reserva reserva) {
+    private void notificarUsuarioReserva(ReservationDTO reserva) {
         enviarEmailReserva(reserva);
     }
 
     /**
-     * Elimina permanentemente una reserva de la base de datos
+     * Elimina permanentemente una ReservationDTO de la base de datos
      * Solo disponible para reservas con estado CHECKED_IN, NO_SHOW o CANCELED
      */
-    private void eliminarReservaPermanente(Reserva reserva) {
-        String estado = reserva.getEstado();
+    private void eliminarReservaPermanente(ReservationDTO reserva) {
+        String estado = reserva.status();
         
         // Validar que solo se puedan eliminar reservas finalizadas o canceladas
         if (!"En sitio".equals(estado) && !"Inasistencia".equals(estado) && !"Cancelada".equals(estado)) {
@@ -3547,16 +3444,24 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
         
+        // Buscar usuario y espacio por ID
+        UserDTO usuario = listaUsuarios.stream()
+            .filter(u -> u.id().equals(reserva.userId()))
+            .findFirst().orElse(null);
+        SpaceDTO espacio = listaEspacios.stream()
+            .filter(e -> e.id().equals(reserva.spaceId()))
+            .findFirst().orElse(null);
+            
         // Crear diálogo de confirmación con advertencia fuerte
         Alert confirmacion = new Alert(Alert.AlertType.WARNING);
         confirmacion.setTitle("⚠️ Eliminar Reserva Permanentemente");
         confirmacion.setHeaderText("¿Está seguro de eliminar esta reserva de la base de datos?");
         confirmacion.setContentText(
             "Esta acción es IRREVERSIBLE y eliminará permanentemente:\n\n" +
-            "• Reserva ID: " + reserva.getId() + "\n" +
-            "• Usuario: " + formatearNombreUsuario(reserva.getUsuario()) + "\n" +
-            "• Espacio: " + (reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "N/A") + "\n" +
-            "• Fecha: " + reserva.getFecha() + "\n" +
+            "• Reserva ID: " + reserva.id() + "\n" +
+            "• Usuario: " + (usuario != null ? usuario.name() : "N/A") + "\n" +
+            "• Espacio: " + (espacio != null ? espacio.name() : "N/A") + "\n" +
+            "• Fecha: " + reserva.startTime().toLocalDate() + "\n" +
             "• Estado: " + estado + "\n\n" +
             "⚠️ Esta operación NO SE PUEDE DESHACER\n" +
             "⚠️ Los datos serán eliminados permanentemente de la base de datos"
@@ -3580,13 +3485,13 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 @Override
                 protected Void call() throws Exception {
                     // Usar el nuevo método de eliminación permanente
-                    reservationController.permanentlyDeleteReservation(reserva.getId(), token);
+                    reservationController.permanentlyDeleteReservation(reserva.id(), token);
                     return null;
                 }
             };
             
             task.setOnSucceeded(e -> {
-                mostrarExito("✅ Reserva eliminada permanentemente de la base de datos");
+                mostrarExito("✅ ReservationDTO eliminada permanentemente de la base de datos");
                 // Recargar datos para reflejar la eliminación
                 cargarDatosIniciales(false);
             });
@@ -3663,7 +3568,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         }
     }
 
-    private Usuario encontrarUsuarioActual() {
+    private UserDTO encontrarUsuarioActual() {
         if (sessionManager == null) {
             return null;
         }
@@ -3672,7 +3577,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return null;
         }
         return listaUsuarios.stream()
-                .filter(usuario -> userId.equals(usuario.getId()))
+                .filter(u -> userId.equals(u.id()))
                 .findFirst()
                 .orElse(null);
     }
@@ -3709,7 +3614,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
 
-        List<Reserva> reservasConAlertas = obtenerReservasConAlertas();
+        List<ReservationDTO> reservasConAlertas = obtenerReservasConAlertas();
         actualizarPanelNotificaciones(reservasConAlertas);
 
         cerrarPanelPerfilInterno();
@@ -3724,7 +3629,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         event.consume();
     }
 
-    private void actualizarPanelNotificaciones(List<Reserva> reservasConAlertas) {
+    private void actualizarPanelNotificaciones(List<ReservationDTO> reservasConAlertas) {
         if (panelNotificacionesContent == null) {
             return;
         }
@@ -3745,24 +3650,29 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 .forEach(panelNotificacionesContent.getChildren()::add);
     }
 
-    private Node crearNotificacionDesdeReserva(Reserva reserva) {
+    private Node crearNotificacionDesdeReserva(ReservationDTO reserva) {
         VBox contenedor = new VBox(4);
         contenedor.getStyleClass().add("notification-item");
 
-        String titulo = reserva.getEspacio() != null ? reserva.getEspacio().getNombre() : "Reserva";
+        // Buscar espacio por ID
+        SpaceDTO espacio = listaEspacios.stream()
+            .filter(e -> e.id().equals(reserva.spaceId()))
+            .findFirst().orElse(null);
+            
+        String titulo = espacio != null ? espacio.name() : "Reserva";
         Label lblTitulo = new Label(titulo);
         lblTitulo.getStyleClass().add("notification-title");
 
-        String detalle = switch (reserva.getEstado()) {
+        String detalle = switch (reserva.status()) {
             case "Cancelada" -> "Reserva cancelada por el usuario.";
             case "Inasistencia" -> "El usuario no se presentó.";
             case "Pendiente" -> "Pendiente de aprobación.";
-            default -> "Estado: " + reserva.getEstado();
+            default -> "Estado: " + reserva.status();
         };
         Label lblDetalle = new Label(detalle);
         lblDetalle.getStyleClass().add("notification-detail");
 
-        String fecha = reserva.getFecha() != null ? reserva.getFecha().format(DateTimeFormatter.ISO_LOCAL_DATE) : "Sin fecha";
+        String fecha = reserva.startTime().toLocalDate() != null ? reserva.startTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE) : "Sin fecha";
         Label lblFecha = new Label("Programada: " + fecha);
         lblFecha.getStyleClass().add("notification-meta");
 
@@ -3770,10 +3680,10 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         return contenedor;
     }
 
-    private List<Reserva> obtenerReservasConAlertas() {
+    private List<ReservationDTO> obtenerReservasConAlertas() {
         return listaReservas.stream()
-                .filter(reserva -> {
-                    String estado = reserva.getEstado();
+                .filter(r -> {
+                    String estado = r.status();
                     return "Pendiente".equalsIgnoreCase(estado)
                             || "Cancelada".equalsIgnoreCase(estado)
                             || "Inasistencia".equalsIgnoreCase(estado);
@@ -3827,9 +3737,9 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     @FXML
     private void editarPerfil(ActionEvent event) {
         cerrarPanelesDeslizables();
-        Usuario usuarioActual = encontrarUsuarioActual();
+        UserDTO usuarioActual = encontrarUsuarioActual();
         if (usuarioActual == null) {
-            mostrarAdvertencia("No se encontró la información del usuario en sesión.");
+            mostrarAdvertencia("No se encontró la información del UserDTO en sesión.");
             return;
         }
         mostrarFormularioUsuario(usuarioActual);
@@ -3906,7 +3816,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         int diasAnticipacion = spinDiasAnticipacion != null ? spinDiasAnticipacion.getValue() : 1;
         int maxReservas = spinMaxReservasSimultaneas != null ? spinMaxReservasSimultaneas.getValue() : 3;
         
-        mostrarExito("Políticas de reserva guardadas exitosamente");
+        mostrarExito("Políticas de ReservationDTO guardadas exitosamente");
     }
     
     @FXML
@@ -3965,279 +3875,16 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         return text.substring(0, 1).toUpperCase() + text.substring(1);
     }
     
+    // Records simplificados usando DTOs
+    record DatosIniciales(List<SpaceDTO> espacios, List<UserDTO> usuarios, List<ReservationDTO> reservas,
+            CurrentWeatherDTO clima, List<String> warnings) {
+    }
+
+    record ClimaResultado(CurrentWeatherDTO clima, List<String> warnings) {
+    }
+    
 } // Fin de AdminDashboardController
 
-record DatosIniciales(List<Espacio> espacios, List<Usuario> usuarios, List<Reserva> reservas,
-        DatosClimaticos clima, List<String> warnings) {
-}
 
-record ClimaResultado(DatosClimaticos clima, List<String> warnings) {
-}
 
-// ==================== CLASES DE MODELO (Incluir en archivos separados) ====================
 
-/**
- * Clase modelo para Espacio
- */
-class Espacio {
-    private Long id;
-    private String nombre;
-    private String tipo;
-    private int capacidad;
-    private String estado;
-    private String descripcion;
-    private boolean esExterior;
-    private String ubicacion;
-    private Integer maxDuracion;
-    private boolean requiereAprobacion;
-    private boolean activo;
-
-    public Espacio(Long id, String nombre, String tipo, int capacidad, String estado,
-                   String descripcion, boolean esExterior, String ubicacion,
-                   Integer maxDuracion, boolean requiereAprobacion, boolean activo) {
-        this.id = id;
-        this.nombre = nombre;
-        this.tipo = tipo;
-        this.capacidad = capacidad;
-        this.estado = estado;
-        this.descripcion = descripcion;
-        this.esExterior = esExterior;
-        this.ubicacion = ubicacion;
-        this.maxDuracion = maxDuracion;
-        this.requiereAprobacion = requiereAprobacion;
-        this.activo = activo;
-    }
-
-    // Getters y Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    
-    public String getTipo() { return tipo; }
-    public void setTipo(String tipo) { this.tipo = tipo; }
-    
-    public int getCapacidad() { return capacidad; }
-    public void setCapacidad(int capacidad) { this.capacidad = capacidad; }
-    
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
-    
-    public String getDescripcion() { return descripcion; }
-    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-
-    public boolean isEsExterior() { return esExterior; }
-    public void setEsExterior(boolean esExterior) { this.esExterior = esExterior; }
-
-    public String getUbicacion() { return ubicacion; }
-    public void setUbicacion(String ubicacion) { this.ubicacion = ubicacion; }
-
-    public Integer getMaxDuracion() { return maxDuracion; }
-    public void setMaxDuracion(Integer maxDuracion) { this.maxDuracion = maxDuracion; }
-
-    public boolean isRequiereAprobacion() { return requiereAprobacion; }
-    public void setRequiereAprobacion(boolean requiereAprobacion) { this.requiereAprobacion = requiereAprobacion; }
-
-    public boolean isActivo() { return activo; }
-    public void setActivo(boolean activo) {
-        this.activo = activo;
-        this.estado = activo ? "Disponible" : "Inactivo";
-    }
-}
-
-/**
- * Clase modelo para Usuario
- */
-class Usuario {
-    private Long id;
-    private String nombre;
-    private String correo;
-    private String rol;
-    private String estado;
-    private LocalDateTime ultimoAcceso;
-    private String telefono;
-    private String rolCodigo;
-    private boolean activo;
-    private int totalReservas;
-    private int reservasAprobadas;
-
-    public Usuario(Long id, String nombre, String correo, String rol, String estado,
-                   LocalDateTime ultimoAcceso, String telefono, String rolCodigo, boolean activo,
-                   int totalReservas, int reservasAprobadas) {
-        this.id = id;
-        this.nombre = nombre;
-        this.correo = correo;
-        this.rol = rol;
-        this.estado = estado;
-        this.ultimoAcceso = ultimoAcceso;
-        this.telefono = telefono;
-        this.rolCodigo = rolCodigo;
-        this.activo = activo;
-        this.totalReservas = totalReservas;
-        this.reservasAprobadas = reservasAprobadas;
-    }
-
-    // Getters y Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    
-    public String getCorreo() { return correo; }
-    public void setCorreo(String correo) { this.correo = correo; }
-    
-    public String getRol() { return rol; }
-    public void setRol(String rol) { this.rol = rol; }
-    
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
-    
-    public LocalDateTime getUltimoAcceso() { return ultimoAcceso; }
-    public void setUltimoAcceso(LocalDateTime ultimoAcceso) { this.ultimoAcceso = ultimoAcceso; }
-    
-    public String getTelefono() { return telefono; }
-    public void setTelefono(String telefono) { this.telefono = telefono; }
-
-    public String getRolCodigo() { return rolCodigo; }
-    public void setRolCodigo(String rolCodigo) { this.rolCodigo = rolCodigo; }
-
-    public boolean isActivo() { return activo; }
-    public void setActivo(boolean activo) {
-        this.activo = activo;
-        this.estado = activo ? "Activo" : "Inactivo";
-    }
-
-    public int getTotalReservas() { return totalReservas; }
-    public void setTotalReservas(int totalReservas) { this.totalReservas = totalReservas; }
-
-    public int getReservasAprobadas() { return reservasAprobadas; }
-    public void setReservasAprobadas(int reservasAprobadas) { this.reservasAprobadas = reservasAprobadas; }
-}
-
-/**
- * Clase modelo para Reserva
- */
-class Reserva {
-    private Long id;
-    private Usuario usuario;
-    private Espacio espacio;
-    private LocalDate fecha;
-    private LocalTime horaInicio;
-    private LocalTime horaFin;
-    private String estado;
-    private String codigoQR;
-    private DatosClimaticos clima;
-    private String notas;
-    
-    public Reserva(Long id, Usuario usuario, Espacio espacio, LocalDate fecha,
-                   LocalTime horaInicio, LocalTime horaFin, String estado,
-                   String codigoQR, DatosClimaticos clima, String notas) {
-        this.id = id;
-        this.usuario = usuario;
-        this.espacio = espacio;
-        this.fecha = fecha;
-        this.horaInicio = horaInicio;
-        this.horaFin = horaFin;
-        this.estado = estado;
-        this.codigoQR = codigoQR;
-        this.clima = clima;
-        this.notas = notas;
-    }
-
-    // Getters y Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
-    
-    public Espacio getEspacio() { return espacio; }
-    public void setEspacio(Espacio espacio) { this.espacio = espacio; }
-    
-    public LocalDate getFecha() { return fecha; }
-    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
-    
-    public LocalTime getHoraInicio() { return horaInicio; }
-    public void setHoraInicio(LocalTime horaInicio) { this.horaInicio = horaInicio; }
-    
-    public LocalTime getHoraFin() { return horaFin; }
-    public void setHoraFin(LocalTime horaFin) { this.horaFin = horaFin; }
-    
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
-    
-    public String getCodigoQR() { return codigoQR; }
-    public void setCodigoQR(String codigoQR) { this.codigoQR = codigoQR; }
-    
-    public DatosClimaticos getClima() { return clima; }
-    public void setClima(DatosClimaticos clima) { this.clima = clima; }
-    
-    public String getNotas() { return notas; }
-    public void setNotas(String notas) { this.notas = notas; }
-}
-
-/**
- * Clase modelo para DatosClimaticos
- */
-class DatosClimaticos {
-    private double temperatura;
-    private String condicion;
-    private int probabilidadLluvia;
-    private double velocidadViento;
-    private String nivelAlerta;
-    private String descripcion;
-    
-    public DatosClimaticos(double temperatura, String condicion, int probabilidadLluvia,
-                          double velocidadViento, String nivelAlerta, String descripcion) {
-        this.temperatura = temperatura;
-        this.condicion = condicion;
-        this.probabilidadLluvia = probabilidadLluvia;
-        this.velocidadViento = velocidadViento;
-        this.nivelAlerta = nivelAlerta;
-        this.descripcion = descripcion;
-    }
-    
-    // Getters y Setters
-    public double getTemperatura() { return temperatura; }
-    public void setTemperatura(double temperatura) { this.temperatura = temperatura; }
-    
-    public String getCondicion() { return condicion; }
-    public void setCondicion(String condicion) { this.condicion = condicion; }
-    
-    public int getProbabilidadLluvia() { return probabilidadLluvia; }
-    public void setProbabilidadLluvia(int probabilidadLluvia) { 
-        this.probabilidadLluvia = probabilidadLluvia; 
-    }
-    
-    public double getVelocidadViento() { return velocidadViento; }
-    public void setVelocidadViento(double velocidadViento) { 
-        this.velocidadViento = velocidadViento; 
-    }
-    
-    public String getNivelAlerta() { return nivelAlerta; }
-    public void setNivelAlerta(String nivelAlerta) { this.nivelAlerta = nivelAlerta; }
-    
-    public String getDescripcion() { return descripcion; }
-    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-    
-    public String getTemperaturaFormateada() {
-        return String.format(Locale.US, "%.0f°C", temperatura);
-    }
-
-    public String getVientoFormateado() {
-        return String.format(Locale.US, "%.0f km/h", velocidadViento);
-    }
-    
-    public String getProbabilidadLluviaFormateada() {
-        return probabilidadLluvia + "%";
-    }
-}
-
-/**
- * Clase modelo para EstadisticasDashboard
- */
-class EstadisticasDashboard {
-    // Clase vacía por ahora, puedes añadir propiedades según necesites
-}

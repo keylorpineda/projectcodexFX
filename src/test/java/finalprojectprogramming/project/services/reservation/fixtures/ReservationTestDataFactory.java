@@ -102,7 +102,7 @@ public final class ReservationTestDataFactory {
     public static final class SpaceBuilder {
         private Long id = 200L;
         private String name = "Conference Room";
-        private SpaceType type = SpaceType.MEETING_ROOM;
+        private SpaceType type = SpaceType.SALA;
         private Integer capacity = 10;
         private Boolean active = true;
         private Boolean requiresApproval = false;
@@ -348,8 +348,8 @@ public final class ReservationTestDataFactory {
 
     public static final class NotificationBuilder {
         private Long id = 900L;
-        private NotificationType type = NotificationType.EMAIL;
-        private NotificationStatus status = NotificationStatus.PENDING;
+        private NotificationType type = NotificationType.CONFIRMATION;
+        private NotificationStatus status = NotificationStatus.SENT;
 
         public NotificationBuilder withId(Long id) {
             this.id = id;
