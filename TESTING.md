@@ -164,6 +164,11 @@ de esa base, el siguiente plan divide el trabajo en etapas para alcanzar el
    - Si algún cliente utiliza `WebClient`, combina `StepVerifier` con `MockWebServer`.
    - Verifica también timeouts configurados: simula respuestas lentas con
      `Dispatcher` personalizado y asegura que la excepción se maneja correctamente.
+   - **Implementación actual:** `AzureGraphClientTest` redirige el `HttpClient`
+     hacia un `MockWebServer` para validar respuestas 200/401/500, payloads
+     inválidos y ausencia de correo, mientras que `WeatherClientTest` emplea el
+     mismo servidor simulado para cubrir mapeos felices, códigos 4xx/5xx,
+     reintentos y ramas de timeout/IO.
 
 ## Etapa 5 · Repositorios
 1. **Configuración de JPA de prueba**
@@ -179,6 +184,12 @@ de esa base, el siguiente plan divide el trabajo en etapas para alcanzar el
      nulos y límites (paginaciones, ordenamientos).
    - Verifica que las entidades se guarden con cascadas y que las relaciones
      `@ManyToOne`/`@OneToMany` se materialicen como se espera.
+   - **Implementación actual:** `RepositoryIntegrationTest` levanta H2 en
+     memoria con `@DataJpaTest`, persiste reservas completas (notificaciones,
+     asistentes, calificaciones) y valida los métodos derivados de
+     `UserRepository`, `NotificationRepository`, `RatingRepository`,
+     `AuditLogRepository`, `SpaceScheduleRepository`, `SpaceImageRepository` y
+     `SettingRepository`.
 3. **Metadatos y eventos**
    - Si existen listeners (`@EntityListeners`), asegúrate de que se ejecuten
      dentro del contexto de test y cubre casos donde falten datos obligatorios.
