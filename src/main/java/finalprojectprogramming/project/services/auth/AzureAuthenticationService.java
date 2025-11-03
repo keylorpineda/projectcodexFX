@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 
@@ -31,19 +32,41 @@ public class AzureAuthenticationService {
         this.jwtService = jwtService;
     }
 
+    /**
+     * Authenticates user synchronously (for backward compatibility)
+     */
     public AuthResponseDTO authenticate(String accessToken) {
-        AzureUserInfo azureUser = azureGraphClient.fetchCurrentUser(accessToken);
-        if (!azureUser.hasEmail()) {
-            throw new BadCredentialsException("Azure account must expose an email address");
-        }
+        return authenticateAsync(accessToken).join();
+    }
 
+    /**
+     * Authenticates user asynchronously for better performance
+     */
+    public CompletableFuture<AuthResponseDTO> authenticateAsync(String accessToken) {
+        // Fetch user info from Microsoft Graph asynchronously
+        return azureGraphClient.fetchCurrentUserAsync(accessToken)
+            .thenCompose(azureUser -> {
+                if (!azureUser.hasEmail()) {
+                    return CompletableFuture.failedFuture(
+                        new BadCredentialsException("Azure account must expose an email address")
+                    );
+                }
+
+                // Process user in database asynchronously
+                return CompletableFuture.supplyAsync(() -> processUserAuthentication(azureUser));
+            });
+    }
+
+    private AuthResponseDTO processUserAuthentication(AzureUserInfo azureUser) {
         String email = azureUser.email();
         LocalDateTime now = LocalDateTime.now();
 
         User user = userRepository.findByEmail(email).orElse(null);
+        
         if (user != null && Boolean.FALSE.equals(user.getActive())) {
             throw new BadCredentialsException("User account is disabled");
         }
+        
         boolean newUser = false;
         if (user == null) {
             user = new User();

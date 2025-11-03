@@ -214,6 +214,18 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <executable>/bin/bash</executable>
+          <arguments>
+            <argument>-lc</argument>
+            <argument>if [ -f target/site/jacoco/jacoco.csv ]; then tail -n +2 target/site/jacoco/jacoco.csv | awk -F, '{missI+=$$4; covI+=$$5; missL+=$$8; covL+=$$9} END {printf("\n\033[1mInstrucciones cubiertas: %.2f%%\nLíneas cubiertas: %.2f%%\033[0m\n\n", (covI*100)/(missI+covI), (covL*100)/(missL+covL))}'; else echo "jacoco.csv no encontrado; ejecuta jacoco:report antes."; fi</argument>
+          </arguments>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>

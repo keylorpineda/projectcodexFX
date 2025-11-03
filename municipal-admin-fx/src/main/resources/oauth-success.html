@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticación Exitosa - Sistema Municipal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .success-icon svg {
+            width: 50px;
+            height: 50px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .checkmark {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: draw 0.8s ease-out 0.3s forwards;
+        }
+
+        @keyframes draw {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #3b82f6;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            color: #4a5568;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .info-box {
+            background: #f7fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .info-box p {
+            color: #4a5568;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-box strong {
+            color: #2d3748;
+        }
+
+        .btn-close {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .btn-close:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .btn-close:active {
+            transform: translateY(0);
+        }
+
+        .footer {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 13px;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        .loading-dots span {
+            animation: blink 1.4s infinite;
+            display: inline-block;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+            0%, 80%, 100% {
+                opacity: 0;
+            }
+            40% {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">
+            <svg viewBox="0 0 52 52">
+                <path class="checkmark" d="M14 27l7.5 7.5L38 18"/>
+            </svg>
+        </div>
+
+        <h1>¡Autenticación Exitosa!</h1>
+        <p class="subtitle">Sistema de Gestión Municipal</p>
+
+        <p class="message">
+            Has iniciado sesión correctamente con tu cuenta de Microsoft Azure.
+        </p>
+
+        <div class="info-box">
+            <p><strong>✓</strong> Sesión iniciada exitosamente</p>
+            <p><strong>✓</strong> Credenciales verificadas</p>
+            <p><strong>✓</strong> Acceso autorizado al sistema</p>
+        </div>
+
+        <button class="btn-close" onclick="closeWindow()">
+            Volver a la Aplicación
+        </button>
+
+        <div class="footer">
+            <p>Universidad Nacional de Costa Rica</p>
+            <p>Sistema de Gestión de Espacios Municipales</p>
+        </div>
+    </div>
+
+    <script>
+        // Cerrar la ventana automáticamente después de 2 segundos
+        let countdown = 2;
+        const button = document.querySelector('.btn-close');
+        const originalText = button.textContent;
+
+        function updateButton() {
+            if (countdown > 0) {
+                button.innerHTML = `Cerrando en ${countdown} segundo${countdown > 1 ? 's' : ''}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>`;
+                countdown--;
+                setTimeout(updateButton, 1000);
+            } else {
+                window.close();
+            }
+        }
+
+        function closeWindow() {
+            // Intentar cerrar la ventana
+            window.close();
+            
+            // Si no se puede cerrar (algunos navegadores lo bloquean), mostrar mensaje alternativo
+            setTimeout(() => {
+                if (!window.closed) {
+                    button.textContent = '✓ Puede cerrar esta pestaña';
+                    button.style.background = '#48bb78';
+                }
+            }, 500);
+        }
+
+        // Iniciar cuenta regresiva automática
+        setTimeout(updateButton, 1000);
+
+        // También permitir cerrar manualmente desde el inicio
+        button.addEventListener('click', closeWindow);
+    </script>
+</body>
+</html>

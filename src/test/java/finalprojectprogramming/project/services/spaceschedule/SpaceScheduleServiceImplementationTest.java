@@ -27,13 +27,17 @@ class SpaceScheduleServiceImplementationTest {
     private SpaceRepository spaceRepo;
     private ModelMapper mapper;
     private SpaceScheduleServiceImplementation service;
+    private finalprojectprogramming.project.services.auditlog.AuditLogService auditLogService;
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {
         repo = Mockito.mock(SpaceScheduleRepository.class);
         spaceRepo = Mockito.mock(SpaceRepository.class);
-        mapper = Mockito.mock(ModelMapper.class);
-        service = new SpaceScheduleServiceImplementation(repo, spaceRepo, mapper);
+    mapper = Mockito.mock(ModelMapper.class);
+    auditLogService = Mockito.mock(finalprojectprogramming.project.services.auditlog.AuditLogService.class);
+    objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    service = new SpaceScheduleServiceImplementation(repo, spaceRepo, mapper, auditLogService, objectMapper);
         when(mapper.map(any(SpaceSchedule.class), eq(SpaceScheduleDTO.class))).thenAnswer(inv -> new SpaceScheduleDTO());
     }
 
@@ -126,6 +130,7 @@ class SpaceScheduleServiceImplementationTest {
     void findById_findAll_findBySpace_delete() {
         SpaceSchedule s = new SpaceSchedule();
         s.setId(7L);
+        s.setDayOfWeek(DayOfWeek.MONDAY);
         when(repo.findById(7L)).thenReturn(Optional.of(s));
         when(repo.findAll()).thenReturn(List.of(s));
         when(repo.findBySpaceId(3L)).thenReturn(List.of(s));
