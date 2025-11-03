@@ -6,6 +6,7 @@ import com.municipal.controllers.WeatherController;
 import com.municipal.dtos.ReservationDTO;
 import com.municipal.dtos.SpaceDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
+import com.municipal.responses.BinaryFileResponse;
 import com.municipal.session.SessionManager;
 import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
@@ -25,8 +26,12 @@ import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -403,6 +408,45 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
         navigateToSection(Section.REPORTS);
     }
 
+    @FXML
+    private void handleExportPersonalHistory() {
+        if (sessionManager == null || reservationController == null) {
+            showAlert(Alert.AlertType.WARNING, "Exportación no disponible",
+                    "No se pudo acceder a la información de sesión.");
+            return;
+        }
+        Long userId = sessionManager.getUserId();
+        String token = sessionManager.getAccessToken();
+        if (userId == null || token == null || token.isBlank()) {
+            showAlert(Alert.AlertType.WARNING, "Exportación no disponible",
+                    "Tu sesión no tiene credenciales válidas. Vuelve a iniciar sesión e inténtalo de nuevo.");
+            return;
+        }
+
+        showLoadingOverlay(reservationsLoadingOverlay, true);
+        Task<BinaryFileResponse> task = new Task<>() {
+            @Override
+            protected BinaryFileResponse call() throws Exception {
+                return reservationController.exportUserReservationsExcel(userId, token);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            showLoadingOverlay(reservationsLoadingOverlay, false);
+            BinaryFileResponse response = task.getValue();
+            savePersonalExcel(response, userId);
+        });
+
+        task.setOnFailed(event -> {
+            showLoadingOverlay(reservationsLoadingOverlay, false);
+            Throwable error = task.getException();
+            showAlert(Alert.AlertType.ERROR, "No se pudo exportar",
+                    error != null ? error.getMessage() : "Error desconocido al generar el archivo.");
+        });
+
+        new Thread(task).start();
+    }
+
     private void navigateToSection(Section section) {
         currentSection = section;
 
@@ -624,6 +668,50 @@ public class UserDashboardController implements SessionAware, FlowAware, ViewLif
                 overlay.setManaged(show);
             });
         }
+    }
+
+    private void savePersonalExcel(BinaryFileResponse response, Long userId) {
+        if (response == null || response.data() == null || response.data().length == 0) {
+            showAlert(Alert.AlertType.WARNING, "Exportación vacía",
+                    "No se recibieron datos del servidor para generar el Excel.");
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Guardar historial personal");
+        chooser.getExtensionFilters().setAll(new FileChooser.ExtensionFilter("Archivo Excel (*.xlsx)", "*.xlsx"));
+        String sugerido = response.suggestedFileName();
+        if (sugerido == null || sugerido.isBlank()) {
+            sugerido = buildDefaultPersonalFileName(userId);
+        }
+        chooser.setInitialFileName(sugerido);
+
+        File destino = chooser.showSaveDialog(mainContainer.getScene().getWindow());
+        if (destino == null) {
+            return;
+        }
+
+        try {
+            Files.write(destino.toPath(), response.data());
+            showAlert(Alert.AlertType.INFORMATION, "Exportación completada",
+                    "El historial se guardó en:\n" + destino.getAbsolutePath());
+        } catch (IOException exception) {
+            showAlert(Alert.AlertType.ERROR, "No se pudo guardar el archivo", exception.getMessage());
+        }
+    }
+
+    private String buildDefaultPersonalFileName(Long userId) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+        String suffix = userId != null ? userId.toString() : "usuario";
+        return "historial_reservas_" + suffix + "_" + LocalDateTime.now().format(formatter) + ".xlsx";
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void updateWeatherUI(CurrentWeatherDTO weather) {

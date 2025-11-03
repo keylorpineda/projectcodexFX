@@ -134,6 +134,17 @@ class AuditLogServiceImplementationTest {
     }
 
     @Test
+    void logEvent_buildsDtoAndPersists() {
+        when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(User.builder().id(5L).build()));
+
+        service.logEvent(5L, "RESERVATION_CREATED", "77", json.createObjectNode().put("k", "v"));
+
+        verify(auditLogRepository).save(any(AuditLog.class));
+        verify(userRepository).findById(5L);
+    }
+
+    @Test
     void findById_success() {
         AuditLog entity = AuditLog.builder()
                 .id(5L)

@@ -14,6 +14,7 @@ import com.municipal.dtos.UserDTO;
 import com.municipal.dtos.UserInputDTO;
 import com.municipal.dtos.weather.CurrentWeatherDTO;
 import com.municipal.exceptions.ApiClientException;
+import com.municipal.responses.BinaryFileResponse;
 import com.municipal.session.SessionManager;
 import com.municipal.ui.navigation.FlowAware;
 import com.municipal.ui.navigation.FlowController;
@@ -48,11 +49,14 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2516,8 +2520,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
      */
     @FXML
     private void exportarReservas() {
-        // Por ahora, solo muestra un mensaje
-        mostrarAlerta("Exportar reservas", "Esta funcionalidad se implementará próximamente.", Alert.AlertType.INFORMATION);
+        iniciarExportacionExcel();
     }
     
     /**
@@ -3767,10 +3770,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     
     @FXML
     private void exportarExcel(ActionEvent event) {
-        // TODO: Implementar exportación a Excel
-        mostrarInformacion("Exportando a Excel...",
-                          "Esta funcionalidad está en desarrollo.\n" +
-                          "Pronto podrás exportar los reportes a formato Excel.");
+        iniciarExportacionExcel();
     }
     
     @FXML
@@ -3779,6 +3779,59 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         mostrarInformacion("Exportando a PDF...",
                           "Esta funcionalidad está en desarrollo.\n" +
                           "Pronto podrás exportar los reportes a formato PDF.");
+    }
+
+    private void iniciarExportacionExcel() {
+        String token = sessionManager != null ? sessionManager.getAccessToken() : null;
+        if (token == null || token.isBlank()) {
+            mostrarError("No se pudo obtener el token de sesión para exportar las reservas.");
+            return;
+        }
+
+        ejecutarOperacionAsync(() -> {
+            try {
+                return reservationController.exportAllReservationsExcel(token);
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+        },
+                response -> guardarArchivoExcel(response, "Exportar historial de reservas"),
+                "Generando reporte en Excel...",
+                "No se pudo exportar el historial de reservas");
+    }
+
+    private void guardarArchivoExcel(BinaryFileResponse response, String tituloVentana) {
+        if (response == null || response.data() == null || response.data().length == 0) {
+            mostrarAdvertencia("No se recibieron datos para generar el archivo Excel.");
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle(tituloVentana);
+        chooser.getExtensionFilters().setAll(new FileChooser.ExtensionFilter("Archivo Excel (*.xlsx)", "*.xlsx"));
+        String nombreSugerido = response.suggestedFileName();
+        if (nombreSugerido == null || nombreSugerido.isBlank()) {
+            nombreSugerido = generarNombreExcelPorDefecto();
+        }
+        chooser.setInitialFileName(nombreSugerido);
+
+        File destino = chooser.showSaveDialog(contenedorPrincipal.getScene().getWindow());
+        if (destino == null) {
+            mostrarInformacion("Exportación cancelada", "No se seleccionó un archivo de destino.");
+            return;
+        }
+
+        try {
+            Files.write(destino.toPath(), response.data());
+            mostrarExito("Archivo exportado correctamente en:\n" + destino.getAbsolutePath());
+        } catch (IOException exception) {
+            mostrarError("No se pudo guardar el archivo: " + exception.getMessage());
+        }
+    }
+
+    private String generarNombreExcelPorDefecto() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+        return "reservas_" + LocalDateTime.now().format(formatter) + ".xlsx";
     }
 
     private void actualizarReportes() {

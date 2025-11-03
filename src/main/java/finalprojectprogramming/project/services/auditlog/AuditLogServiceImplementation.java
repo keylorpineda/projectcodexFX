@@ -1,5 +1,6 @@
 package finalprojectprogramming.project.services.auditlog;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import finalprojectprogramming.project.dtos.AuditLogDTO;
 import finalprojectprogramming.project.exceptions.ResourceNotFoundException;
 import finalprojectprogramming.project.models.AuditLog;
@@ -41,6 +42,18 @@ public class AuditLogServiceImplementation implements AuditLogService {
 
         AuditLog saved = auditLogRepository.save(auditLog);
         return toDto(saved);
+    }
+
+    @Override
+    public void logEvent(Long userId, String action, String entityId, JsonNode details) {
+        AuditLogDTO dto = AuditLogDTO.builder()
+                .userId(userId)
+                .action(action)
+                .entityId(entityId)
+                .details(details)
+                .timestamp(LocalDateTime.now())
+                .build();
+        create(dto);
     }
 
     @Override

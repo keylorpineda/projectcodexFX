@@ -12,10 +12,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import finalprojectprogramming.project.dtos.ReservationCheckInRequest;
 import finalprojectprogramming.project.dtos.ReservationDTO;
 import finalprojectprogramming.project.exceptions.BusinessRuleException;
@@ -31,6 +36,7 @@ import finalprojectprogramming.project.repositories.ReservationRepository;
 import finalprojectprogramming.project.repositories.SpaceRepository;
 import finalprojectprogramming.project.repositories.UserRepository;
 import finalprojectprogramming.project.security.SecurityUtils;
+import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.services.notification.ReservationNotificationService;
 import finalprojectprogramming.project.services.space.SpaceAvailabilityValidator;
 import java.time.LocalDateTime;
@@ -64,17 +70,27 @@ class ReservationServiceImplementationTest {
     @Mock
     private ReservationNotificationService notificationService;
 
+    @Mock
+    private ReservationCancellationPolicy cancellationPolicy;
+
+    @Mock
+    private AuditLogService auditLogService;
+
     private ReservationServiceImplementation service;
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper();
         service = new ReservationServiceImplementation(
                 reservationRepository,
                 userRepository,
                 spaceRepository,
                 new ModelMapper(),
                 availabilityValidator,
-                notificationService);
+                notificationService,
+                cancellationPolicy,
+                auditLogService,
+                objectMapper);
     }
 
     @Test
@@ -132,6 +148,7 @@ class ReservationServiceImplementationTest {
             mocked.verify(() -> SecurityUtils.requireSelfOrAny(10L, UserRole.SUPERVISOR, UserRole.ADMIN));
             verify(availabilityValidator).assertAvailability(space, request.getStartTime(), request.getEndTime(), null);
             verify(notificationService).notifyReservationCreated(saved);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_CREATED"), eq("55"), any());
         }
     }
 
@@ -199,6 +216,7 @@ class ReservationServiceImplementationTest {
             verify(availabilityValidator).assertAvailability(newSpace, updateRequest.getStartTime(),
                     updateRequest.getEndTime(), existing.getId());
             mocked.verify(() -> SecurityUtils.requireSelfOrAny(owner.getId(), UserRole.SUPERVISOR, UserRole.ADMIN));
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_UPDATED"), eq("900"), any());
         }
     }
 
@@ -287,6 +305,8 @@ class ReservationServiceImplementationTest {
             assertThat(result.getStatus()).isEqualTo(ReservationStatus.CANCELED);
             assertThat(reservation.getCancellationReason()).isEqualTo("reason");
             verify(notificationService).notifyReservationCanceled(reservation);
+            verify(cancellationPolicy).assertCancellationAllowed(reservation);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_CANCELED"), eq(reservation.getId().toString()), any());
         }
     }
 
@@ -297,6 +317,8 @@ class ReservationServiceImplementationTest {
                 .withStart(LocalDateTime.now().minusHours(1))
                 .build();
         when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+        doThrow(new BusinessRuleException("outside window")).when(cancellationPolicy)
+                .assertCancellationAllowed(reservation);
 
         Long ownerId = reservation.getUser() != null ? reservation.getUser().getId() : null;
         try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
@@ -305,7 +327,7 @@ class ReservationServiceImplementationTest {
 
             assertThatThrownBy(() -> service.cancel(reservation.getId(), "late"))
                     .isInstanceOf(BusinessRuleException.class)
-                    .hasMessageContaining("cannot be canceled after");
+                    .hasMessageContaining("outside window");
         }
     }
 
@@ -325,6 +347,7 @@ class ReservationServiceImplementationTest {
             ReservationDTO result = service.approve(reservation.getId(), 999L);
             assertThat(result.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
             verify(notificationService).notifyReservationApproved(reservation);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_APPROVED"), eq(reservation.getId().toString()), any());
         }
     }
 
@@ -374,6 +397,7 @@ class ReservationServiceImplementationTest {
             ReservationAttendee attendee = reservation.getAttendeeRecords().get(0);
             assertThat(attendee.getIdNumber()).isEqualTo("ID-1");
             verify(reservationRepository).save(reservation);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_CHECKED_IN"), eq(reservation.getId().toString()), any());
         }
     }
 
@@ -412,6 +436,7 @@ class ReservationServiceImplementationTest {
 
             ReservationDTO result = service.markNoShow(reservation.getId());
             assertThat(result.getStatus()).isEqualTo(ReservationStatus.NO_SHOW);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_MARKED_NO_SHOW"), eq(reservation.getId().toString()), any());
         }
     }
 
@@ -449,7 +474,11 @@ class ReservationServiceImplementationTest {
             service.delete(canceled.getId());
             assertThat(canceled.getDeletedAt()).isNotNull();
             mocked.verify(() -> SecurityUtils.requireSelfOrAny(555L, UserRole.SUPERVISOR, UserRole.ADMIN));
+            verify(auditLogService, times(1)).logEvent(any(), eq("RESERVATION_SOFT_DELETED"),
+                    eq(canceled.getId().toString()), any());
         }
+
+        clearInvocations(auditLogService);
 
         Reservation active = reservationBuilder()
                 .withStatus(ReservationStatus.CONFIRMED)
@@ -464,6 +493,8 @@ class ReservationServiceImplementationTest {
 
             service.delete(active.getId());
             mocked.verify(() -> SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN));
+            verify(auditLogService, times(1)).logEvent(any(), eq("RESERVATION_SOFT_DELETED"),
+                    eq(active.getId().toString()), any());
         }
     }
 
@@ -479,6 +510,7 @@ class ReservationServiceImplementationTest {
 
             service.hardDelete(reservation.getId());
             verify(reservationRepository).delete(reservation);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_HARD_DELETED"), eq(reservation.getId().toString()), any());
         }
     }
 

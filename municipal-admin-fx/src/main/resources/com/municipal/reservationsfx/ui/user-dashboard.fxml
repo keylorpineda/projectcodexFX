@@ -344,6 +344,11 @@
                         <VBox spacing="8">
                             <Label text="Reportes personales" styleClass="page-title"/>
                             <Label text="Visualiza tus estadísticas y patrones de uso" styleClass="page-subtitle"/>
+                            <HBox spacing="10">
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="⬇️ Exportar historial" onAction="#handleExportPersonalHistory"
+                                        styleClass="pill-button"/>
+                            </HBox>
                         </VBox>
 
                         <HBox spacing="20">
