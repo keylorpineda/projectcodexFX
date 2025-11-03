@@ -57,4 +57,44 @@ public class SpaceService {
         String path = "/api/spaces/available?startTime=" + startTime + "&endTime=" + endTime;
         return apiClient.get(path, bearerToken, SPACE_LIST_TYPE);
     }
+    
+    /**
+     * Busca espacios con filtros avanzados usando el endpoint /api/spaces/search.
+     * Todos los parámetros son opcionales.
+     */
+    public List<SpaceDTO> searchSpaces(String type, Integer minCapacity, Integer maxCapacity, 
+                                       String location, Boolean active, String bearerToken) {
+        StringBuilder path = new StringBuilder("/api/spaces/search?");
+        boolean firstParam = true;
+        
+        if (type != null && !type.isBlank()) {
+            path.append("type=").append(type);
+            firstParam = false;
+        }
+        
+        if (minCapacity != null) {
+            if (!firstParam) path.append("&");
+            path.append("minCapacity=").append(minCapacity);
+            firstParam = false;
+        }
+        
+        if (maxCapacity != null) {
+            if (!firstParam) path.append("&");
+            path.append("maxCapacity=").append(maxCapacity);
+            firstParam = false;
+        }
+        
+        if (location != null && !location.isBlank()) {
+            if (!firstParam) path.append("&");
+            path.append("location=").append(location);
+            firstParam = false;
+        }
+        
+        if (active != null) {
+            if (!firstParam) path.append("&");
+            path.append("active=").append(active);
+        }
+        
+        return apiClient.get(path.toString(), bearerToken, SPACE_LIST_TYPE);
+    }
 }

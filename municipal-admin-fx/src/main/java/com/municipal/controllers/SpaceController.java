@@ -45,4 +45,20 @@ public class SpaceController {
     public List<SpaceDTO> loadAvailableSpaces(String startTime, String endTime, String bearerToken) {
         return spaceService.findAvailableSpaces(startTime, endTime, bearerToken);
     }
+    
+    /**
+     * Busca espacios con filtros avanzados.
+     * 
+     * @param type Tipo de espacio (opcional)
+     * @param minCapacity Capacidad mínima (opcional)
+     * @param maxCapacity Capacidad máxima (opcional)
+     * @param location Ubicación parcial (opcional)
+     * @param active Estado activo (opcional)
+     * @param bearerToken Token de autenticación
+     * @return Lista de espacios filtrados
+     */
+    public List<SpaceDTO> searchSpaces(String type, Integer minCapacity, Integer maxCapacity, 
+                                       String location, Boolean active, String bearerToken) {
+        return spaceService.searchSpaces(type, minCapacity, maxCapacity, location, active, bearerToken);
+    }
 }

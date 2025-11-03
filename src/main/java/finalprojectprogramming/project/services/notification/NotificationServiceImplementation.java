@@ -162,19 +162,22 @@ public class NotificationServiceImplementation implements NotificationService {
                 .build();
         
         try {
-            // Enviar email personalizado
-            emailService.sendCustomEmail(reservation, subject, message);
-            LOGGER.info("Custom email sent to {} for reservation {}", reservation.getUser().getEmail(), reservationId);
+            // Enviar email personalizado del admin (SIN datos de reserva, solo el mensaje)
+            String userName = reservation.getUser().getName();
+            String userEmail = reservation.getUser().getEmail();
+            emailService.sendCustomAdminEmail(userEmail, userName, subject, message);
+            LOGGER.info("Custom admin email sent to {} (no reservation details included)", userEmail);
             
             // Auditoría: Email personalizado enviado
             recordAudit("CUSTOM_EMAIL_SENT", notification, details -> {
                 details.put("subject", subject);
-                details.put("recipientEmail", reservation.getUser().getEmail());
-                details.put("reservationId", reservationId);
+                details.put("recipientEmail", userEmail);
+                details.put("messageLength", message.length());
+                details.put("note", "Email personalizado sin datos de reserva");
             });
         } catch (MailSendingException ex) {
             notification.setStatus(NotificationStatus.FAILED);
-            LOGGER.error("Failed to send custom email for reservation {}", reservationId, ex);
+            LOGGER.error("Failed to send custom email for user {}", reservation.getUser().getEmail(), ex);
             throw ex;
         } finally {
             // Guardar notificación de todas formas

@@ -53,21 +53,23 @@ public class EmailServiceImplementation implements EmailService {
     }
 
     @Override
-    public void sendReservationCreated(Reservation reservation) {
+    public void sendReservationPending(Reservation reservation) {
         String subject = "¡Tu solicitud de reserva fue recibida!";
         String preheader = "Estamos revisando la disponibilidad de tu espacio.";
-        String title = "Reserva en proceso";
+        String title = "Solicitud recibida";
         String intro = "Hemos recibido tu solicitud y la municipalidad la revisará en breve.";
-        send(reservation, subject, preheader, title, intro, "#6C63FF");
+        // NO incluye código QR - la reserva aún no está confirmada
+        sendReservationEmail(reservation, subject, preheader, title, intro, "#6C63FF", false);
     }
 
     @Override
-    public void sendReservationApproved(Reservation reservation) {
-        String subject = "¡Tu reserva está confirmada!";
-        String preheader = "Todo listo para disfrutar del espacio.";
+    public void sendReservationConfirmed(Reservation reservation) {
+        String subject = "¡Tu reserva está confirmada! ✓";
+        String preheader = "Todo listo para disfrutar del espacio. Aquí está tu código QR.";
         String title = "Reserva confirmada";
-        String intro = "Tu solicitud fue aprobada y el espacio ya está reservado a tu nombre.";
-        send(reservation, subject, preheader, title, intro, "#38B2AC");
+        String intro = "Tu solicitud fue aprobada y el espacio ya está reservado a tu nombre. Presentá el código QR al ingresar.";
+        // INCLUYE código QR - la reserva está confirmada
+        sendReservationEmail(reservation, subject, preheader, title, intro, "#38B2AC", true);
     }
 
     @Override
@@ -76,29 +78,186 @@ public class EmailServiceImplementation implements EmailService {
         String preheader = "Te contamos los detalles de la cancelación.";
         String title = "Reserva cancelada";
         String intro = "La reserva ha sido cancelada. Aquí tienes un resumen con la información clave.";
-        send(reservation, subject, preheader, title, intro, "#F56565");
+        // NO incluye código QR - la reserva ya no es válida
+        sendReservationEmail(reservation, subject, preheader, title, intro, "#F56565", false);
     }
-
+    
     @Override
-    public void sendCustomEmail(Reservation reservation, String subject, String customMessage) {
-        String preheader = "Mensaje importante sobre tu reserva.";
-        String title = "Notificación de reserva";
-        String intro = customMessage;
-        send(reservation, subject, preheader, title, intro, "#4C51BF");
+    public void sendReservationReminder(Reservation reservation) {
+        String subject = "Recordatorio: Tu reserva es pronto";
+        String preheader = "No olvidés presentarte con tu código QR.";
+        String title = "Recordatorio de reserva";
+        String intro = "Tu reserva está próxima. Recordá llegar 10 minutos antes y presentar tu código QR.";
+        // INCLUYE código QR - el usuario lo necesita para el ingreso
+        sendReservationEmail(reservation, subject, preheader, title, intro, "#F59E0B", true);
+    }
+    
+    @Override
+    public void sendCheckInConfirmed(Reservation reservation) {
+        String subject = "Check-in registrado exitosamente";
+        String preheader = "Tu ingreso al espacio fue confirmado.";
+        String title = "Ingreso confirmado";
+        String intro = "El ingreso al espacio fue registrado correctamente. Disfrutá tu reserva.";
+        // NO incluye código QR - ya se hizo check-in
+        sendReservationEmail(reservation, subject, preheader, title, intro, "#10B981", false);
+    }
+    
+    @Override
+    public void sendCustomAdminEmail(String recipientEmail, String recipientName, String subject, String message) {
+        // Validaciones
+        if (!StringUtils.hasText(recipientEmail)) {
+            LOGGER.warn("Cannot send custom admin email: recipient email is empty");
+            return;
+        }
+        
+        if (!StringUtils.hasText(subject)) {
+            subject = "Notificación de la Municipalidad";
+        }
+        
+        if (!StringUtils.hasText(message)) {
+            LOGGER.warn("Cannot send custom admin email: message is empty");
+            return;
+        }
+        
+        String recipientDisplay = StringUtils.hasText(recipientName) ? recipientName : "Usuario";
+        String preheader = "Mensaje importante de la administración municipal.";
+        String title = "Notificación oficial";
+        
+        // Email personalizado SIN datos de reserva
+        String htmlBody = buildCustomAdminHtml(recipientDisplay, preheader, title, message);
+        
+        try {
+            var mimeMessage = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    StandardCharsets.UTF_8.name());
+            helper.setTo(recipientEmail);
+            helper.setSubject(subject);
+            String fromAddress = StringUtils.hasText(mailConfig.getAddress()) ? mailConfig.getAddress()
+                    : recipientEmail;
+            String fromName = StringUtils.hasText(mailConfig.getName()) ? mailConfig.getName()
+                    : "Municipalidad de Pérez Zeledón";
+            try {
+                helper.setFrom(fromAddress, fromName);
+            } catch (UnsupportedEncodingException ex) {
+                LOGGER.warn("Invalid sender encoding, using raw address instead", ex);
+                helper.setFrom(fromAddress);
+            }
+            helper.setText(htmlBody, true);
+            
+            mailSender.send(mimeMessage);
+            LOGGER.info("Custom admin email sent to {} with subject: {}", recipientEmail, subject);
+        } catch (MessagingException | MailException ex) {
+            LOGGER.error("Error sending custom admin email to {}", recipientEmail, ex);
+            throw new MailSendingException("Error sending custom email", ex);
+        }
+    }
+    
+    @Override
+    public void sendWelcomeEmail(User user) {
+        if (user == null || !StringUtils.hasText(user.getEmail())) {
+            LOGGER.warn("Cannot send welcome email: user or email is null");
+            return;
+        }
+        
+        String subject = "¡Bienvenido al Sistema de Reservas Municipal!";
+        String preheader = "Tu cuenta ha sido creada exitosamente.";
+        String title = "Cuenta creada";
+        String userName = StringUtils.hasText(user.getName()) ? user.getName() : "Usuario";
+        
+        String htmlBody = buildWelcomeHtml(userName, user.getEmail(), preheader, title);
+        
+        try {
+            var mimeMessage = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
+            helper.setTo(user.getEmail());
+            helper.setSubject(subject);
+            String fromAddress = StringUtils.hasText(mailConfig.getAddress()) ? mailConfig.getAddress()
+                    : user.getEmail();
+            String fromName = StringUtils.hasText(mailConfig.getName()) ? mailConfig.getName()
+                    : "Municipalidad de Pérez Zeledón";
+            try {
+                helper.setFrom(fromAddress, fromName);
+            } catch (UnsupportedEncodingException ex) {
+                LOGGER.warn("Invalid sender encoding, using raw address instead", ex);
+                helper.setFrom(fromAddress);
+            }
+            helper.setText(htmlBody, true);
+            
+            mailSender.send(mimeMessage);
+            LOGGER.info("Welcome email sent to {}", user.getEmail());
+        } catch (MessagingException | MailException ex) {
+            LOGGER.error("Error sending welcome email to {}", user.getEmail(), ex);
+            throw new MailSendingException("Error sending welcome email", ex);
+        }
+    }
+    
+    @Override
+    public void sendPasswordResetEmail(User user, String resetToken) {
+        if (user == null || !StringUtils.hasText(user.getEmail())) {
+            LOGGER.warn("Cannot send password reset email: user or email is null");
+            return;
+        }
+        
+        if (!StringUtils.hasText(resetToken)) {
+            LOGGER.warn("Cannot send password reset email: reset token is empty");
+            return;
+        }
+        
+        String subject = "Restablecer tu contraseña";
+        String preheader = "Recibimos tu solicitud para cambiar tu contraseña.";
+        String title = "Restablecer contraseña";
+        String userName = StringUtils.hasText(user.getName()) ? user.getName() : "Usuario";
+        
+        String htmlBody = buildPasswordResetHtml(userName, resetToken, preheader, title);
+        
+        try {
+            var mimeMessage = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
+            helper.setTo(user.getEmail());
+            helper.setSubject(subject);
+            String fromAddress = StringUtils.hasText(mailConfig.getAddress()) ? mailConfig.getAddress()
+                    : user.getEmail();
+            String fromName = StringUtils.hasText(mailConfig.getName()) ? mailConfig.getName()
+                    : "Municipalidad de Pérez Zeledón";
+            try {
+                helper.setFrom(fromAddress, fromName);
+            } catch (UnsupportedEncodingException ex) {
+                LOGGER.warn("Invalid sender encoding, using raw address instead", ex);
+                helper.setFrom(fromAddress);
+            }
+            helper.setText(htmlBody, true);
+            
+            mailSender.send(mimeMessage);
+            LOGGER.info("Password reset email sent to {}", user.getEmail());
+        } catch (MessagingException | MailException ex) {
+            LOGGER.error("Error sending password reset email to {}", user.getEmail(), ex);
+            throw new MailSendingException("Error sending password reset email", ex);
+        }
     }
 
-    private void send(Reservation reservation, String subject, String preheader, String title, String intro,
-            String accentColor) {
+    /**
+     * Envía un email relacionado con una reserva.
+     * 
+     * @param reservation La reserva relacionada
+     * @param subject Asunto del email
+     * @param preheader Texto preview del email
+     * @param title Título principal
+     * @param intro Introducción/mensaje principal
+     * @param accentColor Color de acento en hexadecimal
+     * @param includeQR Si debe incluir el código QR (solo para confirmaciones y recordatorios)
+     */
+    private void sendReservationEmail(Reservation reservation, String subject, String preheader, String title, String intro,
+            String accentColor, boolean includeQR) {
         User user = reservation.getUser();
         if (user == null || !StringUtils.hasText(user.getEmail())) {
             LOGGER.warn("Skipping email for reservation {} because it has no recipient email configured", reservation.getId());
             return;
         }
         
-        // Generar imagen QR si existe código
+        // Generar imagen QR solo si se solicita Y existe código
         String qrImageCid = null;
         byte[] qrImageBytes = null;
-        if (StringUtils.hasText(reservation.getQrCode())) {
+        if (includeQR && StringUtils.hasText(reservation.getQrCode())) {
             try {
                 qrImageBytes = qrCodeService.generateQRCodeImage(reservation.getQrCode(), 250, 250);
                 qrImageCid = "qr-code-" + reservation.getId();
@@ -127,7 +286,7 @@ public class EmailServiceImplementation implements EmailService {
             }
             helper.setText(htmlBody, true);
             
-            // Adjuntar imagen QR como recurso embebido
+            // Adjuntar imagen QR como recurso embebido si está disponible
             if (qrImageBytes != null && qrImageCid != null) {
                 DataSource qrDataSource = new ByteArrayDataSource(qrImageBytes, "image/png");
                 helper.addInline(qrImageCid, qrDataSource);
@@ -494,6 +653,156 @@ public class EmailServiceImplementation implements EmailService {
         return Arrays.stream(lines)
                 .map(line -> line.replaceAll("[ \t]{2,}", " ").strip())
                 .collect(Collectors.joining("\n"));
+    }
+    
+    /**
+     * Construye HTML para email personalizado del admin (SIN datos de reserva).
+     */
+    private String buildCustomAdminHtml(String recipientName, String preheader, String title, String message) {
+        String sanitizedName = sanitize(recipientName);
+        String sanitizedMessage = sanitize(message);
+        
+        StringBuilder builder = new StringBuilder();
+        builder.append("<!DOCTYPE html>")
+                .append("<html lang=\"es\">")
+                .append("<head><meta charset=\"UTF-8\"><meta name=\"color-scheme\" content=\"light\"/>")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
+                .append("<title>").append(title).append("</title></head>")
+                .append("<body style=\"margin:0;padding:32px;background:#f4f7fb;font-family:'Segoe UI',Arial,sans-serif;\">")
+                .append("<div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;padding:36px;box-shadow:0 24px 48px rgba(15,35,95,0.12);\">")
+                .append("<div style=\"font-size:0;color:transparent;height:0;overflow:hidden\">").append(preheader).append("</div>")
+                .append("<div style=\"text-align:center\">")
+                .append("<div style=\"display:inline-block;padding:12px 20px;border-radius:999px;background:#4C51BF14;color:#4C51BF;font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;\">")
+                .append(escape(title))
+                .append("</div>")
+                .append("<h1 style=\"color:#0f235f;font-size:28px;margin:20px 0 14px;font-weight:700;\">Municipalidad de Pérez Zeledón</h1>")
+                .append("</div>")
+                .append("<div style=\"background:#f5f7ff;border-radius:16px;padding:24px;margin:24px 0;\">")
+                .append("<p style=\"margin:0 0 12px;font-size:16px;color:#1f2a44;font-weight:600;\">Hola, ").append(escape(sanitizedName)).append(":</p>")
+                .append("<p style=\"margin:0;font-size:15px;line-height:1.7;color:#4c5d73;white-space:pre-wrap;\">")
+                .append(formatMultiline(sanitizedMessage))
+                .append("</p>")
+                .append("</div>")
+                .append("<div style=\"border-radius:16px;padding:24px;background:#0f235f;color:#ffffff;margin-top:28px;\">")
+                .append("<h2 style=\"margin:0;font-size:22px;\">💬 ¿Necesitas ayuda?</h2>")
+                .append("<p style=\"margin:12px 0 0;font-size:15px;line-height:1.6;color:#d9e2ff;\">")
+                .append("Respondé este correo o contactá a la Oficina de Atención al Ciudadano de la Municipalidad.")
+                .append("</p>")
+                .append("</div>")
+                .append("<p style=\"color:#6b7a99;font-size:13px;text-align:center;margin:28px 0 0;\">")
+                .append("© ").append(LocalDateTime.now().getYear())
+                .append(" Municipalidad de Pérez Zeledón. Todos los derechos reservados.")
+                .append("</p>")
+                .append("</div></body></html>");
+        return builder.toString();
+    }
+    
+    /**
+     * Construye HTML para email de bienvenida a nuevos usuarios.
+     */
+    private String buildWelcomeHtml(String userName, String userEmail, String preheader, String title) {
+        String sanitizedName = sanitize(userName);
+        String sanitizedEmail = sanitize(userEmail);
+        
+        StringBuilder builder = new StringBuilder();
+        builder.append("<!DOCTYPE html>")
+                .append("<html lang=\"es\">")
+                .append("<head><meta charset=\"UTF-8\"><meta name=\"color-scheme\" content=\"light\"/>")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
+                .append("<title>").append(title).append("</title></head>")
+                .append("<body style=\"margin:0;padding:32px;background:#f4f7fb;font-family:'Segoe UI',Arial,sans-serif;\">")
+                .append("<div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;padding:36px;box-shadow:0 24px 48px rgba(15,35,95,0.12);\">")
+                .append("<div style=\"font-size:0;color:transparent;height:0;overflow:hidden\">").append(preheader).append("</div>")
+                .append("<div style=\"text-align:center\">")
+                .append("<div style=\"display:inline-block;padding:12px 20px;border-radius:999px;background:#10B98114;color:#10B981;font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;\">")
+                .append(escape(title))
+                .append("</div>")
+                .append("<h1 style=\"color:#0f235f;font-size:28px;margin:20px 0 14px;font-weight:700;\">¡Bienvenido al Sistema de Reservas!</h1>")
+                .append("<p style=\"color:#4c5d73;font-size:16px;line-height:1.6;margin:0 auto 24px;max-width:460px;\">")
+                .append("Tu cuenta ha sido creada exitosamente. Ahora podés reservar espacios municipales de forma rápida y segura.")
+                .append("</p>")
+                .append("</div>")
+                .append("<div style=\"background:#f5f7ff;border-radius:16px;padding:24px;margin-bottom:20px;\">")
+                .append("<h3 style=\"margin:0 0 14px;font-size:18px;color:#0f235f;\">📋 Tus datos de acceso</h3>")
+                .append(detailRow("Nombre", sanitizedName))
+                .append(detailRow("Email", sanitizedEmail))
+                .append("</div>")
+                .append("<div style=\"background:#eef3ff;border-radius:16px;padding:24px;margin-bottom:28px;\">")
+                .append("<h3 style=\"margin:0 0 14px;font-size:18px;color:#1f2a44;\">🚀 Primeros pasos</h3>")
+                .append("<ul style=\"margin:0;padding-left:20px;color:#1f2a44;font-size:15px;line-height:1.6;\">")
+                .append("<li style=\"margin-bottom:8px;\">Explorá los espacios disponibles desde la plataforma</li>")
+                .append("<li style=\"margin-bottom:8px;\">Seleccioná fecha, hora y espacio que necesitás</li>")
+                .append("<li style=\"margin-bottom:8px;\">Enviá tu solicitud de reserva</li>")
+                .append("<li style=\"margin-bottom:8px;\">Esperá la confirmación del administrador</li>")
+                .append("<li style=\"margin-bottom:8px;\">Recibí tu código QR para el ingreso</li>")
+                .append("</ul>")
+                .append("</div>")
+                .append("<div style=\"border-radius:16px;padding:24px;background:#0f235f;color:#ffffff;\">")
+                .append("<h2 style=\"margin:0;font-size:22px;\">💬 ¿Necesitas ayuda?</h2>")
+                .append("<p style=\"margin:12px 0 0;font-size:15px;line-height:1.6;color:#d9e2ff;\">")
+                .append("Respondé este correo o contactá a la Oficina de Reservas para cualquier consulta.")
+                .append("</p>")
+                .append("</div>")
+                .append("<p style=\"color:#6b7a99;font-size:13px;text-align:center;margin:28px 0 0;\">")
+                .append("© ").append(LocalDateTime.now().getYear())
+                .append(" Municipalidad de Pérez Zeledón. Todos los derechos reservados.")
+                .append("</p>")
+                .append("</div></body></html>");
+        return builder.toString();
+    }
+    
+    /**
+     * Construye HTML para email de restablecimiento de contraseña.
+     */
+    private String buildPasswordResetHtml(String userName, String resetToken, String preheader, String title) {
+        String sanitizedName = sanitize(userName);
+        String sanitizedToken = sanitize(resetToken);
+        
+        StringBuilder builder = new StringBuilder();
+        builder.append("<!DOCTYPE html>")
+                .append("<html lang=\"es\">")
+                .append("<head><meta charset=\"UTF-8\"><meta name=\"color-scheme\" content=\"light\"/>")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
+                .append("<title>").append(title).append("</title></head>")
+                .append("<body style=\"margin:0;padding:32px;background:#f4f7fb;font-family:'Segoe UI',Arial,sans-serif;\">")
+                .append("<div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;padding:36px;box-shadow:0 24px 48px rgba(15,35,95,0.12);\">")
+                .append("<div style=\"font-size:0;color:transparent;height:0;overflow:hidden\">").append(preheader).append("</div>")
+                .append("<div style=\"text-align:center\">")
+                .append("<div style=\"display:inline-block;padding:12px 20px;border-radius:999px;background:#F59E0B14;color:#F59E0B;font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;\">")
+                .append(escape(title))
+                .append("</div>")
+                .append("<h1 style=\"color:#0f235f;font-size:28px;margin:20px 0 14px;font-weight:700;\">Restablecer contraseña</h1>")
+                .append("<p style=\"color:#4c5d73;font-size:16px;line-height:1.6;margin:0 auto 24px;max-width:460px;\">")
+                .append("Recibimos tu solicitud para cambiar tu contraseña. Usá el código de abajo para completar el proceso.")
+                .append("</p>")
+                .append("</div>")
+                .append("<div style=\"background:#fff7ed;border-radius:16px;padding:32px;margin-bottom:28px;text-align:center;border:2px solid #F59E0B30;\">")
+                .append("<p style=\"margin:0 0 12px;font-size:14px;font-weight:700;color:#0f235f;letter-spacing:0.5px;\">Código de restablecimiento</p>")
+                .append("<p style=\"margin:0;font-size:24px;font-weight:800;color:#F59E0B;font-family:'Courier New',monospace;letter-spacing:4px;\">")
+                .append(escape(sanitizedToken))
+                .append("</p>")
+                .append("<p style=\"margin:16px auto 0;font-size:13px;color:#4c5d73;max-width:400px;line-height:1.5;\">")
+                .append("⏱️ Este código es válido por 30 minutos")
+                .append("</p>")
+                .append("</div>")
+                .append("<div style=\"background:#fee9ec;border-radius:14px;padding:22px;margin-bottom:28px;border:1px solid #f8b7c1;\">")
+                .append("<h3 style=\"margin:0 0 10px;font-size:17px;color:#a30b2f;\">⚠️ Seguridad importante</h3>")
+                .append("<p style=\"margin:0;font-size:15px;line-height:1.6;color:#781125;\">")
+                .append("Si no solicitaste este cambio, ignorá este correo. Tu contraseña actual seguirá siendo válida.")
+                .append("</p>")
+                .append("</div>")
+                .append("<div style=\"border-radius:16px;padding:24px;background:#0f235f;color:#ffffff;\">")
+                .append("<h2 style=\"margin:0;font-size:22px;\">💬 ¿Necesitas ayuda?</h2>")
+                .append("<p style=\"margin:12px 0 0;font-size:15px;line-height:1.6;color:#d9e2ff;\">")
+                .append("Respondé este correo o contactá al equipo de soporte técnico.")
+                .append("</p>")
+                .append("</div>")
+                .append("<p style=\"color:#6b7a99;font-size:13px;text-align:center;margin:28px 0 0;\">")
+                .append("© ").append(LocalDateTime.now().getYear())
+                .append(" Municipalidad de Pérez Zeledón. Todos los derechos reservados.")
+                .append("</p>")
+                .append("</div></body></html>");
+        return builder.toString();
     }
 
     public static class MailSendingException extends RuntimeException {

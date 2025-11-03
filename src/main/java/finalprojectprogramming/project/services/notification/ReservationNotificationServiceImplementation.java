@@ -34,13 +34,13 @@ public class ReservationNotificationServiceImplementation implements Reservation
 
     @Override
     public void notifyReservationCreated(Reservation reservation) {
-        dispatch(reservation, NotificationType.CONFIRMATION, () -> emailService.sendReservationCreated(reservation),
+        dispatch(reservation, NotificationType.CONFIRMATION, () -> emailService.sendReservationPending(reservation),
                 "Se registró tu solicitud de reserva.");
     }
 
     @Override
     public void notifyReservationApproved(Reservation reservation) {
-        dispatch(reservation, NotificationType.CONFIRMATION, () -> emailService.sendReservationApproved(reservation),
+        dispatch(reservation, NotificationType.CONFIRMATION, () -> emailService.sendReservationConfirmed(reservation),
                 "Tu reserva fue aprobada.");
     }
 

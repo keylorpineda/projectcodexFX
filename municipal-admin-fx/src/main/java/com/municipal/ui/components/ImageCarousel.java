@@ -1,5 +1,6 @@
 package com.municipal.ui.components;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Pos;
@@ -102,7 +103,7 @@ public class ImageCarousel extends StackPane {
     private void showPrevious() {
         if (images.isEmpty()) return;
         currentIndex = (currentIndex - 1 + images.size()) % images.size();
-        updateDisplay();
+        updateDisplayWithFade();
         updateDots();
         resetAutoPlay();
     }
@@ -110,11 +111,47 @@ public class ImageCarousel extends StackPane {
     private void showNext() {
         if (images.isEmpty()) return;
         currentIndex = (currentIndex + 1) % images.size();
-        updateDisplay();
+        updateDisplayWithFade();
         updateDots();
         resetAutoPlay();
     }
     
+    /**
+     * Actualiza la imagen con transición fade suave.
+     */
+    private void updateDisplayWithFade() {
+        if (images.isEmpty()) {
+            imageView.setImage(null);
+            btnPrev.setVisible(false);
+            btnNext.setVisible(false);
+            return;
+        }
+        
+        // Fade out
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(200), imageView);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.0);
+        
+        fadeOut.setOnFinished(e -> {
+            // Cambiar imagen cuando está invisible
+            imageView.setImage(images.get(currentIndex));
+            
+            // Fade in
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(300), imageView);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+            fadeIn.play();
+        });
+        
+        fadeOut.play();
+        
+        btnPrev.setVisible(images.size() > 1);
+        btnNext.setVisible(images.size() > 1);
+    }
+    
+    /**
+     * Actualiza la imagen sin transición (para cambios instantáneos).
+     */
     private void updateDisplay() {
         if (images.isEmpty()) {
             imageView.setImage(null);
@@ -139,7 +176,7 @@ public class ImageCarousel extends StackPane {
             final int index = i;
             dot.setOnMouseClicked(e -> {
                 currentIndex = index;
-                updateDisplay();
+                updateDisplayWithFade();
                 updateDots();
                 resetAutoPlay();
             });

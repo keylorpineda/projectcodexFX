@@ -2378,7 +2378,52 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
             return;
         }
         
-        System.out.println("📊 Filtrando espacios. Total en listaEspacios: " + listaEspacios.size());
+        String busqueda = txtBuscarEspacio != null ? txtBuscarEspacio.getText().trim() : "";
+        String tipoSeleccionado = cmbTipoEspacio != null ? cmbTipoEspacio.getValue() : "Todos los tipos";
+        String estadoSeleccionado = cmbEstadoEspacio != null ? cmbEstadoEspacio.getValue() : "Todos los estados";
+        
+        // Preparar parámetros para la API (variables finales para lambda)
+        final String type = (tipoSeleccionado != null && !"Todos los tipos".equals(tipoSeleccionado)) 
+            ? tipoSeleccionado : null;
+        final String location = (!busqueda.isEmpty()) ? busqueda : null;
+        final Boolean active;
+        if ("Disponible".equalsIgnoreCase(estadoSeleccionado)) {
+            active = true;
+        } else if ("Ocupado".equalsIgnoreCase(estadoSeleccionado) || "Inactivo".equalsIgnoreCase(estadoSeleccionado)) {
+            active = false;
+        } else {
+            active = null;
+        }
+        
+        System.out.println("� Filtrando espacios con API: type=" + type + ", location=" + location + ", active=" + active);
+        
+        String token = obtenerToken();
+        if (token == null) {
+            System.out.println("⚠️ No hay token, usando filtrado local");
+            filtrarEspaciosLocal();
+            return;
+        }
+        
+        // Llamar a la API en background
+        ejecutarOperacionAsync(
+            () -> spaceController.searchSpaces(type, null, null, location, active, token),
+            espacios -> {
+                listaEspaciosFiltrados.clear();
+                listaEspaciosFiltrados.addAll(espacios);
+                System.out.println("✅ Espacios filtrados desde API: " + listaEspaciosFiltrados.size());
+                tablaEspacios.setItems(listaEspaciosFiltrados);
+                tablaEspacios.refresh();
+            },
+            "Buscando espacios...",
+            "Error al filtrar espacios"
+        );
+    }
+    
+    /**
+     * Filtrado local como fallback (si no hay token o falla la API).
+     */
+    private void filtrarEspaciosLocal() {
+        System.out.println("�📊 Filtrando espacios localmente. Total en listaEspacios: " + listaEspacios.size());
         
         String busqueda = txtBuscarEspacio != null ? txtBuscarEspacio.getText().toLowerCase() : "";
         String tipoSeleccionado = cmbTipoEspacio != null ? cmbTipoEspacio.getValue() : "Todos los tipos";
@@ -2422,7 +2467,7 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
                 .collect(Collectors.toList())
         );
 
-        System.out.println("📊 Espacios filtrados: " + listaEspaciosFiltrados.size());
+        System.out.println("📊 Espacios filtrados localmente: " + listaEspaciosFiltrados.size());
         tablaEspacios.setItems(listaEspaciosFiltrados);
         tablaEspacios.refresh();
     }
@@ -2702,31 +2747,71 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
         if (espacio == null) {
             return;
         }
-        StringBuilder detalles = new StringBuilder();
-        detalles.append("Tipo: ").append(espacio.type()).append('\n');
-        detalles.append("Capacidad: ").append(espacio.capacity()).append(" personas\n");
-        detalles.append("Ubicación: ")
-                .append(espacio.location() != null && !espacio.location().isBlank()
-                        ? espacio.location()
-                        : "No registrada")
-                .append('\n');
-        detalles.append("Duración máxima: ")
-                .append(espacio.maxReservationDuration() != null 
-                    ? String.format("%.1f horas (%d minutos)", espacio.maxReservationDuration() / 60.0, espacio.maxReservationDuration())
-                    : "No definida")
-                .append('\n');
-        detalles.append("Requiere aprobación: ").append(espacio.requiresApproval() ? "Sí" : "No").append('\n');
-        detalles.append("Estado: ").append(espacio.active() ? "Activo" : "Inactivo").append('\n');
-        detalles.append("Descripción: ")
-                .append(espacio.description() != null && !espacio.description().isBlank()
-                        ? espacio.description()
-                        : "Sin descripción disponible");
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Detalles del espacio");
-        alert.setHeaderText(espacio.name());
-        alert.setContentText(detalles.toString());
-        alert.showAndWait();
+        
+        // Crear diálogo personalizado con carrusel
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Detalles del espacio");
+        dialog.setHeaderText(espacio.name());
+        
+        // Contenedor principal
+        VBox contenido = new VBox(15);
+        contenido.setPadding(new Insets(20));
+        contenido.setMaxWidth(600);
+        
+        // Si el espacio tiene imágenes, agregar carrusel
+        if (espacio.imageIds() != null && !espacio.imageIds().isEmpty()) {
+            ImageCarousel carousel = new ImageCarousel(500, 300);
+            carousel.getStyleClass().add("space-detail-carousel");
+            loadSpaceImages(espacio, carousel);
+            contenido.getChildren().add(carousel);
+        }
+        
+        // Información del espacio
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+        
+        int row = 0;
+        addDetailRow(grid, row++, "Tipo:", espacio.type());
+        addDetailRow(grid, row++, "Capacidad:", espacio.capacity() + " personas");
+        addDetailRow(grid, row++, "Ubicación:", 
+            espacio.location() != null && !espacio.location().isBlank() ? espacio.location() : "No registrada");
+        addDetailRow(grid, row++, "Duración máxima:", 
+            espacio.maxReservationDuration() != null 
+                ? String.format("%.1f horas (%d minutos)", espacio.maxReservationDuration() / 60.0, espacio.maxReservationDuration())
+                : "No definida");
+        addDetailRow(grid, row++, "Requiere aprobación:", espacio.requiresApproval() ? "Sí" : "No");
+        addDetailRow(grid, row++, "Estado:", espacio.active() ? "Activo ✓" : "Inactivo ✗");
+        
+        if (espacio.description() != null && !espacio.description().isBlank()) {
+            Label lblDesc = new Label("Descripción:");
+            lblDesc.setStyle("-fx-font-weight: bold;");
+            TextArea txtDesc = new TextArea(espacio.description());
+            txtDesc.setEditable(false);
+            txtDesc.setWrapText(true);
+            txtDesc.setPrefRowCount(3);
+            grid.add(lblDesc, 0, row);
+            grid.add(txtDesc, 1, row);
+        }
+        
+        contenido.getChildren().add(grid);
+        
+        dialog.getDialogPane().setContent(contenido);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
+    }
+    
+    /**
+     * Método auxiliar para agregar una fila de detalles al GridPane.
+     */
+    private void addDetailRow(GridPane grid, int row, String label, String value) {
+        Label lblKey = new Label(label);
+        lblKey.setStyle("-fx-font-weight: bold;");
+        Label lblValue = new Label(value);
+        lblValue.setWrapText(true);
+        grid.add(lblKey, 0, row);
+        grid.add(lblValue, 1, row);
     }
 
     private void editarEspacio(SpaceDTO espacio) {
@@ -4506,6 +4591,61 @@ public class AdminDashboardController implements Initializable, SessionAware, Fl
     private String capitalizeFirst(String text) {
         if (text == null || text.isEmpty()) return text;
         return text.substring(0, 1).toUpperCase() + text.substring(1);
+    }
+    
+    /**
+     * Carga las imágenes de un espacio en un ImageCarousel.
+     * Usa caché para optimizar rendimiento.
+     */
+    private void loadSpaceImages(SpaceDTO space, ImageCarousel carousel) {
+        if (space.imageIds() == null || space.imageIds().isEmpty()) {
+            return;
+        }
+
+        String token = sessionManager != null ? sessionManager.getAccessToken() : null;
+
+        Task<List<Image>> task = new Task<>() {
+            @Override
+            protected List<Image> call() throws Exception {
+                List<Image> images = new ArrayList<>();
+                ImageCache cache = ImageCache.getInstance();
+
+                for (Long imageId : space.imageIds()) {
+                    if (cache.contains(imageId)) {
+                        images.add(cache.get(imageId));
+                    } else {
+                        try {
+                            byte[] imageData = spaceImageController.downloadImage(imageId, token);
+                            if (imageData != null && imageData.length > 0) {
+                                ByteArrayInputStream bis = new ByteArrayInputStream(imageData);
+                                Image image = new Image(bis);
+                                cache.put(imageId, image);
+                                images.add(image);
+                            }
+                        } catch (Exception e) {
+                            System.err.println("⚠️ Error loading image " + imageId + ": " + e.getMessage());
+                        }
+                    }
+                }
+                return images;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            List<Image> images = task.getValue();
+            if (images != null && !images.isEmpty()) {
+                Platform.runLater(() -> carousel.setImages(images));
+            }
+        });
+
+        task.setOnFailed(e -> {
+            System.err.println("❌ Failed to load images for space " + space.id() + ": " + 
+                (task.getException() != null ? task.getException().getMessage() : "Unknown error"));
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
     
     // Records simplificados usando DTOs
