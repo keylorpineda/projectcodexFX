@@ -85,4 +85,33 @@ class WeatherControllerTest extends BaseControllerTest {
                         .param("lon", "8"))
                 .andExpect(status().isInternalServerError());
     }
+
+    @Test
+    void getCurrentWeatherParsesFirstForwardedIp() throws Exception {
+        CurrentWeatherResponse response = new CurrentWeatherResponse();
+        response.setDescription("Windy");
+        when(weatherService.getCurrentWeather(eq(12.0), eq(34.0), eq("1.1.1.1"))).thenReturn(response);
+
+        mockMvc.perform(get("/api/weather/current")
+                        .param("lat", "12")
+                        .param("lon", "34")
+                        .header("X-Forwarded-For", "1.1.1.1, 2.2.2.2"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getDailyForecastFallsBackToUnknownWhenNoIp() throws Exception {
+        WeatherDailyResponse response = new WeatherDailyResponse();
+        response.setLocation(new Location(0, 0));
+        when(weatherService.getDailyForecast(eq(0.0), eq(0.0), eq("desconocido"))).thenReturn(response);
+
+        mockMvc.perform(get("/api/weather/daily")
+                        .param("lat", "0")
+                        .param("lon", "0")
+                        .with(request -> {
+                            request.setRemoteAddr("");
+                            return request;
+                        }))
+                .andExpect(status().isOk());
+    }
 }

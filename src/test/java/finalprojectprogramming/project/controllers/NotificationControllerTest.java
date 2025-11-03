@@ -84,6 +84,48 @@ class NotificationControllerTest extends BaseControllerTest {
                 .andExpect(status().isInternalServerError());
     }
 
+        @Test
+        @WithMockUser(roles = {"ADMIN"})
+        void getNotificationByIdReturnsOk() throws Exception {
+                when(notificationService.findById(7L)).thenReturn(buildNotificationDto());
+                performGet("/api/notifications/7")
+                                .andExpect(status().isOk());
+        }
+
+        @Test
+        @WithMockUser(roles = {"ADMIN"})
+        void updateNotificationReturnsOk() throws Exception {
+                NotificationDTO dto = buildNotificationDto();
+                when(notificationService.update(eq(7L), any(NotificationDTO.class))).thenReturn(dto);
+                performPut("/api/notifications/7", dto)
+                                .andExpect(status().isOk());
+                verify(notificationService).update(eq(7L), any(NotificationDTO.class));
+        }
+
+        @Test
+        @WithMockUser(roles = {"ADMIN"})
+        void getAllNotificationsReturnsOk() throws Exception {
+                when(notificationService.findAll()).thenReturn(java.util.List.of(buildNotificationDto()));
+                performGet("/api/notifications")
+                                .andExpect(status().isOk());
+        }
+
+        @Test
+        @WithMockUser(roles = {"ADMIN"})
+        void getNotificationsByReservationReturnsOk() throws Exception {
+                when(notificationService.findByReservation(3L)).thenReturn(java.util.List.of(buildNotificationDto()));
+                performGet("/api/notifications/reservation/3")
+                                .andExpect(status().isOk());
+        }
+
+        @Test
+        @WithMockUser(roles = {"ADMIN"})
+        void deleteNotificationReturnsNoContent() throws Exception {
+                performDelete("/api/notifications/7")
+                                .andExpect(status().isNoContent());
+                verify(notificationService).delete(7L);
+        }
+
     @Test
     @WithMockUser(roles = {"ADMIN"})
     void sendCustomEmailDelegatesToService() throws Exception {

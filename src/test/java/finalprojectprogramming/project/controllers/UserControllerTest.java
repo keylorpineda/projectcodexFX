@@ -91,6 +91,17 @@ class UserControllerTest extends BaseControllerTest {
 
     @Test
     @WithMockUser(roles = {"SUPERVISOR"})
+    void getUserByIdReturnsOk() throws Exception {
+        when(userService.findById(40L)).thenReturn(buildUserOutput());
+
+        performGet("/api/users/40")
+                .andExpect(status().isOk());
+
+        verify(userService).findById(40L);
+    }
+
+    @Test
+    @WithMockUser(roles = {"SUPERVISOR"})
     void updateUserForbiddenForSupervisor() throws Exception {
         performPut("/api/users/40", buildUserInput())
                 .andExpect(status().isForbidden());

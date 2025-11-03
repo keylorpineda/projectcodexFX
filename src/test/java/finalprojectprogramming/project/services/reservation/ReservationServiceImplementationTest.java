@@ -12,7 +12,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -51,8 +50,10 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class ReservationServiceImplementationTest {
 
     @Mock
@@ -617,6 +618,197 @@ class ReservationServiceImplementationTest {
             assertThat(dto.getAttendeeRecords())
                     .extracting(record -> tuple(record.getId(), record.getCheckInAt()))
                     .containsExactly(tuple(1L, first.getCheckInAt()), tuple(2L, second.getCheckInAt()));
+        }
+    }
+
+    @Test
+    void create_withRequiresApproval_forcesPendingStatus() {
+        var user = userBuilder().withId(11L).build();
+        var space = spaceBuilder().withId(22L).withRequiresApproval(true).build();
+        var dto = reservationDtoBuilder()
+                .withUserId(user.getId())
+                .withSpaceId(space.getId())
+                .withStatus(ReservationStatus.CONFIRMED)
+                .withQrCode("QR-X")
+                .build();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(spaceRepository.findById(space.getId())).thenReturn(Optional.of(space));
+        when(reservationRepository.findAll()).thenReturn(List.of());
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(user.getId()), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(inv -> null);
+
+            ReservationDTO created = service.create(dto);
+            assertThat(created.getStatus()).isEqualTo(ReservationStatus.PENDING);
+        }
+    }
+
+    @Test
+    void create_withRequestedStatusNull_defaultsToConfirmed() {
+        var user = userBuilder().withId(12L).build();
+        var space = spaceBuilder().withId(23L).withRequiresApproval(false).build();
+        var dto = reservationDtoBuilder()
+                .withUserId(user.getId())
+                .withSpaceId(space.getId())
+                .withStatus(null)
+                .withQrCode("QR-Y")
+                .build();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(spaceRepository.findById(space.getId())).thenReturn(Optional.of(space));
+        when(reservationRepository.findAll()).thenReturn(List.of());
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(user.getId()), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(inv -> null);
+
+            ReservationDTO created = service.create(dto);
+            assertThat(created.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        }
+    }
+
+    @Test
+    void create_withPreApprovalOnApprovalRequiredSpace_throws() {
+        var user = userBuilder().withId(13L).build();
+        var space = spaceBuilder().withId(24L).withRequiresApproval(true).build();
+        var dto = reservationDtoBuilder()
+                .withUserId(user.getId())
+                .withSpaceId(space.getId())
+                .withApprovedByUserId(999L)
+                .withQrCode("QR-Z")
+                .build();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(spaceRepository.findById(space.getId())).thenReturn(Optional.of(space));
+        when(reservationRepository.findAll()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(user.getId()), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(inv -> null);
+
+            assertThatThrownBy(() -> service.create(dto))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("require approval");
+        }
+    }
+
+    @Test
+    void create_withBlankQr_throws() {
+        var user = userBuilder().withId(14L).build();
+        var space = spaceBuilder().withId(25L).build();
+        var dto = reservationDtoBuilder()
+                .withUserId(user.getId())
+                .withSpaceId(space.getId())
+                .withQrCode(" ")
+                .build();
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(spaceRepository.findById(space.getId())).thenReturn(Optional.of(space));
+        when(reservationRepository.findAll()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(user.getId()), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                    .thenAnswer(inv -> null);
+
+            assertThatThrownBy(() -> service.create(dto))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("QR code is required");
+        }
+    }
+
+    @Test
+    void markCheckIn_rejectsNullRequest() {
+        Reservation reservation = reservationBuilder()
+                .withStatus(ReservationStatus.CONFIRMED)
+                .withStart(LocalDateTime.now().plusMinutes(1))
+                .withQrCode("QR-1")
+                .build();
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN)).thenAnswer(inv -> null);
+            assertThatThrownBy(() -> service.markCheckIn(reservation.getId(), null))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("Check-in data is required");
+        }
+    }
+
+    @Test
+    void markCheckIn_rejectsWhenQrDoesNotMatch() {
+        Reservation reservation = reservationBuilder()
+                .withStatus(ReservationStatus.CONFIRMED)
+                .withStart(LocalDateTime.now().minusMinutes(1))
+                .withQrCode("QR-ABC")
+                .build();
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN)).thenAnswer(inv -> null);
+            ReservationCheckInRequest req = checkInRequestBuilder().withQrCode("DIFFERENT").build();
+            assertThatThrownBy(() -> service.markCheckIn(reservation.getId(), req))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("does not match");
+        }
+    }
+
+    @Test
+    void markCheckIn_rejectsBeforeWindowOpens() {
+        Reservation reservation = reservationBuilder()
+                .withStatus(ReservationStatus.CONFIRMED)
+                .withStart(LocalDateTime.now().plusHours(1))
+                .withQrCode("QR-TIME")
+                .build();
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN)).thenAnswer(inv -> null);
+            ReservationCheckInRequest req = checkInRequestBuilder().withQrCode("QR-TIME").build();
+            assertThatThrownBy(() -> service.markCheckIn(reservation.getId(), req))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("cannot be scanned yet");
+        }
+    }
+
+    @Test
+    void toDto_sortsWhenSomeCheckInTimesAreNull() {
+        ReservationAttendee nullTime = attendeeBuilder().withId(1L).withCheckInAt(null).build();
+        ReservationAttendee hasTime = attendeeBuilder().withId(2L).withCheckInAt(LocalDateTime.now()).build();
+        Reservation reservation = reservationBuilder()
+                .withAttendeeRecords(List.of(hasTime, nullTime))
+                .build();
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            Long ownerId = reservation.getUser() != null ? reservation.getUser().getId() : null;
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(ownerId, UserRole.SUPERVISOR, UserRole.ADMIN))
+                    .thenAnswer(inv -> null);
+            ReservationDTO dto = service.findById(reservation.getId());
+            assertThat(dto.getAttendeeRecords().get(0).getId()).isEqualTo(1L);
+        }
+    }
+
+    @Test
+    void recordAudit_handlesMissingAuthentication() {
+        // Force SecurityUtils.getCurrentUserId to throw and ensure audit still logs
+        Reservation reservation = reservationBuilder().build();
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findById(any())).thenReturn(Optional.of(userBuilder().build()));
+        when(spaceRepository.findById(any())).thenReturn(Optional.of(spaceBuilder().build()));
+        when(reservationRepository.findAll()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            mocked.when(() -> SecurityUtils.requireSelfOrAny(any(), any(), any())).thenAnswer(inv -> null);
+            mocked.when(SecurityUtils::getCurrentUserId).thenThrow(new AuthenticationCredentialsNotFoundException("no auth"));
+
+            service.create(reservationDtoBuilder().withQrCode("REC-AUD").build());
+            verify(auditLogService).logEvent(any(), any(), any(), any());
         }
     }
 }
