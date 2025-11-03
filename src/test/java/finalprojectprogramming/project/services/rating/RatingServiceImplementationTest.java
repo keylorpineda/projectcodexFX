@@ -242,4 +242,28 @@ class RatingServiceImplementationTest {
         assertThat(rating.getHelpfulCount()).isEqualTo(1);
         assertThat(h).isNotNull();
     }
+
+    @Test
+    void toggle_visibility_with_space_executes_space_fields_in_audit() {
+        // Configurar un rating con espacio asociado para cubrir las líneas que incorporan spaceId/spaceName en auditoría
+        Rating rating = new Rating();
+        rating.setId(12L);
+        rating.setVisible(true);
+        finalprojectprogramming.project.models.Space space = new finalprojectprogramming.project.models.Space();
+        space.setId(77L);
+        space.setName("Sala Magna");
+        Reservation res = activeRes(55L);
+        res.setSpace(space);
+        rating.setReservation(res);
+        // Importante: también seteamos el espacio directamente en el rating, pues recordAudit lo toma de rating.getSpace()
+        rating.setSpace(space);
+
+        when(ratingRepo.findById(12L)).thenReturn(Optional.of(rating));
+        when(ratingRepo.save(any(Rating.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RatingDTO out = service.toggleVisibility(12L);
+        assertThat(out).isNotNull();
+        // No validamos el contenido del log de auditoría, solo ejecutamos el flujo para cubrir las líneas
+        verify(ratingRepo, atLeastOnce()).save(any(Rating.class));
+    }
 }

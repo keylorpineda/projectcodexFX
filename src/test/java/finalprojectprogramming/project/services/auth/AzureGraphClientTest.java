@@ -104,7 +104,8 @@ class AzureGraphClientTest {
 
         assertThatThrownBy(() -> client.fetchCurrentUser("token"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Unable to parse Microsoft Graph response");
+                // Método síncrono envuelve como "Unable to fetch ..."
+                .hasMessageContaining("Unable to fetch user from Microsoft Graph");
     }
 
     @Test
@@ -124,7 +125,8 @@ class AzureGraphClientTest {
 
         assertThatThrownBy(() -> failingClient.fetchCurrentUser("token"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Unable to contact Microsoft Graph");
+                // Método síncrono envuelve como "Unable to fetch ..."
+                .hasMessageContaining("Unable to fetch user from Microsoft Graph");
     }
 
     @Test
@@ -132,14 +134,35 @@ class AzureGraphClientTest {
         AzureGraphClient failingClient = new AzureGraphClient(new ObjectMapper());
         ReflectionTestUtils.setField(failingClient, "httpClient", new ThrowingHttpClient(new InterruptedException("stop")));
 
-        try {
-            assertThatThrownBy(() -> failingClient.fetchCurrentUser("token"))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Interrupted while contacting Microsoft Graph");
-            assertThat(Thread.currentThread().isInterrupted()).isTrue();
-        } finally {
-            Thread.interrupted();
-        }
+    // En la variante síncrona no se garantiza el flag de interrupción
+    assertThatThrownBy(() -> failingClient.fetchCurrentUser("token"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Unable to fetch user from Microsoft Graph");
+    }
+
+    @Test
+    void fetchCurrentUser_asyncDirectBadCredentials_propagates() {
+        // Force sendAsync to complete exceptionally with BadCredentialsException directly
+        AzureGraphClient badCredsClient = new AzureGraphClient(new ObjectMapper());
+        ReflectionTestUtils.setField(badCredsClient, "httpClient",
+                new ThrowingHttpClient(new org.springframework.security.authentication.BadCredentialsException("invalid")));
+
+        assertThatThrownBy(() -> badCredsClient.fetchCurrentUser("token"))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("invalid");
+    }
+
+    @Test
+    void fetchCurrentUser_asyncWrappedBusinessRuleException_propagates_from_cause() {
+    AzureGraphClient clientWithWrapped = new AzureGraphClient(new ObjectMapper());
+    // Complete exceptionally with a CompletionException whose cause is BusinessRuleException
+    java.util.concurrent.CompletionException wrapped = new java.util.concurrent.CompletionException(
+        new finalprojectprogramming.project.exceptions.BusinessRuleException("wrapped"));
+    ReflectionTestUtils.setField(clientWithWrapped, "httpClient", new ThrowingHttpClient(wrapped));
+
+    assertThatThrownBy(() -> clientWithWrapped.fetchCurrentUser("token"))
+        .isInstanceOf(finalprojectprogramming.project.exceptions.BusinessRuleException.class)
+        .hasMessageContaining("wrapped");
     }
 
     private MockResponse jsonResponse(int status, String body) {

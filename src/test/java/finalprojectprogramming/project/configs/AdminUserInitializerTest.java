@@ -107,4 +107,29 @@ class AdminUserInitializerTest {
         assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(saved.getUpdatedAt()).isNotNull();
     }
+
+    @Test
+    void updates_only_email_when_different_without_saving_other_fields() throws Exception {
+        UserRepository repo = mock(UserRepository.class);
+        AdminUserInitializer cfg = new AdminUserInitializer();
+
+        // Existing admin is already up-to-date except for email value
+        User existing = User.builder()
+                .id(3L)
+                .email("old@example.com")
+                .name("Administrator")
+                .role(UserRole.ADMIN)
+                .active(true)
+                .build();
+
+        when(repo.findByEmail("admin@example.com")).thenReturn(Optional.of(existing));
+
+        // Run: only the email should be set on the entity, but no save() should happen
+        cfg.adminProvisioningRunner(props(true, "admin@example.com", "Administrator"), repo).run(null);
+
+        // verify that the in-memory entity got its email changed
+        assertThat(existing.getEmail()).isEqualTo("admin@example.com");
+        // and no persistence update since nothing else required changes
+        verify(repo, never()).save(any());
+    }
 }

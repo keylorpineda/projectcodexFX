@@ -45,6 +45,24 @@ class ForecastAggregatorTest {
     }
 
     @Test
+    void aggregate_skips_null_items_in_list() {
+        ForecastAggregator agg = new ForecastAggregator("UTC");
+        Forecast5Dto dto = new Forecast5Dto();
+        List<Item> items = new ArrayList<>();
+        // Insert a null item that should be skipped
+        items.add(null);
+        // And a valid item so we still get one aggregated day
+        long ts = Instant.parse("2025-04-01T00:00:00Z").getEpochSecond();
+        items.add(item(ts, 10.0, 12.0, null, 50, 2.0, null, null, null));
+        dto.setList(items);
+
+        var out = agg.aggregate(dto);
+        assertThat(out).hasSize(1);
+        assertThat(out.get(0).getTempMin()).isEqualTo(10.0);
+        assertThat(out.get(0).getTempMax()).isEqualTo(12.0);
+    }
+
+    @Test
     void aggregate_returns_empty_for_null_or_empty_input() {
         ForecastAggregator agg = new ForecastAggregator("UTC");
         assertThat(agg.aggregate(null)).isEmpty();
@@ -119,4 +137,24 @@ class ForecastAggregatorTest {
             assertThat(out.get(i).getDescription()).isEqualTo("Alpha");
         }
     }
+
+        @Test
+        void aggregate_when_all_pop_values_null_sets_pop_to_null() {
+            ForecastAggregator agg = new ForecastAggregator("UTC");
+            Forecast5Dto dto = new Forecast5Dto();
+            List<Item> items = new ArrayList<>();
+            long day = Instant.parse("2025-03-10T00:00:00Z").getEpochSecond();
+
+            // Tres mediciones para el mismo día, todas con pop = null
+            items.add(item(day, 12.0, 18.0, 15.0, 60, 3.0, null, "Clouds", "10d"));
+            items.add(item(day + 3 * 3600, null, null, 16.0, 55, 4.0, null, "clouds", "10d"));
+            items.add(item(day + 6 * 3600, null, null, 14.0, 65, null, null, null, null));
+            dto.setList(items);
+
+            List<DailyForecastDto> out = agg.aggregate(dto);
+            assertThat(out).hasSize(1);
+            DailyForecastDto d = out.get(0);
+            // Como no se registró ningún POP no nulo, el valor debe ser null
+            assertThat(d.getPop()).isNull();
+        }
 }

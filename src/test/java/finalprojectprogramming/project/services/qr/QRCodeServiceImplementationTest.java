@@ -58,4 +58,13 @@ class QRCodeServiceImplementationTest {
         assertThatThrownBy(() -> service.toBase64DataUri(new byte[0]))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void generateQRCodeImage_when_content_too_large_for_dimensions_translates_writer_exception_to_ioexception() {
+        // Texto extremadamente largo con dimensiones muy pequeñas fuerza un WriterException interno
+        String huge = "x".repeat(5000);
+        assertThatThrownBy(() -> service.generateQRCodeImage(huge, 10, 10))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("Failed to generate QR code");
+    }
 }

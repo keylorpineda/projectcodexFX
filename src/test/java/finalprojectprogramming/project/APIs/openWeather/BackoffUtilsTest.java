@@ -18,4 +18,12 @@ class BackoffUtilsTest {
         // small positive (no assertions on time)
         assertThatCode(() -> BackoffUtils.sleep(Duration.ofMillis(1))).doesNotThrowAnyException();
     }
+
+    @Test
+    void private_constructor_is_invokable_via_reflection() throws Exception {
+        var ctor = BackoffUtils.class.getDeclaredConstructor();
+        ctor.setAccessible(true);
+        // should not throw
+        ctor.newInstance();
+    }
 }

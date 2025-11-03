@@ -126,6 +126,23 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void accessDenied_uses_default_message_when_null() {
+        ResponseEntity<ApiError> res = handler.handleAccessDenied(new org.springframework.security.access.AccessDeniedException(null), request);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getMessage()).isEqualTo("Access denied");
+    }
+
+    @Test
+    void authentication_generic_uses_default_when_message_null() {
+        AuthenticationException ex = new AuthenticationException(null) {};
+        ResponseEntity<ApiError> res = handler.handleAuthentication(ex, request);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getMessage()).isEqualTo("Authentication failed");
+    }
+
+    @Test
     void badRequest_variants_and_request_ids() throws Exception {
         // HttpMessageNotReadable with InvalidFormatException on enum → mensaje incluye valores permitidos
     InvalidFormatException inv = InvalidFormatException.from(null, "bad", "X", UserRole.class);

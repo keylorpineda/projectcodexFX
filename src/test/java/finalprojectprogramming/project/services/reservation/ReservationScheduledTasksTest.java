@@ -39,18 +39,18 @@ class ReservationScheduledTasksTest {
         fresh.setStatus(ReservationStatus.CONFIRMED);
         fresh.setStartTime(LocalDateTime.now().plusHours(1));
 
-        when(reservationRepository.findAll()).thenReturn(List.of(expired, pending, fresh));
+    when(reservationRepository.findAll()).thenReturn(List.of(expired, pending, fresh));
 
         ReservationScheduledTasks tasks = new ReservationScheduledTasks(reservationRepository);
         tasks.markExpiredReservationsAsNoShow();
 
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
-        verify(reservationRepository, times(2)).save(captor.capture());
-        List<Reservation> saved = captor.getAllValues();
-        for (Reservation reservation : saved) {
-            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.NO_SHOW);
-            assertThat(reservation.getUpdatedAt()).isNotNull();
-        }
+        // Solo CONFIRMED con ventana de check-in expirada debe marcarse como NO_SHOW
+        verify(reservationRepository, times(1)).save(captor.capture());
+        Reservation saved = captor.getValue();
+        assertThat(saved.getId()).isEqualTo(1L);
+        assertThat(saved.getStatus()).isEqualTo(ReservationStatus.NO_SHOW);
+        assertThat(saved.getUpdatedAt()).isNotNull();
     }
 
     @Test

@@ -221,6 +221,7 @@ class ReservationServiceImplementationTest {
                 .withId(55L)
                 .withUser(user)
                 .withSpace(space)
+                .withStatus(ReservationStatus.PENDING)
                 .withQrCode("unique-qr")
                 .withNotifications(List.of(notification))
                 .build();
@@ -231,7 +232,7 @@ class ReservationServiceImplementationTest {
         when(reservationRepository.findAll()).thenReturn(List.of());
         when(reservationRepository.save(any(Reservation.class))).thenReturn(saved);
 
-        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+                try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             mocked.when(() -> SecurityUtils.requireSelfOrAny(10L, UserRole.SUPERVISOR, UserRole.ADMIN))
                     .thenAnswer(invocation -> null);
 
@@ -242,14 +243,15 @@ class ReservationServiceImplementationTest {
             assertThat(response.getSpaceId()).isEqualTo(20L);
             assertThat(response.getQrCode()).isEqualTo("unique-qr");
             assertThat(response.getNotificationIds()).containsExactly(901L);
-            assertThat(response.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+                        // Con la política actual, todas las reservas nuevas inician en PENDING
+                        assertThat(response.getStatus()).isEqualTo(ReservationStatus.PENDING);
 
             ArgumentCaptor<Reservation> reservationCaptor = ArgumentCaptor.forClass(Reservation.class);
             verify(reservationRepository).save(reservationCaptor.capture());
             Reservation persisted = reservationCaptor.getValue();
             assertThat(persisted.getUser()).isEqualTo(user);
             assertThat(persisted.getSpace()).isEqualTo(space);
-            assertThat(persisted.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+                        assertThat(persisted.getStatus()).isEqualTo(ReservationStatus.PENDING);
             assertThat(persisted.getCreatedAt()).isNotNull();
             assertThat(persisted.getUpdatedAt()).isNotNull();
             assertThat(persisted.getNotifications()).isNotNull();
@@ -753,7 +755,7 @@ class ReservationServiceImplementationTest {
     }
 
     @Test
-    void hardDeleteRejectsWhenStatusIsNotFinal() {
+    void hardDeleteAllowsAdminRegardlessOfStatus() {
         Reservation reservation = reservationBuilder()
                 .withStatus(ReservationStatus.CONFIRMED)
                 .build();
@@ -762,10 +764,10 @@ class ReservationServiceImplementationTest {
         try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             mocked.when(() -> SecurityUtils.requireAny(UserRole.ADMIN)).thenAnswer(invocation -> null);
 
-            assertThatThrownBy(() -> service.hardDelete(reservation.getId()))
-                    .isInstanceOf(BusinessRuleException.class)
-                    .hasMessageContaining("Only reservations with CHECKED_IN, NO_SHOW or CANCELED status");
-            verify(reservationRepository, never()).delete(any());
+            // Con la lógica actual, ADMIN puede eliminar cualquier reserva (sin validar estado)
+            service.hardDelete(reservation.getId());
+            verify(reservationRepository).delete(reservation);
+            verify(auditLogService).logEvent(any(), eq("RESERVATION_HARD_DELETED"), eq(reservation.getId().toString()), any());
         }
     }
 
@@ -967,8 +969,9 @@ class ReservationServiceImplementationTest {
             mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(user.getId()), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
                     .thenAnswer(inv -> null);
 
-            ReservationDTO created = service.create(dto);
-            assertThat(created.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+                        ReservationDTO created = service.create(dto);
+                        // Política actual: inicia en PENDING aunque no se especifique estado
+                        assertThat(created.getStatus()).isEqualTo(ReservationStatus.PENDING);
         }
     }
 
@@ -1039,7 +1042,7 @@ class ReservationServiceImplementationTest {
     }
 
     @Test
-    void markCheckIn_rejectsWhenQrDoesNotMatch() {
+        void markCheckIn_rejectsWhenQrDoesNotMatch() {
         Reservation reservation = reservationBuilder()
                 .withStatus(ReservationStatus.CONFIRMED)
                 .withStart(LocalDateTime.now().minusMinutes(1))
@@ -1048,8 +1051,8 @@ class ReservationServiceImplementationTest {
         when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
 
         try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
-            mocked.when(() -> SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN)).thenAnswer(inv -> null);
-            ReservationCheckInRequest req = checkInRequestBuilder().withQrCode("DIFFERENT").build();
+                        mocked.when(() -> SecurityUtils.requireAny(UserRole.SUPERVISOR, UserRole.ADMIN)).thenAnswer(inv -> null);
+                        ReservationCheckInRequest req = checkInRequestBuilder().withQrCode("DIFFERENT").build();
             assertThatThrownBy(() -> service.markCheckIn(reservation.getId(), req))
                     .isInstanceOf(BusinessRuleException.class)
                     .hasMessageContaining("does not match");
@@ -1078,9 +1081,9 @@ class ReservationServiceImplementationTest {
                                         .withLastName("Doe")
                                         .build();
 
-                        assertThatThrownBy(() -> service.markCheckIn(existing.getId(), req))
-                                        .isInstanceOf(BusinessRuleException.class)
-                                        .hasMessageContaining("already been registered");
+                    assertThatThrownBy(() -> service.markCheckIn(existing.getId(), req))
+                            .isInstanceOf(BusinessRuleException.class)
+                            .hasMessageContaining("already been registered");
                 }
         }
 
@@ -1335,4 +1338,89 @@ class ReservationServiceImplementationTest {
                                         .hasMessageContaining("Space identifier is required");
                 }
         }
+
+                @Test
+                void create_rejects_when_start_time_less_than_60_minutes() {
+                        var user = userBuilder().withId(100L).build();
+                        var space = spaceBuilder().withId(200L).build();
+
+                        var startCR = java.time.LocalDateTime.now(java.time.ZoneId.of("America/Costa_Rica")).plusMinutes(30);
+                        var dto = reservationDtoBuilder()
+                                        .withUserId(100L)
+                                        .withSpaceId(200L)
+                                        .withStart(startCR)
+                                        .withEnd(startCR.plusHours(1))
+                                        .withQrCode("QR-CR-30")
+                                        .build();
+
+                        when(userRepository.findById(100L)).thenReturn(Optional.of(user));
+                        when(spaceRepository.findById(200L)).thenReturn(Optional.of(space));
+                        when(reservationRepository.findAll()).thenReturn(List.of());
+
+                        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+                                mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(100L), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                                                .thenAnswer(inv -> null);
+
+                                assertThatThrownBy(() -> service.create(dto))
+                                                .isInstanceOf(BusinessRuleException.class)
+                                                .hasMessageContaining("60 minutos");
+                        }
+                }
+
+                @Test
+                void cancel_by_admin_skips_cancellation_policy() {
+                        Reservation reservation = reservationBuilder()
+                                        .withStatus(ReservationStatus.CONFIRMED)
+                                        .withStart(LocalDateTime.now().plusHours(2))
+                                        .build();
+                        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+                        when(reservationRepository.save(reservation)).thenReturn(reservation);
+
+                        Long ownerId = reservation.getUser() != null ? reservation.getUser().getId() : null;
+                        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+                                mocked.when(() -> SecurityUtils.requireSelfOrAny(ownerId, UserRole.SUPERVISOR, UserRole.ADMIN))
+                                                .thenAnswer(inv -> null);
+                                mocked.when(() -> SecurityUtils.hasAny(UserRole.ADMIN)).thenReturn(true);
+
+                                ReservationDTO out = service.cancel(reservation.getId(), "porque sí");
+                                assertThat(out.getStatus()).isEqualTo(ReservationStatus.CANCELED);
+                                // Política no debe ser invocada por ADMIN
+                                verify(cancellationPolicy, never()).assertCancellationAllowed(any());
+                                verify(notificationService).notifyReservationCanceled(reservation);
+                        }
+                }
+
+                @Test
+                void recordAudit_swallows_exceptions_from_audit_service() {
+                        var user = userBuilder().withId(310L).build();
+                        var space = spaceBuilder().withId(410L).build();
+                        var dto = reservationDtoBuilder()
+                                        .withUserId(310L)
+                                        .withSpaceId(410L)
+                                        .withQrCode("QR-AUD-ERR")
+                                        .withStart(LocalDateTime.now().plusHours(2))
+                                        .withEnd(LocalDateTime.now().plusHours(3))
+                                        .build();
+
+                        when(userRepository.findById(310L)).thenReturn(Optional.of(user));
+                        when(spaceRepository.findById(410L)).thenReturn(Optional.of(space));
+                        when(reservationRepository.findAll()).thenReturn(List.of());
+                        // Hacer que save devuelva la entidad con id para que audit tenga entityId
+                        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
+                                Reservation r = inv.getArgument(0);
+                                r.setId(9999L);
+                                return r;
+                        });
+                        // Forzar excepción en el servicio de auditoría
+                        doThrow(new RuntimeException("db down")).when(auditLogService)
+                                        .logEvent(any(), any(), any(), any());
+
+                        try (MockedStatic<SecurityUtils> mocked = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+                                mocked.when(() -> SecurityUtils.requireSelfOrAny(eq(310L), eq(UserRole.SUPERVISOR), eq(UserRole.ADMIN)))
+                                                .thenAnswer(inv -> null);
+                                // La operación create no debe lanzar aunque falle audit
+                                ReservationDTO created = service.create(dto);
+                                assertThat(created.getId()).isEqualTo(9999L);
+                        }
+                }
 }

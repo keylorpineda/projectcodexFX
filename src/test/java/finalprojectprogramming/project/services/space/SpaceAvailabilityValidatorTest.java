@@ -177,4 +177,28 @@ class SpaceAvailabilityValidatorTest {
         // No schedule day match and times null -> not within schedule -> not available
         assertThat(validator.isAvailable(s, st, en, null)).isFalse();
     }
+
+    @Test
+    void overlaps_returns_false_when_existing_times_are_null() {
+        Space s = baseSpace();
+
+        // Add reservation with null start or end
+        Reservation r1 = new Reservation();
+        r1.setStatus(ReservationStatus.CONFIRMED);
+        r1.setStartTime(null);
+        r1.setEndTime(LocalDate.now().atTime(9, 30));
+        s.getReservations().add(r1);
+
+        Reservation r2 = new Reservation();
+        r2.setStatus(ReservationStatus.CONFIRMED);
+        r2.setStartTime(LocalDate.now().atTime(9, 15));
+        r2.setEndTime(null);
+        s.getReservations().add(r2);
+
+        LocalDateTime st = LocalDate.now().atTime(9, 0);
+        LocalDateTime en = LocalDate.now().atTime(10, 0);
+
+        // Neither r1 nor r2 should count as conflict due to null endpoints
+        assertThat(validator.isAvailable(s, st, en, null)).isTrue();
+    }
 }

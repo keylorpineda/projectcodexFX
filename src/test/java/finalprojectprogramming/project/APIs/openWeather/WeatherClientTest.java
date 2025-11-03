@@ -293,4 +293,44 @@ class WeatherClientTest {
         CurrentWeatherResponse mapped = org.springframework.test.util.ReflectionTestUtils.invokeMethod(client, "mapCurrentWeather", new Object[]{null});
         assertThat(mapped).isNull();
     }
+
+    @Test
+    void debug_logging_branch_is_executed_when_logger_at_debug_level() throws Exception {
+        // Fuerza el logger de WeatherClient a DEBUG para que isDebugEnabled() sea true
+        org.slf4j.Logger slf4jLogger = org.slf4j.LoggerFactory.getLogger(WeatherClient.class);
+        try {
+            if (slf4jLogger instanceof ch.qos.logback.classic.Logger logback) {
+                var original = logback.getLevel();
+                try {
+                    logback.setLevel(ch.qos.logback.classic.Level.DEBUG);
+
+                    // Respuesta 200 simple para atravesar el camino de éxito que incluye el debug
+                    server.enqueue(jsonResponse(200, "{\"list\":[],\"city\":{\"coord\":{\"lat\":0,\"lon\":0}}}"));
+                    WeatherClient weatherClient = new WeatherClient(properties, objectMapper);
+                    Forecast5Dto dto = weatherClient.getFiveDayForecast(0.0, 0.0);
+                    // se ejecuta sin lanzar y cubre la línea de debug
+                    assertThat(dto).isNotNull();
+                } finally {
+                    logback.setLevel(original);
+                }
+            } else {
+                // Si no es Logback, ejecutamos igual el flujo para no fallar (no garantiza cubrir la línea)
+                server.enqueue(jsonResponse(200, "{\"list\":[],\"city\":{\"coord\":{\"lat\":0,\"lon\":0}}}"));
+                WeatherClient weatherClient = new WeatherClient(properties, objectMapper);
+                Forecast5Dto dto = weatherClient.getFiveDayForecast(0.0, 0.0);
+                assertThat(dto).isNotNull();
+            }
+        } finally {
+            // no-op
+        }
+    }
+
+    @Test
+    void send_when_unexpected_status_throws_generic_provider_error() {
+        server.enqueue(jsonResponse(418, "{}")); // cualquier 4xx/5xx no manejado explícitamente
+        WeatherClient weatherClient = new WeatherClient(properties, objectMapper);
+
+        assertWeatherException(() -> weatherClient.getFiveDayForecast(0, 0), HttpStatus.BAD_GATEWAY,
+                "WEATHER_PROVIDER_ERROR");
+    }
 }

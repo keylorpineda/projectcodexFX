@@ -149,6 +149,17 @@ class SpaceControllerTest extends BaseControllerTest {
         verify(spaceService).delete(12L);
     }
 
+        @Test
+        @WithMockUser(roles = {"USER"})
+        void searchSpaces_withAllFilters_callsServiceAndReturnsOk() throws Exception {
+                when(spaceService.searchSpaces(any(), any(), any(), any(), any())).thenReturn(List.of(buildSpaceDto()));
+
+                performGet("/api/spaces/search?type=AUDITORIO&minCapacity=10&maxCapacity=100&location=centro&active=true")
+                                .andExpect(status().isOk());
+
+                verify(spaceService).searchSpaces(eq(SpaceType.AUDITORIO), eq(10), eq(100), eq("centro"), eq(true));
+        }
+
     @Test
     @WithMockUser(roles = {"SUPERVISOR"})
     void createSpaceWithImageReturnsCreated() throws Exception {

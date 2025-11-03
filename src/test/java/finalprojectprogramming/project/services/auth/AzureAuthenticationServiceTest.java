@@ -1,7 +1,6 @@
 package finalprojectprogramming.project.services.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -53,7 +52,9 @@ class AzureAuthenticationServiceTest {
     void authenticateReturnsTokenForExistingActiveUser() {
         User existingUser = buildUser(5L, "Existing User", true);
         AzureUserInfo azureUserInfo = new AzureUserInfo("id-123", EMAIL, "Existing User");
-        when(azureGraphClient.fetchCurrentUser(ACCESS_TOKEN)).thenReturn(azureUserInfo);
+    // Compatibilidad con flujo asíncrono usado por el servicio
+        when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(azureUserInfo));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existingUser));
         when(userRepository.save(existingUser)).thenReturn(existingUser);
         Date expiration = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
@@ -88,7 +89,9 @@ class AzureAuthenticationServiceTest {
     @Test
     void authenticateCreatesNewUserWhenNotFound() {
         AzureUserInfo azureUserInfo = new AzureUserInfo("id-456", EMAIL, "Azure Name");
-        when(azureGraphClient.fetchCurrentUser(ACCESS_TOKEN)).thenReturn(azureUserInfo);
+    // Compatibilidad con flujo asíncrono
+        when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(azureUserInfo));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -130,12 +133,14 @@ class AzureAuthenticationServiceTest {
     void authenticateThrowsWhenUserDisabled() {
         User disabled = buildUser(10L, "Disabled", false);
         AzureUserInfo azureUserInfo = new AzureUserInfo("id-789", EMAIL, "Disabled");
-        when(azureGraphClient.fetchCurrentUser(ACCESS_TOKEN)).thenReturn(azureUserInfo);
+    when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+        .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(azureUserInfo));
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(disabled));
 
-        assertThatThrownBy(() -> service.authenticate(ACCESS_TOKEN))
-                .isInstanceOf(BadCredentialsException.class)
-                .hasMessageContaining("disabled");
+    Throwable thrown1 = org.assertj.core.api.Assertions.catchThrowable(() -> service.authenticate(ACCESS_TOKEN));
+    assertThat(thrown1).isInstanceOf(java.util.concurrent.CompletionException.class);
+    assertThat(thrown1.getCause()).isInstanceOf(BadCredentialsException.class);
+    assertThat(thrown1.getCause()).hasMessageContaining("disabled");
 
         verify(userRepository, times(0)).save(any());
         verify(jwtService, times(0)).generateToken(any(), any());
@@ -144,22 +149,27 @@ class AzureAuthenticationServiceTest {
     @Test
     void authenticateThrowsWhenAzureDoesNotProvideEmail() {
         AzureUserInfo azureUserInfo = new AzureUserInfo("id-000", null, "Someone");
-        when(azureGraphClient.fetchCurrentUser(ACCESS_TOKEN)).thenReturn(azureUserInfo);
+    when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+        .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(azureUserInfo));
 
-        assertThatThrownBy(() -> service.authenticate(ACCESS_TOKEN))
-                .isInstanceOf(BadCredentialsException.class)
-                .hasMessageContaining("email address");
+    Throwable thrown2 = org.assertj.core.api.Assertions.catchThrowable(() -> service.authenticate(ACCESS_TOKEN));
+    assertThat(thrown2).isInstanceOf(java.util.concurrent.CompletionException.class);
+    assertThat(thrown2.getCause()).isInstanceOf(BadCredentialsException.class);
+    assertThat(thrown2.getCause()).hasMessageContaining("email address");
 
         verify(userRepository, times(0)).findByEmail(any());
     }
 
     @Test
     void authenticatePropagatesClientErrors() {
-        when(azureGraphClient.fetchCurrentUser(ACCESS_TOKEN)).thenThrow(new IllegalStateException("boom"));
+    // Asegurar que el flujo asíncrono también refleja el error esperado
+    when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+        .thenReturn(java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("boom")));
 
-        assertThatThrownBy(() -> service.authenticate(ACCESS_TOKEN))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("boom");
+    Throwable thrown3 = org.assertj.core.api.Assertions.catchThrowable(() -> service.authenticate(ACCESS_TOKEN));
+    assertThat(thrown3).isInstanceOf(java.util.concurrent.CompletionException.class);
+    assertThat(thrown3.getCause()).isInstanceOf(IllegalStateException.class);
+    assertThat(thrown3.getCause()).hasMessageContaining("boom");
     }
 
     private static User buildUser(Long id, String name, boolean active) {
@@ -172,5 +182,68 @@ class AzureAuthenticationServiceTest {
         user.setCreatedAt(LocalDateTime.now().minusDays(1));
         user.setUpdatedAt(LocalDateTime.now().minusHours(2));
         return user;
+    }
+
+    @Test
+    void authenticateFillsMissingRoleAndCreatedAtForExistingUser() {
+        // Existing user without role and createdAt; name blank so it should be set from Azure display name
+        User existing = new User();
+        existing.setId(42L);
+        existing.setEmail(EMAIL);
+        existing.setActive(true);
+        existing.setRole(null);
+        existing.setCreatedAt(null);
+        existing.setName(" ");
+
+        AzureUserInfo azureUserInfo = new AzureUserInfo("id-xyz", EMAIL, "Azure Display");
+        when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(azureUserInfo));
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existing));
+        when(userRepository.save(existing)).thenReturn(existing);
+        when(jwtService.generateToken(org.mockito.ArgumentMatchers.<Map<String, Object>>any(), eq(EMAIL))).thenReturn("tkn");
+        when(jwtService.extractExpiration("tkn")).thenReturn(null);
+
+        AuthResponseDTO response = service.authenticate(ACCESS_TOKEN);
+
+        // Role and createdAt should have been filled, and name set from Azure display name
+        assertThat(existing.getRole()).isEqualTo(UserRole.USER);
+        assertThat(existing.getCreatedAt()).isNotNull();
+        assertThat(existing.getName()).isEqualTo("Azure Display");
+        assertThat(response.getRole()).isEqualTo(UserRole.USER.name());
+        assertThat(response.getName()).isEqualTo("Azure Display");
+    }
+
+    @Test
+    void authenticate_existing_user_without_name_and_azure_without_displayName_results_profileIncomplete_and_no_name_claim() {
+        // Existing user with blank name and no displayName from Azure
+        User existing = new User();
+        existing.setId(101L);
+        existing.setEmail(EMAIL);
+        existing.setActive(true);
+        existing.setRole(UserRole.USER);
+        existing.setCreatedAt(LocalDateTime.now().minusDays(2));
+        existing.setName(" ");
+
+        AzureUserInfo azureUserInfo = new AzureUserInfo("id-no-name", EMAIL, " ");
+        when(azureGraphClient.fetchCurrentUserAsync(ACCESS_TOKEN))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(azureUserInfo));
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existing));
+        when(userRepository.save(existing)).thenReturn(existing);
+        when(jwtService.generateToken(org.mockito.ArgumentMatchers.<Map<String, Object>>any(), eq(EMAIL)))
+                .thenReturn("tkn2");
+        when(jwtService.extractExpiration("tkn2")).thenReturn(null);
+
+        AuthResponseDTO response = service.authenticate(ACCESS_TOKEN);
+
+        assertThat(response.isNewUser()).isFalse();
+        assertThat(response.isProfileComplete()).isFalse();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> claimsCaptor = (ArgumentCaptor<Map<String, Object>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(Map.class);
+        verify(jwtService).generateToken(claimsCaptor.capture(), eq(EMAIL));
+        Map<String, Object> claims = claimsCaptor.getValue();
+        // name claim should NOT be present when profile is incomplete
+        assertThat(claims).doesNotContainKey("name");
+        assertThat(claims.get("profileComplete")).isEqualTo(false);
     }
 }

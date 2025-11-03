@@ -97,16 +97,25 @@ class AuditLogServiceImplementationTest {
     }
 
     @Test
-    void create_userNotFound_throws() {
+    void create_userNotFound_continues_without_user() {
         AuditLogDTO input = AuditLogDTO.builder()
                 .userId(99L)
                 .action("X")
+                .entityId("E-1")
                 .build();
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(inv -> {
+            AuditLog a = inv.getArgument(0);
+            a.setId(99L);
+            if (a.getTimestamp() == null) a.setTimestamp(LocalDateTime.now());
+            return a;
+        });
 
-        assertThatThrownBy(() -> service.create(input))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("User with id 99 not found");
+        AuditLogDTO out = service.create(input);
+        assertThat(out.getId()).isEqualTo(99L);
+        assertThat(out.getUserId()).isNull();
+        assertThat(out.getAction()).isEqualTo("X");
+        assertThat(out.getEntityId()).isEqualTo("E-1");
     }
 
     @Test
@@ -142,6 +151,18 @@ class AuditLogServiceImplementationTest {
 
         verify(auditLogRepository).save(any(AuditLog.class));
         verify(userRepository).findById(5L);
+    }
+
+    @Test
+    void logEvent_handles_repository_exception_without_throwing() {
+        // Simula que durante la persistencia ocurre un error inesperado
+        when(auditLogRepository.save(any(AuditLog.class))).thenThrow(new RuntimeException("db down"));
+
+        // No debe propagarse la excepción (se registra el error y continúa)
+        service.logEvent(1L, "ANY", "E-1", json.createObjectNode().put("x", 1));
+
+        // Se intentó guardar
+        verify(auditLogRepository).save(any(AuditLog.class));
     }
 
     @Test
