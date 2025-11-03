@@ -58,10 +58,19 @@ public class AzureAuthService {
 
     public CompletableFuture<IAuthenticationResult> signInInteractive() {
         try {
+            // Cargar página HTML personalizada para el callback
+            String successPage = loadSuccessPage();
+            
             InteractiveRequestParameters parameters = InteractiveRequestParameters
                     .builder(new URI(AppConfig.require("azure.redirect-uri")))
                     .scopes(scopes)
                     .prompt(Prompt.SELECT_ACCOUNT)
+                    .systemBrowserOptions(
+                        com.microsoft.aad.msal4j.SystemBrowserOptions
+                            .builder()
+                            .htmlMessageSuccess(successPage)
+                            .build()
+                    )
                     .build();
             return application.acquireToken(parameters)
                     .thenApply(result -> {
@@ -71,6 +80,39 @@ public class AzureAuthService {
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);
         }
+    }
+    
+    private String loadSuccessPage() {
+        try {
+            var resource = getClass().getResourceAsStream("/oauth-success.html");
+            if (resource == null) {
+                return getDefaultSuccessPage();
+            }
+            return new String(resource.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return getDefaultSuccessPage();
+        }
+    }
+    
+    private String getDefaultSuccessPage() {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Autenticación Exitosa</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                        h1 { color: #4CAF50; }
+                    </style>
+                </head>
+                <body>
+                    <h1>✓ Autenticación Exitosa</h1>
+                    <p>Puede cerrar esta ventana y volver a la aplicación.</p>
+                    <script>setTimeout(() => window.close(), 2000);</script>
+                </body>
+                </html>
+                """;
     }
 
     public CompletableFuture<IAuthenticationResult> signInSilently() {

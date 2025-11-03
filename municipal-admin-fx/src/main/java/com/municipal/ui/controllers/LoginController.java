@@ -15,6 +15,7 @@ import com.municipal.ui.navigation.FlowController;
 import com.municipal.ui.navigation.SessionAware;
 import com.municipal.ui.navigation.StageAware;
 import javafx.animation.FadeTransition;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
@@ -28,6 +29,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
@@ -82,30 +84,44 @@ public class LoginController implements FlowAware, SessionAware, StageAware {
         showStatus("Conectando con Azure AD...", "status-info");
         azureLoginButton.setDisable(true);
 
-        Task<IAuthenticationResult> task = new Task<>() {
-            @Override
-            protected IAuthenticationResult call() throws Exception {
-                return authService.signInInteractive().get();
-            }
-        };
-
-        task.setOnSucceeded(event -> {
-            IAuthenticationResult result = task.getValue();
-            showStatus("Autenticando con el sistema...", "status-info");
-            authenticateWithBackend(result);
-        });
-
-        task.setOnFailed(event -> {
-            Throwable error = unwrapAuthenticationError(task.getException());
-            showStatus(buildFriendlyAuthenticationError(error), "status-error");
-            progressIndicator.setVisible(false);
-            progressIndicator.setManaged(false);
-            azureLoginButton.setDisable(false);
-        });
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        // ✅ Usar CompletableFuture directamente (NO bloqueante)
+        authService.signInInteractive()
+            .thenCompose(result -> {
+                // Actualizar UI en JavaFX thread
+                Platform.runLater(() -> 
+                    showStatus("Autenticando con el sistema...", "status-info")
+                );
+                // Autenticar con backend de forma asíncrona
+                return authenticateWithBackendAsync(result);
+            })
+            .thenAccept(response -> {
+                // Éxito - actualizar UI en JavaFX thread
+                Platform.runLater(() -> {
+                    if (sessionManager != null) {
+                        sessionManager.storeAuthResponse(response);
+                    }
+                    String displayName = response.name() != null && !response.name().isBlank()
+                            ? response.name()
+                            : "Usuario";
+                    showStatus("Bienvenido " + displayName, "status-success");
+                    
+                    String targetRole = sessionManager != null
+                            ? sessionManager.getUserRole()
+                            : response.role();
+                    navigateToRole(targetRole);
+                });
+            })
+            .exceptionally(error -> {
+                // Error - actualizar UI en JavaFX thread
+                Platform.runLater(() -> {
+                    Throwable unwrapped = unwrapAuthenticationError(error);
+                    showStatus(buildFriendlyAuthenticationError(unwrapped), "status-error");
+                    progressIndicator.setVisible(false);
+                    progressIndicator.setManaged(false);
+                    azureLoginButton.setDisable(false);
+                });
+                return null;
+            });
     }
 
     private Throwable unwrapAuthenticationError(Throwable error) {
@@ -204,49 +220,13 @@ public class LoginController implements FlowAware, SessionAware, StageAware {
         return builder.toString();
     }
 
-    private void authenticateWithBackend(IAuthenticationResult authenticationResult) {
-        Task<AuthResponse> backendTask = new Task<>() {
-            @Override
-            protected AuthResponse call() {
-                return authController.authenticateWithAzure(authenticationResult.accessToken());
-            }
-        };
-
-        backendTask.setOnSucceeded(event -> {
-            AuthResponse response = backendTask.getValue();
-            if (sessionManager != null) {
-                sessionManager.storeAuthResponse(response);
-            }
-            String displayName = response.name() != null && !response.name().isBlank()
-                    ? response.name()
-                    : authenticationResult.account().username();
-            showStatus("Bienvenido " + displayName, "status-success");
-            String targetRole = sessionManager != null
-                    ? sessionManager.getUserRole()
-                    : response.role();
-            navigateToRole(targetRole);
-        });
-
-        backendTask.setOnFailed(event -> {
-            Throwable error = backendTask.getException();
-            String message;
-            if (error instanceof ApiClientException apiError) {
-                message = "Error " + apiError.getStatusCode();
-                if (apiError.getResponseBody() != null && !apiError.getResponseBody().isBlank()) {
-                    message += ": " + apiError.getResponseBody();
-                }
-            } else {
-                message = error != null ? error.getMessage() : "Error desconocido";
-            }
-            showStatus("No se pudo validar el acceso: " + message, "status-error");
-            progressIndicator.setVisible(false);
-            progressIndicator.setManaged(false);
-            azureLoginButton.setDisable(false);
-        });
-
-        Thread thread = new Thread(backendTask);
-        thread.setDaemon(true);
-        thread.start();
+    /**
+     * Autentica con el backend de forma asíncrona usando el token de Azure
+     */
+    private CompletableFuture<AuthResponse> authenticateWithBackendAsync(IAuthenticationResult authenticationResult) {
+        return CompletableFuture.supplyAsync(() -> 
+            authController.authenticateWithAzure(authenticationResult.accessToken())
+        );
     }
 
     private void navigateToRole(String role) {
