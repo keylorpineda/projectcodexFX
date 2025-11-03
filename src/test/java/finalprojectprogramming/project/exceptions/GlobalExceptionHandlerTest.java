@@ -4,9 +4,13 @@ import finalprojectprogramming.project.exceptions.api.ApiError;
 import finalprojectprogramming.project.exceptions.openWeather.RateLimitExceededException;
 import finalprojectprogramming.project.exceptions.openWeather.WeatherProviderException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Path;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import finalprojectprogramming.project.models.enums.UserRole;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.validation.ObjectError;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -14,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 
-import java.util.Set;
+ 
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -54,26 +58,17 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void methodArgumentNotValid400() {
-        // Direct construction of MethodArgumentNotValidException es engorroso.
-        // Validamos la ruta de ConstraintViolationException que también mapea a VALIDATION_ERROR.
-        ConstraintViolation<?> violation = mock(ConstraintViolation.class);
-        Path path = new Path() {
-            @Override
-            public java.util.Iterator<Node> iterator() {
-                return java.util.Collections.emptyIterator();
-            }
-            @Override
-            public String toString() { return "key"; }
-        };
-        when(violation.getPropertyPath()).thenReturn(path);
-        when(violation.getMessage()).thenReturn("must not be blank");
-        ConstraintViolationException ex = new ConstraintViolationException(Set.of(violation));
+        // Simulamos errores de validación BindingResult (field + global)
+        org.springframework.validation.BeanPropertyBindingResult bind = new org.springframework.validation.BeanPropertyBindingResult(new Object(), "t");
+        bind.addError(new org.springframework.validation.FieldError("t", "field", "must not be blank."));
+        bind.addError(new ObjectError("t", "global error."));
 
-        ResponseEntity<ApiError> res = handler.handleConstraintViolation(ex, request);
+        var manve = new org.springframework.web.bind.MethodArgumentNotValidException(null, bind);
+        ResponseEntity<ApiError> res = handler.handleMethodArgumentNotValid(manve, request);
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(res.getBody()).isNotNull();
         assertThat(res.getBody().getCode()).isEqualTo("VALIDATION_ERROR");
-    assertThat(res.getBody().getValidationErrors()).extracting("field").contains("key");
+        assertThat(res.getBody().getValidationErrors()).hasSize(2);
     }
 
     @Test
@@ -128,5 +123,46 @@ class GlobalExceptionHandlerTest {
     void generic500() {
         ResponseEntity<ApiError> res = handler.handleGenericException(new RuntimeException("boom"), request);
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void badRequest_variants_and_request_ids() throws Exception {
+        // HttpMessageNotReadable with InvalidFormatException on enum → mensaje incluye valores permitidos
+    InvalidFormatException inv = InvalidFormatException.from(null, "bad", "X", UserRole.class);
+    HttpMessageNotReadableException hmr = new HttpMessageNotReadableException("", inv, null);
+        ResponseEntity<ApiError> r1 = handler.handleBadRequest(hmr, request);
+        assertThat(r1.getBody()).isNotNull();
+        assertThat(r1.getBody().getMessage()).contains("Allowed values");
+
+        // Mapping exception con path
+    JsonMappingException jm = new JsonMappingException((com.fasterxml.jackson.core.JsonParser) null, "msg");
+    jm.prependPath("obj", 0);
+    jm.prependPath("obj", "items");
+    HttpMessageNotReadableException hmr2 = new HttpMessageNotReadableException("", jm, null);
+        ResponseEntity<ApiError> r2 = handler.handleBadRequest(hmr2, request);
+        assertThat(r2.getBody()).isNotNull();
+        assertThat(r2.getBody().getMessage()).contains("Malformed request payload");
+
+        // Missing parameter
+        MissingServletRequestParameterException miss = new MissingServletRequestParameterException("q", "String");
+        ResponseEntity<ApiError> r3 = handler.handleBadRequest(miss, request);
+        assertThat(r3.getBody()).isNotNull();
+        assertThat(r3.getBody().getMessage()).contains("Missing required parameter");
+
+        // Type mismatch (mocked para evitar construir MethodParameter)
+        MethodArgumentTypeMismatchException mismatch = mock(MethodArgumentTypeMismatchException.class);
+    when(mismatch.getRequiredType()).thenAnswer(x -> Integer.class);
+        when(mismatch.getName()).thenReturn("age");
+        ResponseEntity<ApiError> r4 = handler.handleBadRequest(mismatch, request);
+        assertThat(r4.getBody()).isNotNull();
+        assertThat(r4.getBody().getMessage()).contains("age");
+
+        // Request IDs
+        HttpServletRequest withIds = mock(HttpServletRequest.class);
+        when(withIds.getRequestURI()).thenReturn("/x");
+        when(withIds.getHeader("X-Request-Id")).thenReturn("RID");
+        ResponseEntity<ApiError> r5 = handler.handleGenericException(new RuntimeException("x"), withIds);
+        assertThat(r5.getBody()).isNotNull();
+        assertThat(r5.getBody().getRequestId()).isEqualTo("RID");
     }
 }

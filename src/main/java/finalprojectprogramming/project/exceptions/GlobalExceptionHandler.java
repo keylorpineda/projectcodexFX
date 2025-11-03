@@ -34,25 +34,25 @@ public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.name(), ex.getMessage(), request, null);
+    public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest httpRequest) {
+        return buildResponse(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.name(), ex.getMessage(), httpRequest, null);
     }
 
     @ExceptionHandler(BusinessRuleException.class)
-    public ResponseEntity<ApiError> handleBusinessRuleException(BusinessRuleException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleBusinessRuleException(BusinessRuleException ex, HttpServletRequest httpRequest) {
         return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNPROCESSABLE_ENTITY.name(), ex.getMessage(),
-                request, null);
+                httpRequest, null);
     }
 
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<ApiError> handleInvalidPasswordException(InvalidPasswordException ex,
-            HttpServletRequest request) {
-        return buildResponse(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.name(), ex.getMessage(), request, null);
+            HttpServletRequest httpRequest) {
+        return buildResponse(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.name(), ex.getMessage(), httpRequest, null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-            HttpServletRequest request) {
+        HttpServletRequest httpRequest) {
         List<ApiValidationError> validationErrors = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> new ApiValidationError(error.getField(), resolveMessage(error.getDefaultMessage())))
                 .collect(Collectors.toList());
@@ -61,12 +61,12 @@ public class GlobalExceptionHandler {
                 .map(error -> new ApiValidationError(error.getObjectName(), resolveMessage(error.getDefaultMessage())))
                 .collect(Collectors.toList()));
 
-        return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", request,
+    return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", httpRequest,
                 validationErrors);
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, HttpServletRequest httpRequest) {
         String message;
         if (ex instanceof BadCredentialsException) {
             message = "Invalid credentials";
@@ -77,99 +77,104 @@ public class GlobalExceptionHandler {
             }
         }
 
-        return buildResponse(HttpStatus.UNAUTHORIZED, HttpStatus.UNAUTHORIZED.name(), message, request, null);
+        return buildResponse(HttpStatus.UNAUTHORIZED, HttpStatus.UNAUTHORIZED.name(), message, httpRequest, null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest httpRequest) {
         String message = resolveMessage(ex.getMessage());
         if (message == null || message.isBlank()) {
             message = "Access denied";
         }
-        return buildResponse(HttpStatus.FORBIDDEN, HttpStatus.FORBIDDEN.name(), message, request, null);
+        return buildResponse(HttpStatus.FORBIDDEN, HttpStatus.FORBIDDEN.name(), message, httpRequest, null);
     }
 
     @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<ApiError> handleCustomValidation(ValidationException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), request,
+    public ResponseEntity<ApiError> handleCustomValidation(ValidationException ex, HttpServletRequest httpRequest) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), httpRequest,
                 ex.getValidationErrors());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex,
-            HttpServletRequest request) {
+        HttpServletRequest httpRequest) {
         List<ApiValidationError> validationErrors = ex.getConstraintViolations().stream()
                 .map(violation -> new ApiValidationError(violation.getPropertyPath().toString(),
                         resolveMessage(violation.getMessage())))
                 .collect(Collectors.toList());
 
-        return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", request,
+    return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed", httpRequest,
                 validationErrors);
     }
 
     @ExceptionHandler({ MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class,
             HttpMessageNotReadableException.class })
-    public ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest httpRequest) {
         String message;
-        if (ex instanceof HttpMessageNotReadableException readableException) {
+        if (ex instanceof HttpMessageNotReadableException) {
+            HttpMessageNotReadableException readableException = (HttpMessageNotReadableException) ex;
             message = resolveHttpMessageNotReadableMessage(readableException);
-        } else if (ex instanceof MissingServletRequestParameterException missing) {
+        } else if (ex instanceof MissingServletRequestParameterException) {
+            MissingServletRequestParameterException missing = (MissingServletRequestParameterException) ex;
             message = String.format("Missing required parameter '%s'", missing.getParameterName());
-        } else if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
+        } else if (ex instanceof MethodArgumentTypeMismatchException) {
+            MethodArgumentTypeMismatchException mismatch = (MethodArgumentTypeMismatchException) ex;
             Class<?> requiredType = mismatch.getRequiredType();
             String requiredTypeName = (requiredType != null) ? requiredType.getSimpleName() : "unknown";
             message = String.format("Parameter '%s' should be of type %s", mismatch.getName(), requiredTypeName);
         } else {
             message = resolveMessage(ex.getMessage());
         }
-        return buildResponse(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.name(), message, request, null);
+        return buildResponse(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.name(), message, httpRequest, null);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrityViolation(DataIntegrityViolationException ex,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest) {
         LOGGER.error("Data integrity violation", ex);
-        return buildResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.name(), "Data integrity violation", request,
+        return buildResponse(HttpStatus.CONFLICT, HttpStatus.CONFLICT.name(), "Data integrity violation", httpRequest,
                 null);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest httpRequest) {
         return buildResponse(HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.name(), resolveMessage(ex.getMessage()),
-                request, null);
+                httpRequest, null);
     }
 
     @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<ApiError> handleRateLimit(RateLimitExceededException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleRateLimit(RateLimitExceededException ex, HttpServletRequest httpRequest) {
         return buildResponse(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", resolveMessage(ex.getMessage()),
-                request, null);
+                httpRequest, null);
     }
 
     @ExceptionHandler(WeatherProviderException.class)
-    public ResponseEntity<ApiError> handleWeatherProvider(WeatherProviderException ex, HttpServletRequest request) {
-        return buildResponse(ex.getStatus(), ex.getCode(), resolveMessage(ex.getMessage()), request, null);
+    public ResponseEntity<ApiError> handleWeatherProvider(WeatherProviderException ex, HttpServletRequest httpRequest) {
+        return buildResponse(ex.getStatus(), ex.getCode(), resolveMessage(ex.getMessage()), httpRequest, null);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGenericException(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleGenericException(Exception ex, HttpServletRequest httpRequest) {
         LOGGER.error("Unhandled exception", ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.name(),
-                "An unexpected error occurred", request, null);
+                "An unexpected error occurred", httpRequest, null);
     }
 
     private ResponseEntity<ApiError> buildResponse(HttpStatus status, String code, String message,
-            HttpServletRequest request, List<ApiValidationError> validationErrors) {
-        String requestId = resolveRequestId(request);
-        ApiError error = new ApiError(status, code, message, request.getRequestURI(), requestId, validationErrors);
+            HttpServletRequest httpRequest, List<ApiValidationError> validationErrors) {
+        String requestId = resolveRequestId(httpRequest);
+        ApiError error = new ApiError(status, code, message, httpRequest.getRequestURI(), requestId, validationErrors);
         return ResponseEntity.status(status).body(error);
     }
 
     private String resolveHttpMessageNotReadableMessage(HttpMessageNotReadableException exception) {
         Throwable cause = exception.getCause();
-        if (cause instanceof InvalidFormatException invalidFormat) {
+        if (cause instanceof InvalidFormatException) {
+            InvalidFormatException invalidFormat = (InvalidFormatException) cause;
             return resolveInvalidFormatMessage(invalidFormat);
         }
-        if (cause instanceof JsonMappingException mappingException) {
+        if (cause instanceof JsonMappingException) {
+            JsonMappingException mappingException = (JsonMappingException) cause;
             String path = buildJsonPath(mappingException.getPath());
             if (path != null) {
                 return "Malformed request payload near '" + path + "'";
@@ -221,10 +226,10 @@ public class GlobalExceptionHandler {
         return joinedPath.replace(".[", "[");
     }
 
-    private String resolveRequestId(HttpServletRequest request) {
-        String requestId = request.getHeader("X-Request-Id");
+    private String resolveRequestId(HttpServletRequest httpRequest) {
+        String requestId = httpRequest.getHeader("X-Request-Id");
         if (requestId == null || requestId.isBlank()) {
-            requestId = request.getHeader("X-Correlation-Id");
+            requestId = httpRequest.getHeader("X-Correlation-Id");
         }
         return requestId;
     }
