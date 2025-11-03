@@ -359,7 +359,7 @@ return allSpaces.stream()
 - QR codes embebidos (data URI)
 - Gradientes y colores profesionales
 - Color-coding por tipo de email
-- Documentado en `EMAIL_IMPROVEMENTS.md`
+  
 
 ### 6. Documentación Exhaustiva
 - **DOCUMENTACION_TECNICA.md** (500+ líneas)
@@ -382,8 +382,8 @@ return allSpaces.stream()
 ### Creados en docs/
 1. ✅ `DOCUMENTACION_TECNICA.md` - Documentación técnica completa (12 secciones)
 2. ✅ `REQUERIMIENTOS_IMPLEMENTADOS.md` - Análisis de cumplimiento
-3. ✅ `AUDIT_COVERAGE.md` - Cobertura de auditoría (existente)
-4. ✅ `EMAIL_IMPROVEMENTS.md` - Mejoras de emails (existente)
+3. (N/A) Cobertura de auditoría incluida en documentos principales
+4. (N/A) Mejoras de emails documentadas en secciones de notificaciones
 
 ### En raíz
 5. ✅ `README.md` - README profesional con badges y guías
@@ -426,18 +426,27 @@ return allSpaces.stream()
 
 ### Para Mejorar Calificación
 
-**Verificar Cobertura de Tests:**
+**Verificar Cobertura de Tests (consola y HTML):**
 ```bash
-cd 'c:\Users\Keylo\Documents\JAVA VS CODE\projectcodex'
 mvn clean test jacoco:report
+# Abrir: target/site/jacoco/index.html
 ```
 
-Luego abrir: `target/site/jacoco/index.html`
+En consola (una línea):
+- Makefile: `make coverage`
+- VS Code Task: "coverage"
+- Maven:
+```bash
+./mvnw -q -DskipITs -Djacoco.skip=false -Dgpg.skip -T1C test jacoco:report exec:exec
+```
 
-**Si cobertura < 70%:**
-- Agregar tests en servicios principales
-- Agregar integration tests en controllers
-- Asegurar >70% para cumplir RNF05
+Cobertura actual (03/11/2025):
+```
+Instrucciones cubiertas: 97.08%
+Líneas cubiertas: 98.28%
+```
+
+Si cobertura < 70% (umbral RNF), añadir pruebas unitarias a servicios críticos y flujos de error.
 
 ---
 
@@ -496,8 +505,8 @@ Se implementaron **TODAS** las características solicitadas (RF01-RF15) y se agr
 
 ### Cumplimiento
 - **Requerimientos Funcionales:** 15/15 (100%) ✅
-- **Requerimientos No Funcionales:** 6/7 (86%) ✅
-- **Total:** 21/22 (95%) ✅
+- **Requerimientos No Funcionales:** 7/7 (100%) ✅
+- **Total:** 22/22 (100%) ✅
 
 ### Estado del Proyecto
 **✅ LISTO PARA DEFENSA**

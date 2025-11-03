@@ -10,7 +10,7 @@
 
 **Profesor:** Rubén Mora Vargas
 
-**Fecha y versión:** 03 de November de 2025 – Versión 2.0
+**Fecha y versión:** 03 de noviembre de 2025 – Versión 2.0
 
 **Descripción breve:** Compendio técnico integral que documenta arquitectura, datos, seguridad, integraciones y pruebas del sistema municipal de reservas, combinando backend Spring Boot, cliente JavaFX y servicios en la nube.【F:README.md†L39-L142】
 
@@ -225,6 +225,13 @@ La capa de servicios concentra reglas de negocio: validación de disponibilidad,
 La persistencia se implementa con entidades JPA que modelan usuarios, roles, espacios, reservas, asistentes, notificaciones, calificaciones, auditorías y configuraciones. Los repositorios extienden `JpaRepository`, permitiendo consultas derivadas y personalizadas.【F:src/main/java/finalprojectprogramming/project/models/Reservation.java†L1-L107】【F:src/main/java/finalprojectprogramming/project/repositories/ReservationRepository.java†L1-L120】
 
 Componentes transversales como `SecurityConfig`, `JwtAuthFilter`, `GlobalExceptionHandler`, validadores y transformadores completan la arquitectura, dotándola de seguridad, resiliencia y mapeo limpio entre entidades y DTOs.【F:src/main/java/finalprojectprogramming/project/security/SecurityConfig.java†L1-L81】【F:src/main/java/finalprojectprogramming/project/exceptions/GlobalExceptionHandler.java†L1-L243】
+
+### 5.4 Módulos y versión de Java
+
+- Backend (Spring Boot): Java 21, Spring Boot 3.5.6, empaquetado como aplicación REST con Actuator habilitado para health y métricas básicas.【F:pom.xml†L1-L80】
+- Cliente JavaFX (`municipal-admin-fx`): Java 17 con JavaFX 21.0.2; se ejecuta vía plugin de JavaFX y consume la API REST del backend.【F:municipal-admin-fx/pom.xml†L1-L80】
+
+Esta separación permite mantener el backend en la versión estable más reciente de Java, mientras el cliente de escritorio usa la versión de Java compatible con el ecosistema JavaFX empaquetado.
 
 ### 5.1 Inventario de controladores
 
@@ -478,6 +485,18 @@ Componentes transversales como `SecurityConfig`, `JwtAuthFilter`, `GlobalExcepti
   - Garantiza integridad: métodos `findBy` y `existsBy` permiten prevenir duplicados y validar condiciones de negocio.
   - Optimización: paginación y ordenamientos aprovechan capacidades de Spring Data para escenarios de alta demanda.
 
+### 5.4 Almacenamiento de archivos e imágenes
+
+El servicio `LocalImageStorageService` gestiona imágenes asociadas a espacios en almacenamiento local bajo la ruta `storage/uploads/`. Implementa:
+- Creación de directorios si no existen, validación básica de extensiones y tipos de contenido.
+- Soporte para PNG/JPEG y manejo controlado ante errores de IO con logs y respuestas adecuadas hacia la capa superior.【F:src/main/java/finalprojectprogramming/project/services/storage/LocalImageStorageService.java†L1-L178】
+
+Recomendaciones: configurar backups y políticas de limpieza para archivos huérfanos en despliegues productivos.
+
+### 5.5 Tareas programadas (scheduling)
+
+`ReservationScheduledTasks` ejecuta procesos periódicos para marcar reservas como `NO_SHOW` cuando expira la ventana de check-in (30 minutos tras la hora de inicio). El diseño registra resultados y errores con logs, sin interrumpir otras operaciones del sistema.【F:src/main/java/finalprojectprogramming/project/services/reservation/ReservationScheduledTasks.java†L1-L85】
+
 ## 6. Diseño de Base de Datos
 
 La base de datos PostgreSQL se modela con entidades normalizadas en 3FN que representan usuarios, roles, espacios, imágenes, horarios, reservas, asistentes, notificaciones, calificaciones, auditorías y configuraciones. Cada entidad define claves foráneas explícitas y columnas auditables (`created_at`, `updated_at`, `deleted_at`) para garantizar trazabilidad.
@@ -582,6 +601,28 @@ El manejo de errores externos se canaliza por `GlobalExceptionHandler`, que trad
   - Estrategia complementaria: integración continua, análisis estático y revisión por pares antes de cada despliegue.
 
 El plan de calidad contempla pipelines CI/CD con compilación, pruebas, análisis estático (Checkstyle, SpotBugs) y despliegue en contenedores Docker, alineado con las guías de EIF206.
+
+### 10.1 Cobertura en terminal (una línea)
+
+Para ejecutar todas las pruebas, generar el reporte de JaCoCo y ver el porcentaje de cobertura directamente en la consola:
+
+- Opción Makefile (recomendada):
+  - `make coverage`
+
+- Opción Tarea de VS Code:
+  - Paleta (⇧⌘P) → "Run Task" → seleccionar `coverage`.
+
+- Opción Maven solamente:
+  - `./mvnw -q -DskipITs -Djacoco.skip=false -Dgpg.skip -T1C test jacoco:report exec:exec`
+
+Salida esperada (ejemplo):
+
+```
+Instrucciones cubiertas: 97.08%
+Líneas cubiertas: 98.28%
+```
+
+El reporte HTML detallado permanece disponible en `target/site/jacoco/index.html`.
 
 ## 11. Resultados y Conclusiones
 

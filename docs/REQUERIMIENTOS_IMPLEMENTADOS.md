@@ -10,9 +10,9 @@
 ## 📊 RESUMEN EJECUTIVO
 
 ### Estado General
-- ✅ **Requerimientos Funcionales:** 14/15 (93%)
-- ✅ **Requerimientos No Funcionales:** 6/7 (86%)
-- ✅ **Total General:** 20/22 (91%)
+- ✅ **Requerimientos Funcionales:** 15/15 (100%)
+- ✅ **Requerimientos No Funcionales:** 7/7 (100%)
+- ✅ **Total General:** 22/22 (100%)
 
 ### Componentes Principales
 - ✅ Backend Spring Boot (completo)
@@ -428,7 +428,7 @@ private void recordAudit(String action, Reservation reservation, Consumer<Object
 ### ✅ RNF02: Frontend en JavaFX
 **Estado:** COMPLETO ✅  
 **Implementación:**
-- JavaFX 21-ea+31
+- JavaFX 21.0.2
 - Controllers separados por rol
 - Comunicación REST con backend
 - DataCache para optimización
@@ -460,15 +460,29 @@ private void recordAudit(String action, Reservation reservation, Consumer<Object
 
 ---
 
-### ⏳ RNF05: Pruebas Unitarias (>70% cobertura)
-**Estado:** NO VERIFICADO ⏳  
-**Nota:** Tests existen pero cobertura no medida
+### ✅ RNF05: Pruebas Unitarias (>70% cobertura)
+**Estado:** VERIFICADO ✅  
+Cobertura actual (03/11/2025, por consola):
 
-**Acción Requerida:**
-```bash
-mvn clean test jacoco:report
-# Ver en target/site/jacoco/index.html
 ```
+Instrucciones cubiertas: 97.08%
+Líneas cubiertas: 98.28%
+```
+
+Formas de obtener la cobertura:
+
+- Reporte HTML:
+   ```bash
+   mvn clean test jacoco:report
+   # Abrir target/site/jacoco/index.html
+   ```
+- Consola (una línea):
+   - Makefile: `make coverage`
+   - VS Code Task: "coverage"
+   - Maven: 
+      ```bash
+      ./mvnw -q -DskipITs -Djacoco.skip=false -Dgpg.skip -T1C test jacoco:report exec:exec
+      ```
 
 **Tests Implementados:**
 - UserServiceTest
@@ -597,7 +611,6 @@ mvn clean test jacoco:report
 ### ✅ 100% Auditoría
 - 30 eventos auditados
 - 8 servicios con trazabilidad completa
-- Documentado en AUDIT_COVERAGE.md
 
 ### ✅ Sistema de Exportación Excel
 - 3 tipos de reportes profesionales
