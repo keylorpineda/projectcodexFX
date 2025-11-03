@@ -22,6 +22,8 @@ import finalprojectprogramming.project.services.auditlog.AuditLogService;
 import finalprojectprogramming.project.services.notification.ReservationNotificationService;
 import finalprojectprogramming.project.services.space.SpaceAvailabilityValidator;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -69,10 +71,23 @@ public class ReservationServiceImplementation implements ReservationService {
         SecurityUtils.requireSelfOrAny(reservationDTO.getUserId(), UserRole.SUPERVISOR, UserRole.ADMIN);
         
         // ✅ VALIDACIÓN: Mínimo 60 minutos de anticipación
-        LocalDateTime now = LocalDateTime.now();
+        // Las reservas deben hacerse con anticipación para que un administrador las confirme
+        // Usamos ZonedDateTime con zona horaria explícita de Costa Rica
+        ZoneId costaRicaZone = ZoneId.of("America/Costa_Rica");
+        ZonedDateTime now = ZonedDateTime.now(costaRicaZone);
         LocalDateTime startTime = reservationDTO.getStartTime();
-        if (startTime != null && startTime.isBefore(now.plusMinutes(60))) {
-            throw new BusinessRuleException("Las reservas deben hacerse con al menos 60 minutos de anticipación");
+        if (startTime != null) {
+            // Convertir LocalDateTime a ZonedDateTime para comparación correcta
+            ZonedDateTime zonedStartTime = startTime.atZone(costaRicaZone);
+            
+            // Validar que la hora de inicio sea al menos 60 minutos en el futuro
+            long minutesUntilStart = java.time.Duration.between(now, zonedStartTime).toMinutes();
+            if (minutesUntilStart < 60) {
+                throw new BusinessRuleException(
+                    "Las reservas deben hacerse con al menos 60 minutos de anticipación. " +
+                    "Tiempo restante: " + minutesUntilStart + " minutos"
+                );
+            }
         }
         
         User user = getUser(reservationDTO.getUserId());
@@ -95,8 +110,8 @@ public class ReservationServiceImplementation implements ReservationService {
         reservation.setApprovedBy(resolveApproverForCreation(space, reservationDTO.getApprovedByUserId()));
         reservation.setCanceledAt(null);
         reservation.setCheckinAt(null);
-        reservation.setCreatedAt(now);
-        reservation.setUpdatedAt(now);
+        reservation.setCreatedAt(now.toLocalDateTime());
+        reservation.setUpdatedAt(now.toLocalDateTime());
         reservation.setDeletedAt(null);
         if (reservation.getNotifications() == null) {
             reservation.setNotifications(new ArrayList<>());
@@ -468,16 +483,12 @@ public class ReservationServiceImplementation implements ReservationService {
     }
 
     private ReservationStatus determineInitialStatus(Space space, ReservationStatus requestedStatus) {
-        if (space.getRequiresApproval() != null && space.getRequiresApproval()) {
-            return ReservationStatus.PENDING;
-        }
-        if (requestedStatus == null) {
-            return ReservationStatus.CONFIRMED;
-        }
+        // ✅ TODAS las reservas empiezan en PENDING para que un administrador las confirme
+        // Solo después de la confirmación del admin, el QR se habilita para check-in
         if (requestedStatus == ReservationStatus.CANCELED || requestedStatus == ReservationStatus.NO_SHOW) {
             throw new BusinessRuleException("Reservation cannot be created with status " + requestedStatus);
         }
-        return requestedStatus;
+        return ReservationStatus.PENDING;
     }
 
     private User resolveApproverForCreation(Space space, Long approverId) {
