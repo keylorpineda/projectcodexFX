@@ -1,0 +1,23 @@
+{
+  "id": 7,
+  "role": "ADMIN",
+  "name": "Carolina Rojas",
+  "email": "carolina@example.com",
+  "active": true,
+  "lastLoginAt": "2024-03-10T08:45:00",
+  "createdAt": "2023-12-01T09:30:00",
+  "updatedAt": "2024-02-05T14:15:00",
+  "deletedAt": null,
+  "reservationIds": [
+    10,
+    11
+  ],
+  "approvedReservationIds": [
+    20
+  ],
+  "auditLogIds": [
+    30,
+    31,
+    32
+  ]
+}

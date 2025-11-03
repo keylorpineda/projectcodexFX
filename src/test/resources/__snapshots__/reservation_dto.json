@@ -1,0 +1,36 @@
+{
+  "id": 42,
+  "userId": 7,
+  "spaceId": 3,
+  "startTime": "2024-01-15T10:00:00",
+  "endTime": "2024-01-15T11:30:00",
+  "status": "CONFIRMED",
+  "qrCode": "QR-XYZ-42",
+  "canceledAt": "2024-01-10T09:00:00",
+  "checkinAt": "2024-01-15T09:45:00",
+  "notes": "Presentar identificación oficial",
+  "attendees": 4,
+  "approvedByUserId": 2,
+  "weatherCheck": {
+    "forecast": "sunny",
+    "temperature": 27
+  },
+  "cancellationReason": "Reprogramada",
+  "createdAt": "2024-01-01T08:00:00",
+  "updatedAt": "2024-01-02T08:00:00",
+  "ratingId": 99,
+  "notificationIds": [
+    5,
+    6
+  ],
+  "attendeeRecords": [
+    {
+      "id": 1,
+      "reservationId": 42,
+      "idNumber": "12345678",
+      "firstName": "Ana",
+      "lastName": "Pérez",
+      "checkInAt": "2024-01-15T09:50:00"
+    }
+  ]
+}
